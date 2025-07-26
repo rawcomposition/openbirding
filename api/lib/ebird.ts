@@ -75,7 +75,6 @@ const updateHotspot = (dbHotspot: HotspotType, ebird: ProcessedHotspot) => {
     };
   }
 
-  console.log(`Updating hotspot ${dbHotspot._id}`);
   return {
     updateOne: {
       filter: { _id: dbHotspot._id },
@@ -90,7 +89,6 @@ const updateHotspot = (dbHotspot: HotspotType, ebird: ProcessedHotspot) => {
 };
 
 const deleteHotspot = (id: string) => {
-  console.log(`Marking hotspot ${id} for deletion`);
   return {
     deleteOne: {
       filter: { _id: id },
@@ -139,8 +137,6 @@ export const syncRegion = async (region?: string) => {
   const lastSyncRegionIndex = lastSyncRegion ? syncRegions.indexOf(lastSyncRegion) : -1;
   const nextRegion = region || syncRegions[lastSyncRegionIndex + 1] || syncRegions[0];
 
-  console.log(`Syncing ${nextRegion}`);
-
   const [hotspots, dbHotspots] = await Promise.all([
     getHotspotsForRegion(nextRegion),
     Hotspot.find({ $or: [{ state: nextRegion }, { country: nextRegion }] }).select(
@@ -153,13 +149,18 @@ export const syncRegion = async (region?: string) => {
 
   const bulkWrites: any[] = [];
   let insertCount = 0;
+  let updateCount = 0;
+  let deleteCount = 0;
 
   hotspots.forEach((ebird: ProcessedHotspot) => {
     const index = dbHotspotIds.indexOf(ebird.locationId);
     if (index > -1) {
       const dbHotspot = dbHotspots[index];
       const updateOp = updateHotspot(dbHotspot, ebird);
-      if (updateOp) bulkWrites.push(updateOp);
+      if (updateOp) {
+        bulkWrites.push(updateOp);
+        updateCount++;
+      }
       return;
     }
     const insertOp = insertHotspot(ebird);
@@ -172,6 +173,7 @@ export const syncRegion = async (region?: string) => {
   dbHotspots.forEach((dbHotspot: HotspotType) => {
     if (ebirdIds.includes(dbHotspot._id)) return;
     bulkWrites.push(deleteHotspot(dbHotspot._id));
+    deleteCount++;
   });
 
   if (bulkWrites.length > 0) {
@@ -187,12 +189,16 @@ export const syncRegion = async (region?: string) => {
     Settings.updateOne({}, { lastSyncRegion: nextRegion }, { upsert: true }),
   ]);
 
+  console.log(
+    `Sync complete for ${nextRegion}: ${insertCount} inserted, ${updateCount} updated, ${deleteCount} deleted`
+  );
+
   return {
     success: true,
-    message: `Successfully synced ${nextRegion}. Found ${insertCount || 0} new ${
-      insertCount === 1 ? "hotspot" : "hotspots"
-    }.`,
+    message: `Synced ${nextRegion}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
     region: nextRegion,
     insertCount,
+    updateCount,
+    deleteCount,
   };
 };
