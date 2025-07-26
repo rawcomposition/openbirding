@@ -1,0 +1,33 @@
+{
+  "name": "openbirding",
+  "version": "1.0.0",
+  "description": "A modern bird watching application with Vite frontend and Vercel serverless API",
+  "private": true,
+  "workspaces": [
+    "client",
+    "api"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:api\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:api": "cd api && npm start",
+    "build": "npm run build:client && npm run build:api",
+    "build:client": "cd client && npm run build",
+    "build:api": "cd api && npm run build",
+    "install:all": "npm install && cd client && npm install && cd ../api && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "birding",
+    "bird-watching",
+    "react",
+    "typescript",
+    "vite",
+    "vercel",
+    "serverless"
+  ],
+  "author": "",
+  "license": "MIT"
+}
