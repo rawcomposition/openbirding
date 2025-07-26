@@ -71,12 +71,12 @@ const BirdList = () => {
                   <CardTitle className="text-xl text-white">{bird.name}</CardTitle>
                   <p className="text-sm text-gray-300 italic">{bird.scientificName}</p>
                 </div>
-                <Bird className="h-6 w-6 text-blue-300" />
+                <Bird className="h-6 w-6 text-emerald-300" />
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Badge variant="secondary" className="bg-blue-500/20 text-blue-200 border-blue-400/30">
+                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
                   {bird.family}
                 </Badge>
               </div>

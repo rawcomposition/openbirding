@@ -23,7 +23,11 @@ const Home = () => {
               </Button>
             </Link>
             <Link to="/map">
-              <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-slate-300/30 text-slate-100 hover:bg-slate-700/50 hover:text-white bg-slate-800/30"
+              >
                 View Map
               </Button>
             </Link>
@@ -66,7 +70,7 @@ const Home = () => {
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <Users className="h-6 w-6 text-blue-400" />
+                  <Users className="h-6 w-6 text-emerald-400" />
                   <CardTitle className="text-white">Community</CardTitle>
                 </div>
               </CardHeader>
