@@ -138,7 +138,7 @@ export const syncRegion = async (region?: string) => {
 
   const [hotspots, dbHotspots] = await Promise.all([
     getHotspotsForRegion(region),
-    Hotspot.find({ $or: [{ state: region }, { country: region }] }).select("locationId name lat lng species county"),
+    Hotspot.find({ $or: [{ state: region }, { country: region }] }).select("_id name location species county"),
   ]);
 
   const dbHotspotIds: string[] = dbHotspots.map((hotspot) => hotspot._id).filter(Boolean) as string[];
