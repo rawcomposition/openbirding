@@ -3,20 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MapPin } from "lucide-react";
-
-type Hotspot = {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  habitat: string;
-  imageUrl?: string;
-};
-
-type HotspotsResponse = {
-  hotspots: Hotspot[];
-  count: number;
-};
+import type { HotspotsResponse } from "@/lib/types";
 
 const fetchHotspots = async (): Promise<HotspotsResponse> => {
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -62,25 +49,27 @@ const HotspotList = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data?.hotspots.map((hotspot) => (
           <Card
-            key={hotspot.id}
+            key={hotspot._id}
             className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-colors"
           >
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-xl text-white">{hotspot.name}</CardTitle>
-                  <p className="text-sm text-gray-300">{hotspot.location}</p>
+                  <p className="text-sm text-gray-300">{`${hotspot.county}, ${hotspot.state}, ${hotspot.country}`}</p>
                 </div>
                 <MapPin className="h-6 w-6 text-emerald-300" />
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div>
+              <div className="flex gap-2">
                 <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
-                  {hotspot.habitat}
+                  {hotspot.species} species
+                </Badge>
+                <Badge variant="outline" className="text-gray-300 border-gray-400/30">
+                  {hotspot.lat.toFixed(4)}, {hotspot.lng.toFixed(4)}
                 </Badge>
               </div>
-              <p className="text-sm text-gray-200">{hotspot.description}</p>
             </CardContent>
           </Card>
         ))}

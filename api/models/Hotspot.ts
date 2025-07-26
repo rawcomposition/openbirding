@@ -1,17 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { Hotspot as HotspotType } from "@/lib/types";
 
-export type Hotspot = Document & {
-  _id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  country: string;
-  state: string;
-  county: string;
-  species: number;
-  createdAt: Date;
-  updatedAt: Date;
-};
+export type Hotspot = Document & HotspotType;
 
 const HotspotSchema: Schema = new Schema(
   {

@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { withCors } from "../lib/cors";
-import connect from "../lib/db";
-import Hotspot, { Hotspot as HotspotType } from "../models/Hotspot";
+import connect from "@/lib/db";
+import Hotspot from "../models/Hotspot";
+import { Hotspot as HotspotType, HotspotsResponse } from "@/lib/types";
 
 function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method === "GET") {

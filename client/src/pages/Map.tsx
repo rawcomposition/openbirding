@@ -1,10 +1,26 @@
 import { useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import type { HotspotsResponse } from "@/lib/types";
+
+const fetchHotspots = async (): Promise<HotspotsResponse> => {
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const response = await fetch(`${apiUrl}/api/hotspots`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch hotspots");
+  }
+  return response.json();
+};
 
 const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+
+  const { data: hotspotsData } = useQuery({
+    queryKey: ["hotspots"],
+    queryFn: fetchHotspots,
+  });
 
   useEffect(() => {
     const mapboxKey = import.meta.env.VITE_MAPBOX_KEY;
@@ -39,48 +55,26 @@ const Map = () => {
     map.current.on("load", () => {
       if (!map.current) return;
 
+      const features =
+        hotspotsData?.hotspots.map((hotspot) => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [hotspot.lng, hotspot.lat],
+          },
+          properties: {
+            title: hotspot.name,
+            description: `${hotspot.county}, ${hotspot.state}, ${hotspot.country}`,
+            species: hotspot.species,
+            id: hotspot._id,
+          },
+        })) || [];
+
       map.current.addSource("birding-hotspots", {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [-73.9654, 40.7829],
-              },
-              properties: {
-                title: "Central Park",
-                description: "Famous urban birding location with diverse habitats",
-                habitat: "Urban park with lakes, woodlands, and meadows",
-              },
-            },
-            {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [-73.8231, 40.6215],
-              },
-              properties: {
-                title: "Jamaica Bay Wildlife Refuge",
-                description: "Coastal wetland teeming with migratory birds",
-                habitat: "Coastal wetlands, marshes, and open water",
-              },
-            },
-            {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [-73.969, 40.6602],
-              },
-              properties: {
-                title: "Prospect Park",
-                description: "Brooklyn's premier birding destination",
-                habitat: "Urban park with woodlands, lakes, and meadows",
-              },
-            },
-          ],
+          features,
         },
       });
 
@@ -121,7 +115,7 @@ const Map = () => {
         map.current = null;
       }
     };
-  }, []);
+  }, [hotspotsData]);
 
   return (
     <div className="h-screen w-full">
