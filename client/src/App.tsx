@@ -11,7 +11,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 text-white">
+        <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 text-white">
           <Header />
           <main>
             <Routes>

@@ -9,7 +9,7 @@ const Home = () => {
       <section className="py-20 px-4 text-center">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
-            <Bird className="h-16 w-16 text-blue-400" />
+            <Bird className="h-16 w-16 text-emerald-400" />
           </div>
           <h1 className="text-5xl font-bold text-white mb-6">Welcome to OpenBirding</h1>
           <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
@@ -18,7 +18,7 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/birds">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
                 Explore Birds
               </Button>
             </Link>
@@ -38,7 +38,7 @@ const Home = () => {
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <MapPin className="h-6 w-6 text-blue-400" />
+                  <MapPin className="h-6 w-6 text-emerald-400" />
                   <CardTitle className="text-white">Location Tracking</CardTitle>
                 </div>
               </CardHeader>
@@ -52,7 +52,7 @@ const Home = () => {
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <Camera className="h-6 w-6 text-blue-400" />
+                  <Camera className="h-6 w-6 text-emerald-400" />
                   <CardTitle className="text-white">Photo Sharing</CardTitle>
                 </div>
               </CardHeader>
