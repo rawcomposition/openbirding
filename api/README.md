@@ -46,7 +46,39 @@ Syncs hotspots with eBird data for a specific region.
 ```json
 {
   "success": true,
-  "message": "Successfully synced US-CA. Found 5 new hotspots."
+  "message": "Successfully synced US-CA. Found 5 new hotspots.",
+  "region": "US-CA",
+  "insertCount": 5
+}
+```
+
+### POST /api/sync-all-hotspots
+
+Syncs hotspots with eBird data for all regions sequentially with a 5-second delay between each region.
+
+**Authentication:**
+
+- Header: `Authorization: Bearer <CRON_SECRET>`
+- Query parameter: `key=<CRON_SECRET>`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Completed sync of all regions. 50 successful, 0 failed. Total new hotspots: 1250",
+  "totalRegions": 50,
+  "successfulSyncs": 50,
+  "failedSyncs": 0,
+  "totalInsertCount": 1250,
+  "results": [
+    {
+      "region": "US-CA",
+      "success": true,
+      "message": "Successfully synced US-CA. Found 25 new hotspots.",
+      "insertCount": 25
+    }
+  ]
 }
 ```
 
@@ -80,6 +112,13 @@ curl -X POST "https://your-api.vercel.app/api/sync-hotspots?state=US-CA&key=your
 
 ```bash
 curl -X POST "https://your-api.vercel.app/api/sync-hotspots" \
+  -H "Authorization: Bearer your-secret"
+```
+
+### Sync all regions:
+
+```bash
+curl -X POST "https://your-api.vercel.app/api/sync-all-hotspots" \
   -H "Authorization: Bearer your-secret"
 ```
 
