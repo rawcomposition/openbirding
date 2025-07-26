@@ -21,6 +21,13 @@ async function handler(request: VercelRequest, response: VercelResponse) {
   }
 
   try {
+    if (!region) {
+      return response.status(400).json({
+        success: false,
+        error: "Region parameter is required",
+      });
+    }
+
     const result = await syncRegion(region as string);
     response.status(200).json(result);
   } catch (error: any) {

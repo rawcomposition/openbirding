@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { withCors } from "../lib/cors";
-import { syncRegion } from "../lib/ebird";
-import { syncRegions } from "../data/sync-regions";
+import { syncRegion, getRegionsNeedingSync } from "../lib/ebird";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,10 +23,26 @@ async function handler(request: VercelRequest, response: VercelResponse) {
   }
 
   try {
+    const regionsToSync = await getRegionsNeedingSync();
+
+    if (regionsToSync.length === 0) {
+      return response.status(200).json({
+        success: true,
+        message: "No regions need syncing at this time",
+        totalRegions: 0,
+        successfulSyncs: 0,
+        failedSyncs: 0,
+        totalInsertCount: 0,
+        results: [],
+      });
+    }
+
+    console.log(`Found ${regionsToSync.length} regions that need syncing`);
+
     const results = [];
     let totalInsertCount = 0;
 
-    for (const region of syncRegions) {
+    for (const region of regionsToSync) {
       console.log(`Starting sync for region: ${region}`);
 
       try {
@@ -50,7 +65,7 @@ async function handler(request: VercelRequest, response: VercelResponse) {
         });
       }
 
-      if (region !== syncRegions[syncRegions.length - 1]) {
+      if (region !== regionsToSync[regionsToSync.length - 1]) {
         console.log(`Waiting 5 seconds before next region...`);
         await delay(5000);
       }
@@ -61,8 +76,8 @@ async function handler(request: VercelRequest, response: VercelResponse) {
 
     response.status(200).json({
       success: true,
-      message: `Completed sync of all regions. ${successfulSyncs} successful, ${failedSyncs} failed. Total new hotspots: ${totalInsertCount}`,
-      totalRegions: syncRegions.length,
+      message: `Completed sync of ${regionsToSync.length} regions. ${successfulSyncs} successful, ${failedSyncs} failed. Total new hotspots: ${totalInsertCount}`,
+      totalRegions: regionsToSync.length,
       successfulSyncs,
       failedSyncs,
       totalInsertCount,

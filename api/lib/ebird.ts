@@ -4,6 +4,7 @@ import Settings from "../models/Settings";
 import Log from "../models/Log";
 import { syncRegions } from "../data/sync-regions";
 import { Hotspot as HotspotType } from "./types";
+import { REGION_SYNC_INTERVAL } from "./config";
 
 type EBirdHotspot = {
   locId: string;
@@ -131,17 +132,13 @@ const insertHotspot = (ebird: ProcessedHotspot) => {
 export const syncRegion = async (region?: string) => {
   await connect();
 
-  const settings = await Settings.findOne({}, "lastSyncRegion");
-  const lastSyncRegion = settings?.lastSyncRegion;
-
-  const lastSyncRegionIndex = lastSyncRegion ? syncRegions.indexOf(lastSyncRegion) : -1;
-  const nextRegion = region || syncRegions[lastSyncRegionIndex + 1] || syncRegions[0];
+  if (!region) {
+    throw new Error("Region parameter is required");
+  }
 
   const [hotspots, dbHotspots] = await Promise.all([
-    getHotspotsForRegion(nextRegion),
-    Hotspot.find({ $or: [{ state: nextRegion }, { country: nextRegion }] }).select(
-      "locationId name lat lng species county"
-    ),
+    getHotspotsForRegion(region),
+    Hotspot.find({ $or: [{ state: region }, { country: region }] }).select("locationId name lat lng species county"),
   ]);
 
   const dbHotspotIds: string[] = dbHotspots.map((hotspot) => hotspot._id).filter(Boolean) as string[];
@@ -180,25 +177,41 @@ export const syncRegion = async (region?: string) => {
     await Hotspot.bulkWrite(bulkWrites);
   }
 
+  const currentTimestamp = Date.now();
+
   await Promise.all([
     Log.create({
       user: "BirdBot",
       type: "sync",
-      message: `synced ${nextRegion}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
+      message: `synced ${region}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
     }),
-    Settings.updateOne({}, { lastSyncRegion: nextRegion }, { upsert: true }),
+    Settings.updateOne({}, { [`regionSyncTimestamps.${region}`]: currentTimestamp }, { upsert: true }),
   ]);
 
-  console.log(
-    `Sync complete for ${nextRegion}: ${insertCount} inserted, ${updateCount} updated, ${deleteCount} deleted`
-  );
+  console.log(`Sync complete for ${region}: ${insertCount} inserted, ${updateCount} updated, ${deleteCount} deleted`);
 
   return {
     success: true,
-    message: `Synced ${nextRegion}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
-    region: nextRegion,
+    message: `Synced ${region}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
+    region,
     insertCount,
     updateCount,
     deleteCount,
   };
+};
+
+export const getRegionsNeedingSync = async () => {
+  await connect();
+
+  const settings = await Settings.findOne({}, "regionSyncTimestamps");
+  const timestamps = settings?.regionSyncTimestamps || {};
+  const currentTime = Date.now();
+
+  return syncRegions.filter((region) => {
+    const lastSyncTime = timestamps[region];
+    if (!lastSyncTime) return true;
+
+    const timeSinceLastSync = currentTime - lastSyncTime;
+    return timeSinceLastSync >= REGION_SYNC_INTERVAL;
+  });
 };

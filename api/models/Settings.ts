@@ -1,16 +1,17 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 interface SettingsType {
-  lastSyncRegion?: string;
+  regionSyncTimestamps?: Record<string, number>;
 }
 
 export type Settings = Document & SettingsType;
 
 const SettingsSchema: Schema = new Schema(
   {
-    lastSyncRegion: {
-      type: String,
-      default: null,
+    regionSyncTimestamps: {
+      type: Map,
+      of: Number,
+      default: {},
     },
   },
   {

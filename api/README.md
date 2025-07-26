@@ -38,7 +38,7 @@ Syncs hotspots with eBird data for a specific region.
 
 **Query Parameters:**
 
-- `state` (optional): Specific region to sync (e.g., "US-CA", "US-NY")
+- `region` (required): Specific region to sync (e.g., "US-CA", "US-NY")
 - `key` (optional): Authentication key
 
 **Response:**
@@ -46,15 +46,17 @@ Syncs hotspots with eBird data for a specific region.
 ```json
 {
   "success": true,
-  "message": "Successfully synced US-CA. Found 5 new hotspots.",
+  "message": "Synced US-CA. Found 5 new hotspots.",
   "region": "US-CA",
-  "insertCount": 5
+  "insertCount": 5,
+  "updateCount": 10,
+  "deleteCount": 2
 }
 ```
 
 ### POST /api/sync-all-hotspots
 
-Syncs hotspots with eBird data for all regions sequentially with a 5-second delay between each region.
+Syncs hotspots with eBird data for regions that haven't been synced recently (default: 30 days). Only syncs regions that need updating, with a 5-second delay between each region.
 
 **Authentication:**
 
@@ -66,16 +68,16 @@ Syncs hotspots with eBird data for all regions sequentially with a 5-second dela
 ```json
 {
   "success": true,
-  "message": "Completed sync of all regions. 50 successful, 0 failed. Total new hotspots: 1250",
-  "totalRegions": 50,
-  "successfulSyncs": 50,
+  "message": "Completed sync of 15 regions. 15 successful, 0 failed. Total new hotspots: 375",
+  "totalRegions": 15,
+  "successfulSyncs": 15,
   "failedSyncs": 0,
-  "totalInsertCount": 1250,
+  "totalInsertCount": 375,
   "results": [
     {
       "region": "US-CA",
       "success": true,
-      "message": "Successfully synced US-CA. Found 25 new hotspots.",
+      "message": "Synced US-CA. Found 25 new hotspots.",
       "insertCount": 25
     }
   ]
@@ -98,14 +100,20 @@ The sync endpoint:
 4. Inserts new hotspots
 5. Marks hotspots for deletion if they no longer exist in eBird
 6. Logs the sync operation
-7. Updates the last synced region
+7. Updates the sync timestamp for the region
+
+## Sync Scheduling
+
+- Regions are only synced if they haven't been synced within the last 30 days (configurable via `REGION_SYNC_INTERVAL`)
+- The `sync-all-hotspots` endpoint only processes regions that need updating
+- Individual region syncs can be forced by calling `sync-hotspots` with a specific region
 
 ## Usage Examples
 
-### Manual sync for a specific state:
+### Manual sync for a specific region:
 
 ```bash
-curl -X POST "https://your-api.vercel.app/api/sync-hotspots?state=US-CA&key=your-secret"
+curl -X POST "https://your-api.vercel.app/api/sync-hotspots?region=US-CA&key=your-secret"
 ```
 
 ### Automated sync (cron job):
@@ -137,7 +145,7 @@ curl -X POST "https://your-api.vercel.app/api/sync-all-hotspots" \
 
 ### Settings
 
-- `lastSyncRegion`: Tracks the last region synced
+- `regionSyncTimestamps`: Map of region codes to Unix timestamps of last sync
 
 ### Log
 
