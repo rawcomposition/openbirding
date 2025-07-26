@@ -29,16 +29,16 @@ const Header = () => {
                 Home
               </Button>
             </Link>
-            <Link to="/birds">
+            <Link to="/hotspots">
               <Button
-                variant={isActive("/birds") ? "default" : "ghost"}
+                variant={isActive("/hotspots") ? "default" : "ghost"}
                 className={
-                  isActive("/birds")
+                  isActive("/hotspots")
                     ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
                     : "text-slate-100 hover:text-white hover:bg-slate-800/50"
                 }
               >
-                Birds
+                Hotspots
               </Button>
             </Link>
             <Link to="/map">

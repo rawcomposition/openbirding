@@ -21,7 +21,7 @@ const Map = () => {
     map.current = new mapboxgl.Map({
       container: mapContainer.current!,
       style: "mapbox://styles/mapbox/outdoors-v12",
-      center: [-74.006, 40.7128], // New York City
+      center: [-74.006, 40.7128],
       zoom: 10,
       attributionControl: false,
     });
@@ -29,7 +29,6 @@ const Map = () => {
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
     map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
 
-    // Adjust map controls to account for header height
     const controls = document.querySelectorAll(".mapboxgl-ctrl-group");
     controls.forEach((control) => {
       if (control instanceof HTMLElement) {
@@ -40,7 +39,7 @@ const Map = () => {
     map.current.on("load", () => {
       if (!map.current) return;
 
-      map.current.addSource("bird-sightings", {
+      map.current.addSource("birding-hotspots", {
         type: "geojson",
         data: {
           type: "FeatureCollection",
@@ -49,24 +48,36 @@ const Map = () => {
               type: "Feature",
               geometry: {
                 type: "Point",
-                coordinates: [-74.006, 40.7128],
+                coordinates: [-73.9654, 40.7829],
               },
               properties: {
-                title: "American Robin",
-                description: "Spotted in Central Park",
-                species: "Turdus migratorius",
+                title: "Central Park",
+                description: "Famous urban birding location with diverse habitats",
+                habitat: "Urban park with lakes, woodlands, and meadows",
               },
             },
             {
               type: "Feature",
               geometry: {
                 type: "Point",
-                coordinates: [-74.005, 40.713],
+                coordinates: [-73.8231, 40.6215],
               },
               properties: {
-                title: "Northern Cardinal",
-                description: "Bright red male spotted",
-                species: "Cardinalis cardinalis",
+                title: "Jamaica Bay Wildlife Refuge",
+                description: "Coastal wetland teeming with migratory birds",
+                habitat: "Coastal wetlands, marshes, and open water",
+              },
+            },
+            {
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [-73.969, 40.6602],
+              },
+              properties: {
+                title: "Prospect Park",
+                description: "Brooklyn's premier birding destination",
+                habitat: "Urban park with woodlands, lakes, and meadows",
               },
             },
           ],
@@ -74,21 +85,21 @@ const Map = () => {
       });
 
       map.current.addLayer({
-        id: "bird-points",
+        id: "hotspot-points",
         type: "circle",
-        source: "bird-sightings",
+        source: "birding-hotspots",
         paint: {
           "circle-radius": 8,
-          "circle-color": "#3b82f6",
+          "circle-color": "#10b981",
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
         },
       });
 
       map.current.addLayer({
-        id: "bird-labels",
+        id: "hotspot-labels",
         type: "symbol",
-        source: "bird-sightings",
+        source: "birding-hotspots",
         layout: {
           "text-field": ["get", "title"],
           "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],

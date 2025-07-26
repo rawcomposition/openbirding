@@ -17,9 +17,9 @@ const Home = () => {
             world's avian diversity.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/birds">
+            <Link to="/hotspots">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                Explore Birds
+                Explore Hotspots
               </Button>
             </Link>
             <Link to="/map">

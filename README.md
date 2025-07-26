@@ -4,7 +4,7 @@ A modern bird watching application built with React, TypeScript, Vite, and Verce
 
 ## Features
 
-- 🐦 Browse bird species with detailed information
+- 🗺️ Browse birding hotspots with detailed information
 - 🎨 Modern UI built with ShadCN components
 - ⚡ Fast development with Vite
 - 🚀 Serverless API with Vercel
@@ -95,19 +95,42 @@ npm run build
 
 ## API Endpoints
 
-- `GET /api/birds` - Get all bird species
-- `POST /api/birds` - Add a new bird species
+- `GET /api/hotspots` - Get all birding hotspots
+- `POST /api/hotspots` - Add a new birding hotspot
 - `GET /api/hello` - Health check endpoint
 
 ## Deployment
 
 ### Frontend (Vercel)
 
-The frontend can be deployed to Vercel by connecting your repository and setting the build directory to `client`.
+The frontend can be deployed to Vercel with the following configuration:
+
+```json
+{
+  "buildCommand": "npm run build:client",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm run install:all"
+}
+```
 
 ### Backend (Vercel)
 
-The API functions are automatically deployed to Vercel when you push to the main branch.
+The API functions are automatically deployed when you push to the main branch.
+
+## Environment Variables
+
+### Frontend (.env)
+
+```env
+VITE_API_URL=http://localhost:3000
+VITE_MAPBOX_KEY=your_mapbox_access_token
+```
+
+### Backend (.env)
+
+```env
+# Add any backend environment variables here
+```
 
 ## Contributing
 
@@ -119,4 +142,4 @@ The API functions are automatically deployed to Vercel when you push to the main
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT

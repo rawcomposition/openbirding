@@ -1,13 +1,13 @@
-import BirdList from "@/components/BirdList";
+import HotspotList from "@/components/HotspotList";
 
-const Birds = () => {
+const Hotspots = () => {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <BirdList />
+        <HotspotList />
       </div>
     </div>
   );
 };
 
-export default Birds;
+export default Hotspots;
