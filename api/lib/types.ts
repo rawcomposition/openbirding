@@ -1,14 +1,15 @@
 export type Hotspot = {
   _id: string;
   name: string;
-  lat: number;
-  lng: number;
   country: string;
   state: string;
   county: string;
   species: number;
-  createdAt: string;
-  updatedAt: string;
+  location: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+  updatedAt: Date;
 };
 
 export type HotspotsResponse = {

@@ -36,13 +36,6 @@ const Map = () => {
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
     map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
 
-    const controls = document.querySelectorAll(".mapboxgl-ctrl-group");
-    controls.forEach((control) => {
-      if (control instanceof HTMLElement) {
-        control.style.marginTop = "80px";
-      }
-    });
-
     map.current.on("load", () => {
       if (!map.current) return;
 

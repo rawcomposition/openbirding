@@ -3,44 +3,38 @@ import { Hotspot as HotspotType } from "@/lib/types";
 
 export type Hotspot = Document & HotspotType;
 
-const HotspotSchema: Schema = new Schema(
-  {
-    _id: {
+const HotspotSchema: Schema = new Schema({
+  _id: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  country: {
+    type: String,
+    required: true,
+  },
+  state: String,
+  county: String,
+  species: {
+    type: Number,
+    default: 0,
+  },
+  location: {
+    type: {
       type: String,
-      required: true,
+      enum: ["Point"],
     },
-    name: {
-      type: String,
+    coordinates: {
+      type: [Number],
       required: true,
-    },
-    lat: {
-      type: Number,
-      required: true,
-    },
-    lng: {
-      type: Number,
-      required: true,
-    },
-    country: {
-      type: String,
-      required: true,
-    },
-    state: {
-      type: String,
-      required: true,
-    },
-    county: {
-      type: String,
-      required: true,
-    },
-    species: {
-      type: Number,
-      default: 0,
     },
   },
-  {
-    timestamps: true,
-  }
-);
+  updatedAt: Date,
+});
+
+HotspotSchema.index({ location: "2dsphere" });
 
 export default mongoose.model<Hotspot>("Hotspot", HotspotSchema);
