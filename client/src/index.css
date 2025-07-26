@@ -118,3 +118,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mapbox controls positioning */
+.mapboxgl-ctrl-group {
+  margin-top: 80px !important;
+}

@@ -4,19 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Bird } from "lucide-react";
 
-interface Bird {
+type Bird = {
   id: string;
   name: string;
   scientificName: string;
   family: string;
   habitat: string;
   imageUrl?: string;
-}
+};
 
-interface BirdsResponse {
+type BirdsResponse = {
   birds: Bird[];
   count: number;
-}
+};
 
 const fetchBirds = async (): Promise<BirdsResponse> => {
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";

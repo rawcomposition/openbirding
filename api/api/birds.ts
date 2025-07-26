@@ -1,13 +1,14 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { withCors } from "../lib/cors";
 
-interface Bird {
+type Bird = {
   id: string;
   name: string;
   scientificName: string;
   family: string;
   habitat: string;
   imageUrl?: string;
-}
+};
 
 const sampleBirds: Bird[] = [
   {
@@ -33,18 +34,7 @@ const sampleBirds: Bird[] = [
   },
 ];
 
-export default function handler(request: VercelRequest, response: VercelResponse) {
-  // Add CORS headers
-  response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  // Handle preflight requests
-  if (request.method === "OPTIONS") {
-    response.status(200).end();
-    return;
-  }
-
+function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method === "GET") {
     response.status(200).json({
       birds: sampleBirds,
@@ -76,3 +66,7 @@ export default function handler(request: VercelRequest, response: VercelResponse
     error: "Method not allowed",
   });
 }
+
+export default withCors(handler, {
+  methods: ["GET", "POST", "OPTIONS"],
+});
