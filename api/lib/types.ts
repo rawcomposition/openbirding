@@ -10,11 +10,15 @@ export type Hotspot = {
     coordinates: [number, number];
   };
   updatedAt: Date;
+  tags?: string[];
 };
 
 export type HotspotsResponse = {
   hotspots: Hotspot[];
   count: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 };
 
 export enum TagCategory {

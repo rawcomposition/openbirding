@@ -33,8 +33,10 @@ const HotspotSchema: Schema = new Schema({
     },
   },
   updatedAt: Date,
+  tags: [String],
 });
 
 HotspotSchema.index({ location: "2dsphere" });
+HotspotSchema.index({ species: -1 });
 
 export default mongoose.model<Hotspot>("Hotspot", HotspotSchema);

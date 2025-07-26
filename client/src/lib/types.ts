@@ -1,17 +1,30 @@
 export type Hotspot = {
   _id: string;
   name: string;
-  lat: number;
-  lng: number;
   country: string;
   state: string;
   county: string;
   species: number;
-  createdAt: string;
+  location: {
+    type: "Point";
+    coordinates: [number, number];
+  };
   updatedAt: string;
+  tags?: string[];
 };
 
 export type HotspotsResponse = {
   hotspots: Hotspot[];
   count: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type Tag = {
+  name: string;
+  id: string;
+  category: string;
+  icon: string;
+  color: string;
 };
