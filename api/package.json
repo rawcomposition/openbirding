@@ -11,8 +11,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/mongoose": "^5.11.96",
     "@types/node": "^24.1.0",
     "@vercel/node": "^5.3.7",
+    "mongoose": "^8.16.5",
     "typescript": "^5.8.3"
   }
 }

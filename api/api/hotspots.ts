@@ -1,70 +1,77 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { withCors } from "../lib/cors";
-
-type Hotspot = {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  habitat: string;
-  imageUrl?: string;
-};
-
-const sampleHotspots: Hotspot[] = [
-  {
-    id: "1",
-    name: "Central Park",
-    location: "New York, NY",
-    description: "Famous urban birding location with diverse habitats",
-    habitat: "Urban park with lakes, woodlands, and meadows",
-  },
-  {
-    id: "2",
-    name: "Jamaica Bay Wildlife Refuge",
-    location: "Queens, NY",
-    description: "Coastal wetland teeming with migratory birds",
-    habitat: "Coastal wetlands, marshes, and open water",
-  },
-  {
-    id: "3",
-    name: "Prospect Park",
-    location: "Brooklyn, NY",
-    description: "Brooklyn's premier birding destination",
-    habitat: "Urban park with woodlands, lakes, and meadows",
-  },
-];
+import connect from "../lib/db";
+import Hotspot, { Hotspot as HotspotType } from "../models/Hotspot";
 
 function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method === "GET") {
-    response.status(200).json({
-      hotspots: sampleHotspots,
-      count: sampleHotspots.length,
-    });
-    return;
+    return getHotspots(request, response);
   }
 
   if (request.method === "POST") {
-    const newHotspot: Hotspot = request.body;
-
-    if (!newHotspot.name || !newHotspot.location) {
-      response.status(400).json({
-        error: "Name and location are required",
-      });
-      return;
-    }
-
-    const hotspotWithId: Hotspot = {
-      ...newHotspot,
-      id: Date.now().toString(),
-    };
-
-    response.status(201).json(hotspotWithId);
-    return;
+    return createHotspot(request, response);
   }
 
   response.status(405).json({
     error: "Method not allowed",
   });
+}
+
+async function getHotspots(request: VercelRequest, response: VercelResponse) {
+  try {
+    await connect();
+    const hotspots = await Hotspot.find({}).sort({ createdAt: -1 });
+
+    response.status(200).json({
+      hotspots,
+      count: hotspots.length,
+    });
+  } catch (error) {
+    response.status(500).json({
+      error: "Failed to fetch hotspots",
+    });
+  }
+}
+
+async function createHotspot(request: VercelRequest, response: VercelResponse) {
+  try {
+    const { _id, name, lat, lng, country, state, county, species } = request.body;
+
+    if (!_id || !name || lat === undefined || lng === undefined || !country || !state || !county) {
+      response.status(400).json({
+        error: "Missing required fields: _id, name, lat, lng, country, state, county",
+      });
+      return;
+    }
+
+    await connect();
+
+    const existingHotspot = await Hotspot.findById(_id);
+    if (existingHotspot) {
+      response.status(409).json({
+        error: "Hotspot with this ID already exists",
+      });
+      return;
+    }
+
+    const newHotspot = new Hotspot({
+      _id,
+      name,
+      lat,
+      lng,
+      country,
+      state,
+      county,
+      species: species || 0,
+    });
+
+    const savedHotspot = await newHotspot.save();
+    response.status(201).json(savedHotspot);
+  } catch (error) {
+    response.status(500).json({
+      error: "Failed to create hotspot",
+    });
+  }
 }
 
 export default withCors(handler, {
