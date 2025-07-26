@@ -9,7 +9,7 @@ const Map = () => {
   const map = useRef<mapboxgl.Map | null>(null);
 
   const { data: hotspotsData } = useQuery<HotspotsResponse>({
-    queryKey: ["/api/hotspots"],
+    queryKey: ["/hotspots"],
     meta: { errorMessage: "Failed to load hotspots" },
   });
 

@@ -16,8 +16,7 @@ const queryClient = new QueryClient({
       staleTime: 0,
       queryFn: async ({ queryKey }) => {
         const url = queryKey[0] as string;
-        const fullUrl = url.startsWith("/") ? `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${url}` : url;
-        return get(fullUrl, (queryKey[1] || {}) as Record<string, string | number | boolean>);
+        return get(url, (queryKey[1] || {}) as Record<string, string | number | boolean>);
       },
     },
   },

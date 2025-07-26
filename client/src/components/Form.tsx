@@ -7,7 +7,7 @@ type FormProps<T extends FieldValues = FieldValues> = {
   className?: string;
 };
 
-const Form = ({ form, onSubmit, children, className }: FormProps) => {
+const Form = <T extends FieldValues>({ form, onSubmit, children, className }: FormProps<T>) => {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className={className}>

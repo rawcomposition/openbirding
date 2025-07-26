@@ -1,54 +1,37 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormInput } from "@/components/FormInput";
 import { Form } from "@/components/Form";
+import { mutate } from "@/lib/utils";
+import { toast } from "react-hot-toast";
 
 type FormData = {
   locationId: string;
 };
 
 const AddHotspot = () => {
-  const [shouldFetch, setShouldFetch] = useState(false);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
-
   const form = useForm<FormData>({
     defaultValues: {
       locationId: "",
     },
   });
 
-  const locationId = form.watch("locationId");
-
-  const {
-    isPending,
-    error: queryError,
-    data,
-  } = useQuery({
-    queryKey: ["/api/get-hotspot", { locationId: locationId.trim() }],
-    enabled: shouldFetch && !!locationId.trim(),
+  const { mutate: fetchHotspot, isPending } = useMutation({
+    mutationFn: async (locationId: string) => {
+      return mutate("POST", "/get-hotspot", { locationId: locationId.trim() });
+    },
+    onSuccess: (data) => {
+      console.log(data);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
   });
 
-  useEffect(() => {
-    if (data) {
-      navigate(`/hotspots`);
-    }
-  }, [data, navigate]);
-
-  useEffect(() => {
-    if (queryError) {
-      setError(queryError.message);
-      setShouldFetch(false);
-    }
-  }, [queryError]);
-
-  const onSubmit = () => {
-    setError("");
-    setShouldFetch(true);
+  const onSubmit = (formData: FormData) => {
+    fetchHotspot(formData.locationId);
   };
 
   return (
@@ -63,10 +46,6 @@ const AddHotspot = () => {
         <CardContent className="space-y-6">
           <Form form={form} onSubmit={onSubmit} className="space-y-6">
             <FormInput name="locationId" label="eBird Location ID" placeholder="e.g., L12345678" required />
-
-            {error && (
-              <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">{error}</div>
-            )}
 
             <div className="flex justify-center">
               <Button

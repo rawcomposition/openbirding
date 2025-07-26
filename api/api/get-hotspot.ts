@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { withCors } from "../lib/cors";
-import connect from "@/lib/db";
+import connect from "../lib/db";
 import Hotspot from "../models/Hotspot";
-import type { Hotspot as HotspotType } from "@/lib/types";
+import type { Hotspot as HotspotType } from "../lib/types";
 
 type EBirdHotspot = {
   locId: string;
