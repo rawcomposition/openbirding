@@ -16,44 +16,49 @@ const Header = () => {
             <span className="text-xl font-bold text-white">OpenBirding</span>
           </Link>
 
-          <nav className="flex items-center space-x-4">
-            <Link to="/">
-              <Button
-                variant={isActive("/") ? "default" : "ghost"}
-                className={
-                  isActive("/")
-                    ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
-                    : "text-slate-100 hover:text-white hover:bg-slate-800/50"
-                }
-              >
-                Home
-              </Button>
+          <div className="flex items-center space-x-4">
+            <nav className="flex items-center space-x-4">
+              <Link to="/">
+                <Button
+                  variant={isActive("/") ? "default" : "ghost"}
+                  className={
+                    isActive("/")
+                      ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
+                      : "text-slate-100 hover:text-white hover:bg-slate-800/50"
+                  }
+                >
+                  Home
+                </Button>
+              </Link>
+              <Link to="/hotspots">
+                <Button
+                  variant={isActive("/hotspots") ? "default" : "ghost"}
+                  className={
+                    isActive("/hotspots")
+                      ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
+                      : "text-slate-100 hover:text-white hover:bg-slate-800/50"
+                  }
+                >
+                  Hotspots
+                </Button>
+              </Link>
+              <Link to="/map">
+                <Button
+                  variant={isActive("/map") ? "default" : "ghost"}
+                  className={
+                    isActive("/map")
+                      ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
+                      : "text-slate-100 hover:text-white hover:bg-slate-800/50"
+                  }
+                >
+                  Map
+                </Button>
+              </Link>
+            </nav>
+            <Link to="/add-hotspot">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">Add Hotspot</Button>
             </Link>
-            <Link to="/hotspots">
-              <Button
-                variant={isActive("/hotspots") ? "default" : "ghost"}
-                className={
-                  isActive("/hotspots")
-                    ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
-                    : "text-slate-100 hover:text-white hover:bg-slate-800/50"
-                }
-              >
-                Hotspots
-              </Button>
-            </Link>
-            <Link to="/map">
-              <Button
-                variant={isActive("/map") ? "default" : "ghost"}
-                className={
-                  isActive("/map")
-                    ? "bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600"
-                    : "text-slate-100 hover:text-white hover:bg-slate-800/50"
-                }
-              >
-                Map
-              </Button>
-            </Link>
-          </nav>
+          </div>
         </div>
       </div>
     </header>

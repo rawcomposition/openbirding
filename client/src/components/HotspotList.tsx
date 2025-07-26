@@ -5,19 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MapPin } from "lucide-react";
 import type { HotspotsResponse } from "@/lib/types";
 
-const fetchHotspots = async (): Promise<HotspotsResponse> => {
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-  const response = await fetch(`${apiUrl}/api/hotspots`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch hotspots");
-  }
-  return response.json();
-};
-
 const HotspotList = () => {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["hotspots"],
-    queryFn: fetchHotspots,
+  const { data, isLoading, error, refetch } = useQuery<HotspotsResponse>({
+    queryKey: ["/api/hotspots"],
+    meta: { errorMessage: "Failed to load hotspots" },
   });
 
   if (isLoading) {
