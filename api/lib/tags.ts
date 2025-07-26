@@ -1,0 +1,81 @@
+import { TagCategory, Tag } from "./types";
+
+export const tags: Tag[] = [
+  {
+    name: "Entrance Fee",
+    id: "F1",
+    category: TagCategory.Fees,
+    icon: "Ticket",
+    color: "text-red-500",
+  },
+  {
+    name: "Parking Fee",
+    id: "F2",
+    category: TagCategory.Fees,
+    icon: "Car",
+    color: "text-orange-500",
+  },
+  {
+    name: "Permit Fee",
+    id: "F3",
+    category: TagCategory.Fees,
+    icon: "FileText",
+    color: "text-yellow-500",
+  },
+  {
+    name: "Guide Required",
+    id: "A1",
+    category: TagCategory.Access,
+    icon: "UserCheck",
+    color: "text-cyan-500",
+  },
+  {
+    name: "Guests/Residents Only",
+    id: "A2",
+    category: TagCategory.Access,
+    icon: "Users",
+    color: "text-purple-500",
+  },
+  {
+    name: "Permission Required",
+    id: "A3",
+    category: TagCategory.Access,
+    icon: "Shield",
+    color: "text-blue-500",
+  },
+  {
+    name: "Special Transportation Required",
+    id: "A5",
+    category: TagCategory.Access,
+    icon: "Bus",
+    color: "text-emerald-500",
+  },
+  {
+    name: "Seasonal Closure",
+    id: "A4",
+    category: TagCategory.Access,
+    icon: "CalendarX",
+    color: "text-amber-500",
+  },
+  {
+    name: "Military Property",
+    id: "A6",
+    category: TagCategory.Access,
+    icon: "ShieldAlert",
+    color: "text-red-600",
+  },
+  {
+    name: "High Crime Area",
+    id: "S1",
+    category: TagCategory.Safety,
+    icon: "AlertTriangle",
+    color: "text-red-800",
+  },
+  {
+    name: "Conflict Zone",
+    id: "S2",
+    category: TagCategory.Safety,
+    icon: "Zap",
+    color: "text-orange-800",
+  },
+];

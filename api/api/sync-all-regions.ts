@@ -66,8 +66,8 @@ async function handler(request: VercelRequest, response: VercelResponse) {
       }
 
       if (region !== regionsToSync[regionsToSync.length - 1]) {
-        console.log(`Waiting 5 seconds before next region...`);
-        await delay(5000);
+        console.log(`Waiting 10 seconds before next region...`);
+        await delay(10000);
       }
     }
 

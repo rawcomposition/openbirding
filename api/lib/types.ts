@@ -16,3 +16,18 @@ export type HotspotsResponse = {
   hotspots: Hotspot[];
   count: number;
 };
+
+export enum TagCategory {
+  Fees = "fees",
+  Access = "access",
+  Hours = "hours",
+  Safety = "safety",
+}
+
+export type Tag = {
+  name: string;
+  id: string;
+  category: TagCategory;
+  icon: string;
+  color: string;
+};

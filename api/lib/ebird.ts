@@ -204,14 +204,27 @@ export const getRegionsNeedingSync = async () => {
   await connect();
 
   const settings = await Settings.findOne({}, "regionSyncTimestamps");
-  const timestamps = settings?.regionSyncTimestamps || {};
+  const timestampsMap = settings?.regionSyncTimestamps;
+
+  let timestamps: Record<string, number> = {};
+  if (timestampsMap) {
+    if (timestampsMap instanceof Map) {
+      timestamps = Object.fromEntries(timestampsMap);
+    } else {
+      timestamps = timestampsMap as Record<string, number>;
+    }
+  }
+
   const currentTime = Date.now();
 
-  return syncRegions.filter((region) => {
+  const regionsNeedingSync = syncRegions.filter((region) => {
     const lastSyncTime = timestamps[region];
     if (!lastSyncTime) return true;
 
     const timeSinceLastSync = currentTime - lastSyncTime;
-    return timeSinceLastSync >= REGION_SYNC_INTERVAL;
+    const needsSync = timeSinceLastSync >= REGION_SYNC_INTERVAL;
+    return needsSync;
   });
+
+  return regionsNeedingSync;
 };
