@@ -42,7 +42,7 @@ const AddHotspot = () => {
     if (data) {
       hotspotForm.reset(data);
     }
-  }, [data]);
+  }, [data, hotspotForm]);
 
   const onSubmitLocation = (formData: LocationFormData) => {
     setLocationId(formData.locationId);

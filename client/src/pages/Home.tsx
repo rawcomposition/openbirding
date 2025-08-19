@@ -2,6 +2,7 @@ import { Bird, MapPin, Users, Camera } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import RegionSearch from "@/components/RegionSearch";
 
 const Home = () => {
   return (
@@ -16,6 +17,11 @@ const Home = () => {
             Discover, track, and share your bird watching adventures. Connect with fellow birders and explore the
             world's avian diversity.
           </p>
+
+          <div className="max-w-md mx-auto mb-8">
+            <RegionSearch pill />
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/hotspots">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">

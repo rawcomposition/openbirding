@@ -6,6 +6,8 @@ import hotspots from "./routes/hotspots.js";
 import getHotspot from "./routes/get-hotspot.js";
 import syncRegion from "./routes/sync-region.js";
 import syncAllRegions from "./routes/sync-all-regions.js";
+import search from "./routes/search.js";
+import regions from "./routes/regions.js";
 
 const app = new Hono();
 
@@ -19,6 +21,8 @@ app.route("/api/hotspots", hotspots);
 app.route("/api/get-hotspot", getHotspot);
 app.route("/api/sync-region", syncRegion);
 app.route("/api/sync-all-regions", syncAllRegions);
+app.route("/api/search", search);
+app.route("/api/regions", regions);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);

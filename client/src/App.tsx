@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Hotspots from "./pages/Hotspots";
 import Map from "./pages/Map";
 import AddHotspot from "./pages/AddHotspot";
+import Region from "./pages/Region";
 import { get } from "./lib/utils";
 
 const queryClient = new QueryClient({
@@ -34,6 +35,7 @@ function App() {
               <Route path="/hotspots" element={<Hotspots />} />
               <Route path="/map" element={<Map />} />
               <Route path="/add-hotspot" element={<AddHotspot />} />
+              <Route path="/region/:regionCode" element={<Region />} />
             </Routes>
           </main>
         </div>
