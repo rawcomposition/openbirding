@@ -1,6 +1,7 @@
 export type Hotspot = {
   _id: string;
   name: string;
+  region: string;
   country: string;
   state: string;
   county: string;
@@ -34,4 +35,10 @@ export type Tag = {
   category: TagCategory;
   icon: string;
   color: string;
+};
+
+export type Region = {
+  _id: string;
+  name: string;
+  isCountry?: boolean;
 };

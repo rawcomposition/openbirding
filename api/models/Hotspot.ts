@@ -12,12 +12,10 @@ const HotspotSchema: Schema = new Schema({
     type: String,
     required: true,
   },
-  country: {
+  region: {
     type: String,
     required: true,
   },
-  state: String,
-  county: String,
   species: {
     type: Number,
     default: 0,
@@ -38,5 +36,6 @@ const HotspotSchema: Schema = new Schema({
 
 HotspotSchema.index({ location: "2dsphere" });
 HotspotSchema.index({ species: -1 });
+HotspotSchema.index({ region: 1 });
 
 export default mongoose.model<Hotspot>("Hotspot", HotspotSchema);
