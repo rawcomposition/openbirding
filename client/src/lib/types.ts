@@ -9,22 +9,11 @@ export type Hotspot = {
     type: "Point";
     coordinates: [number, number];
   };
-  updatedAt: string;
+  updatedAt: Date;
   tags?: string[];
 };
 
 export type HotspotsResponse = {
   hotspots: Hotspot[];
   count: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-};
-
-export type Tag = {
-  name: string;
-  id: string;
-  category: string;
-  icon: string;
-  color: string;
 };

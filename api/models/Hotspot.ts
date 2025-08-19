@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { Hotspot as HotspotType } from "@/lib/types";
+import type { Hotspot as HotspotType } from "../lib/types.js";
 
 export type Hotspot = Document & HotspotType;
 

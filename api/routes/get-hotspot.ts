@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { withCors } from "../lib/cors";
-import connect from "../lib/db";
-import Hotspot from "../models/Hotspot";
-import type { Hotspot as HotspotType } from "../lib/types";
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
+import connect from "../lib/db.js";
+import Hotspot from "../models/Hotspot.js";
+import type { Hotspot as HotspotType } from "../lib/types.js";
 
 type EBirdHotspot = {
   locId: string;
@@ -23,33 +23,19 @@ type EBirdHotspot = {
   locID: string;
 };
 
-function handler(request: VercelRequest, response: VercelResponse) {
-  if (request.method === "GET") {
-    return getHotspot(request, response);
-  }
+const getHotspot = new Hono();
 
-  response.status(405).json({
-    error: "Method not allowed",
-  });
-}
-
-async function getHotspot(request: VercelRequest, response: VercelResponse) {
+getHotspot.get("/", async (c) => {
   try {
-    const { locationId } = request.query;
+    const locationId = c.req.query("locationId");
 
-    if (!locationId || typeof locationId !== "string") {
-      response.status(400).json({
-        error: "Location ID is required",
-      });
-      return;
+    if (!locationId) {
+      throw new HTTPException(400, { message: "Location ID is required" });
     }
 
     const ebirdApiKey = process.env.EBIRD_API_KEY;
     if (!ebirdApiKey) {
-      response.status(500).json({
-        error: "eBird API key not configured",
-      });
-      return;
+      throw new HTTPException(500, { message: "eBird API key not configured" });
     }
 
     await connect();
@@ -64,14 +50,10 @@ async function getHotspot(request: VercelRequest, response: VercelResponse) {
 
     if (!ebirdResponse.ok) {
       if (mongoHotspot) {
-        response.status(200).json(mongoHotspot);
-        return;
+        return c.json(mongoHotspot);
       }
 
-      response.status(404).json({
-        error: "Hotspot not found in eBird or local database",
-      });
-      return;
+      throw new HTTPException(404, { message: "Hotspot not found in eBird or local database" });
     }
 
     const ebirdHotspot = (await ebirdResponse.json()) as EBirdHotspot;
@@ -100,15 +82,14 @@ async function getHotspot(request: VercelRequest, response: VercelResponse) {
     const newHotspot = new Hotspot(hotspotData);
     const savedHotspot = await newHotspot.save();
 
-    response.status(200).json(savedHotspot);
+    return c.json(savedHotspot);
   } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
     console.error("Error fetching hotspot:", error);
-    response.status(500).json({
-      error: "Failed to fetch hotspot",
-    });
+    throw new HTTPException(500, { message: "Failed to fetch hotspot" });
   }
-}
-
-export default withCors(handler, {
-  methods: ["GET", "OPTIONS"],
 });
+
+export default getHotspot;

@@ -1,26 +1,15 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MapPin } from "lucide-react";
-import type { HotspotsResponse, Hotspot } from "@/lib/types";
-import HotspotSheet from "./HotspotSheet";
-import { tags } from "@/lib/tags";
+import type { HotspotsResponse } from "@/lib/types";
 
 const HotspotList = () => {
-  const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-
   const { data, isLoading, error, refetch } = useQuery<HotspotsResponse>({
     queryKey: ["/hotspots"],
     meta: { errorMessage: "Failed to load hotspots" },
   });
-
-  const handleHotspotClick = (hotspot: Hotspot) => {
-    setSelectedHotspot(hotspot);
-    setSheetOpen(true);
-  };
 
   if (isLoading) {
     return (
@@ -43,62 +32,41 @@ const HotspotList = () => {
   }
 
   return (
-    <>
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold mb-2">Birding Hotspots</h2>
-          <p className="text-lg opacity-90">Found {data?.count} hotspots</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data?.hotspots.map((hotspot) => (
-            <Card
-              key={hotspot._id}
-              className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-colors cursor-pointer"
-              onClick={() => handleHotspotClick(hotspot)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-xl text-white">{hotspot.name}</CardTitle>
-                    <p className="text-sm text-gray-300">{`${hotspot.county}, ${hotspot.state}, ${hotspot.country}`}</p>
-                  </div>
-                  <MapPin className="h-6 w-6 text-emerald-300" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex gap-2">
-                  <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
-                    {hotspot.species} species
-                  </Badge>
-                  <Badge variant="outline" className="text-gray-300 border-gray-400/30">
-                    {hotspot.location.coordinates[1].toFixed(4)}, {hotspot.location.coordinates[0].toFixed(4)}
-                  </Badge>
-                </div>
-                {hotspot.tags && hotspot.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {hotspot.tags.slice(0, 3).map((tagId) => {
-                      const tag = tags.find((t) => t.id === tagId);
-                      return (
-                        <Badge key={tagId} variant="outline" className="text-xs text-gray-300 border-gray-400/30">
-                          {tag ? tag.name : tagId}
-                        </Badge>
-                      );
-                    })}
-                    {hotspot.tags.length > 3 && (
-                      <Badge variant="outline" className="text-xs text-gray-300 border-gray-400/30">
-                        +{hotspot.tags.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold mb-2">Birding Hotspots</h2>
+        <p className="text-lg opacity-90">Found {data?.count} hotspots</p>
       </div>
-
-      <HotspotSheet hotspot={selectedHotspot} open={sheetOpen} onOpenChange={setSheetOpen} />
-    </>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {data?.hotspots.map((hotspot) => (
+          <Card
+            key={hotspot._id}
+            className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-colors"
+          >
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="text-xl text-white">{hotspot.name}</CardTitle>
+                  <p className="text-sm text-gray-300">{`${hotspot.county}, ${hotspot.state}, ${hotspot.country}`}</p>
+                </div>
+                <MapPin className="h-6 w-6 text-emerald-300" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
+                  {hotspot.species} species
+                </Badge>
+                <Badge variant="outline" className="text-gray-300 border-gray-400/30">
+                  {hotspot.location?.coordinates?.[1]?.toFixed(4) ?? "N/A"},{" "}
+                  {hotspot.location?.coordinates?.[0]?.toFixed(4) ?? "N/A"}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 };
 

@@ -1,32 +1,24 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { withCors } from "../lib/cors";
-import { syncRegion, getRegionsNeedingSync } from "../lib/ebird";
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { syncRegion, getRegionsNeedingSync } from "../lib/ebird.js";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function handler(request: VercelRequest, response: VercelResponse) {
-  if (request.method !== "POST") {
-    return response.status(405).json({
-      success: false,
-      error: "Method not allowed",
-    });
-  }
+const syncAllRegions = new Hono();
 
-  const { key } = request.query;
-  const authHeader = request.headers.authorization;
+syncAllRegions.post("/", async (c) => {
+  const key = c.req.query("key");
+  const authHeader = c.req.header("authorization");
 
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && key !== process.env.CRON_SECRET) {
-    return response.status(401).json({
-      success: false,
-      error: "Unauthorized",
-    });
+    throw new HTTPException(401, { message: "Unauthorized" });
   }
 
   try {
     const regionsToSync = await getRegionsNeedingSync();
 
     if (regionsToSync.length === 0) {
-      return response.status(200).json({
+      return c.json({
         success: true,
         message: "No regions need syncing at this time",
         totalRegions: 0,
@@ -74,7 +66,7 @@ async function handler(request: VercelRequest, response: VercelResponse) {
     const successfulSyncs = results.filter((r) => r.success).length;
     const failedSyncs = results.filter((r) => !r.success).length;
 
-    response.status(200).json({
+    return c.json({
       success: true,
       message: `Completed sync of ${regionsToSync.length} regions. ${successfulSyncs} successful, ${failedSyncs} failed. Total new hotspots: ${totalInsertCount}`,
       totalRegions: regionsToSync.length,
@@ -83,15 +75,10 @@ async function handler(request: VercelRequest, response: VercelResponse) {
       totalInsertCount,
       results,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Sync all error:", error);
-    response.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    throw new HTTPException(500, { message: error instanceof Error ? error.message : "Internal Server Error" });
   }
-}
-
-export default withCors(handler, {
-  methods: ["POST", "OPTIONS"],
 });
+
+export default syncAllRegions;

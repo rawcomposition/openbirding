@@ -1,10 +1,10 @@
-import connect from "./db";
-import Hotspot from "../models/Hotspot";
-import Settings from "../models/Settings";
-import Log from "../models/Log";
-import { syncRegions } from "../data/sync-regions";
-import { Hotspot as HotspotType } from "./types";
-import { REGION_SYNC_INTERVAL } from "./config";
+import connect from "./db.js";
+import Hotspot from "../models/Hotspot.js";
+import Settings from "../models/Settings.js";
+import Log from "../models/Log.js";
+import { syncRegions } from "../data/sync-regions.js";
+import type { Hotspot as HotspotType } from "./types.js";
+import { REGION_SYNC_INTERVAL } from "./config.js";
 
 type EBirdHotspot = {
   locId: string;
