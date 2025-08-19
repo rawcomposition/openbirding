@@ -4,6 +4,7 @@ import { components, type DropdownIndicatorProps, type SingleValue, type MultiVa
 import { Search as SearchIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Highlighter from "react-highlight-words";
+import { debounce } from "lodash";
 import { get } from "@/lib/utils";
 
 type Option = {
@@ -17,13 +18,13 @@ type SearchProps = {
   [key: string]: unknown;
 };
 
-interface FormatOptionLabelProps {
+type FormatOptionLabelProps = {
   label: string;
-}
+};
 
-interface FormatOptionLabelContext {
+type FormatOptionLabelContext = {
   inputValue: string;
-}
+};
 
 const DropdownIndicator = ({ ...props }: DropdownIndicatorProps<Option>) => (
   <components.DropdownIndicator {...props}>
@@ -39,16 +40,22 @@ export default function Search({ onChange, pill, ...props }: SearchProps) {
   const [value, setValue] = React.useState<Option | null>(null);
   const navigate = useNavigate();
 
+  const debouncedSearch = React.useMemo(
+    () =>
+      debounce(async (inputValue: string, callback: (options: Option[]) => void) => {
+        try {
+          const json = await get("/search", { q: inputValue });
+          callback((json.results as Option[]) || []);
+        } catch (error) {
+          console.error("Search error:", error);
+          callback([]);
+        }
+      }, 300),
+    []
+  );
+
   const loadOptions = (inputValue: string, callback: (options: Option[]) => void) => {
-    (async () => {
-      try {
-        const json = await get("/search", { q: inputValue });
-        callback((json.results as Option[]) || []);
-      } catch (error) {
-        console.error("Search error:", error);
-        callback([]);
-      }
-    })();
+    debouncedSearch(inputValue, callback);
   };
 
   const handleChange = (option: Option) => {

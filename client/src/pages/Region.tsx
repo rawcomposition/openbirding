@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Bird, Calendar } from "lucide-react";
 
-interface Hotspot {
+type Hotspot = {
   _id: string;
   name: string;
   region: string;
@@ -15,13 +15,13 @@ interface Hotspot {
   };
   updatedAt: Date;
   tags?: string[];
-}
+};
 
-interface Region {
+type Region = {
   _id: string;
   name: string;
   isCountry?: boolean;
-}
+};
 
 const Region = () => {
   const { regionCode } = useParams<{ regionCode: string }>();
