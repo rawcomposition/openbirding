@@ -15,6 +15,7 @@ type EditStore = {
   setEditMode: (isEdit: boolean) => void;
   getChanges: () => Array<{ _id: string } & HotspotChange>;
   hasChanges: () => boolean;
+  getChangeCount: () => number;
 };
 
 export const useEditStore = create<EditStore>((set, get) => ({
@@ -66,6 +67,10 @@ export const useEditStore = create<EditStore>((set, get) => ({
 
   hasChanges: () => {
     return Object.keys(get().changes).length > 0;
+  },
+
+  getChangeCount: () => {
+    return Object.keys(get().changes).length;
   },
 }));
 

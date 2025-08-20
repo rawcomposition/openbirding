@@ -1,4 +1,5 @@
 import { ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { Hotspot } from "@/lib/types";
 import {
   useReactTable,
@@ -23,7 +24,8 @@ type Props = {
 const HotspotList = ({ hotspots, total }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const { isEditMode, setEditMode, hasChanges, getChanges } = useEditStore();
+  const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount } = useEditStore();
+  const changeCount = getChangeCount();
 
   const handleSaveChanges = () => {
     const changes = getChanges();
@@ -124,6 +126,11 @@ const HotspotList = ({ hotspots, total }: Props) => {
               <Button variant="primary" size="lg" onClick={handleSaveChanges} disabled={!hasChanges()}>
                 <Save className="h-4 w-4" />
                 Save Changes
+                {changeCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
+                    {changeCount}
+                  </Badge>
+                )}
               </Button>
               <Button variant="outline" size="lg" onClick={handleCancelEdit}>
                 <CancelIcon className="h-4 w-4" />
