@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Check, X, HelpCircle, ChevronUp, ChevronDown, Edit } from "lucide-react";
+import { ExternalLink, Check, X, HelpCircle, ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
 import type { Hotspot } from "@/lib/types";
 import {
   useReactTable,
@@ -13,6 +13,8 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 type Props = {
   hotspots: Hotspot[];
@@ -22,6 +24,8 @@ type Props = {
 const HotspotList = ({ hotspots, total }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedHotspots, setEditedHotspots] = useState<Record<string, Partial<Hotspot>>>({});
 
   const openGoogleMaps = (lat: number, lng: number) => {
     const url = `https://www.google.com/maps?q=${lat},${lng}&z=15&t=m`;
@@ -36,6 +40,25 @@ const HotspotList = ({ hotspots, total }: Props) => {
     } else {
       return <HelpCircle className="h-4 w-4 text-gray-400" />;
     }
+  };
+
+  const handleEditHotspot = (hotspotId: string, field: keyof Hotspot, value: string | boolean | undefined) => {
+    setEditedHotspots((prev) => ({
+      ...prev,
+      [hotspotId]: {
+        ...prev[hotspotId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveChanges = () => {
+    console.log("Saving changes:", editedHotspots);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditedHotspots({});
   };
 
   const columns: ColumnDef<Hotspot>[] = [
@@ -59,13 +82,50 @@ const HotspotList = ({ hotspots, total }: Props) => {
     {
       accessorKey: "open",
       header: "Open Access",
-      cell: ({ row }) => getOpenAccessIcon(row.original.open),
+      cell: ({ row }) => {
+        if (isEditMode) {
+          const editedValue = editedHotspots[row.original._id]?.open;
+          const currentValue = editedValue !== undefined ? editedValue : row.original.open;
+
+          return (
+            <Select
+              value={currentValue === undefined ? "unknown" : currentValue.toString()}
+              onChange={(e) => {
+                const value = e.target.value;
+                const boolValue = value === "true" ? true : value === "false" ? false : undefined;
+                handleEditHotspot(row.original._id, "open", boolValue);
+              }}
+              options={[
+                { value: "true", label: "Yes" },
+                { value: "false", label: "No" },
+                { value: "unknown", label: "Unknown" },
+              ]}
+              className="w-32 bg-white/10 border-white/20 text-white"
+            />
+          );
+        }
+        return getOpenAccessIcon(row.original.open);
+      },
       enableSorting: true,
     },
     {
       accessorKey: "notes",
       header: "Notes",
       cell: ({ row }) => {
+        if (isEditMode) {
+          const editedValue = editedHotspots[row.original._id]?.notes;
+          const currentValue = editedValue !== undefined ? editedValue : row.original.notes;
+
+          return (
+            <Textarea
+              value={currentValue || ""}
+              onChange={(e) => handleEditHotspot(row.original._id, "notes", e.target.value)}
+              className="min-h-[60px] max-h-[120px] bg-white/10 border-white/20 text-white resize-none"
+              rows={2}
+              placeholder="Add notes..."
+            />
+          );
+        }
         const notes = row.original.notes;
         return notes ? <div className="text-sm text-gray-300 max-w-xs truncate">{notes}</div> : null;
       },
@@ -150,10 +210,30 @@ const HotspotList = ({ hotspots, total }: Props) => {
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
         />
-        <Button variant="primary" size="lg">
-          <Edit className="h-4 w-4" />
-          Edit Hotspots
-        </Button>
+        <div className="flex gap-2">
+          {isEditMode ? (
+            <>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleSaveChanges}
+                disabled={Object.keys(editedHotspots).length === 0}
+              >
+                <Save className="h-4 w-4" />
+                Save Changes
+              </Button>
+              <Button variant="outline" size="lg" onClick={handleCancelEdit}>
+                <CancelIcon className="h-4 w-4" />
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" size="lg" onClick={() => setIsEditMode(true)}>
+              <Edit className="h-4 w-4" />
+              Edit Hotspots
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg overflow-hidden">
