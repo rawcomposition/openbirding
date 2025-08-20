@@ -91,8 +91,8 @@ const Region = () => {
         <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
       </div>
 
-      {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
-        <HotspotList hotspots={hotspots.hotspots} total={hotspots.count} />
+      {regionCode && hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
+        <HotspotList hotspots={hotspots.hotspots} region={regionCode} total={hotspots.count} />
       ) : (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>

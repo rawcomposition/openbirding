@@ -30,7 +30,10 @@ const HotspotSchema: Schema = new Schema({
       required: true,
     },
   },
-  open: Boolean,
+  open: {
+    type: Boolean,
+    default: null,
+  },
   notes: String,
   updatedAt: Date,
   tags: [String],

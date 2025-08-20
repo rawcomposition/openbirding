@@ -8,7 +8,7 @@ import { useEditActions, useEditMode } from "@/lib/editStore";
 interface HotspotRowProps {
   id: string;
   name: string;
-  open?: boolean;
+  open: boolean | null;
   notes?: string;
   species: number;
   lat: number;
@@ -18,7 +18,7 @@ interface HotspotRowProps {
 const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRowProps) => {
   const isEditMode = useEditMode();
   const { addChange, removeChange } = useEditActions();
-  const [localOpen, setLocalOpen] = useState<boolean | undefined>(open);
+  const [localOpen, setLocalOpen] = useState<boolean | null>(open);
   const [localNotes, setLocalNotes] = useState<string>(notes || "");
 
   useEffect(() => {
@@ -31,7 +31,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
     window.open(url, "_blank");
   };
 
-  const getOpenAccessIcon = (open: boolean | undefined) => {
+  const getOpenAccessIcon = (open: boolean | null) => {
     if (open === true) {
       return <Check className="h-4 w-4 text-green-400" />;
     } else if (open === false) {
@@ -42,7 +42,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
   };
 
   const handleOpenChange = (value: string) => {
-    const boolValue = value === "true" ? true : value === "false" ? false : undefined;
+    const boolValue = value === "true" ? true : value === "false" ? false : null;
     setLocalOpen(boolValue);
 
     if (boolValue !== open) {
@@ -78,7 +78,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
       <td className="p-4">
         {isEditMode ? (
           <Select
-            value={localOpen === undefined ? "unknown" : localOpen.toString()}
+            value={localOpen === null ? "unknown" : localOpen.toString()}
             onChange={(e) => handleOpenChange(e.target.value)}
             options={[
               { value: "true", label: "Yes" },

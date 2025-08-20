@@ -2,14 +2,14 @@ import { create } from "zustand";
 import type { Hotspot } from "./types";
 
 type HotspotChange = {
-  open?: boolean;
+  open?: boolean | null;
   notes?: string;
 };
 
 type EditStore = {
   changes: Record<string, HotspotChange>;
   isEditMode: boolean;
-  addChange: (hotspotId: string, field: keyof Hotspot, value: string | boolean | undefined) => void;
+  addChange: (hotspotId: string, field: keyof Hotspot, value: string | boolean | null) => void;
   removeChange: (hotspotId: string) => void;
   clearChanges: () => void;
   setEditMode: (isEdit: boolean) => void;
@@ -22,7 +22,7 @@ export const useEditStore = create<EditStore>((set, get) => ({
   changes: {},
   isEditMode: false,
 
-  addChange: (hotspotId: string, field: keyof Hotspot, value: string | boolean | undefined) => {
+  addChange: (hotspotId: string, field: keyof Hotspot, value: string | boolean | null) => {
     set((state) => {
       const existingChange = state.changes[hotspotId];
       const newChange = {

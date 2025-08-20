@@ -5,6 +5,49 @@ import Hotspot from "../models/Hotspot.js";
 
 const hotspots = new Hono();
 
+hotspots.put("/bulk-update", async (c) => {
+  try {
+    const updates = await c.req.json<Array<{ _id: string; open?: boolean | null; notes?: string }>>();
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      throw new HTTPException(400, { message: "Updates array is required and must not be empty" });
+    }
+
+    await connect();
+
+    const bulkOps = updates.map((update) => ({
+      updateOne: {
+        filter: { _id: update._id },
+        update: {
+          $set: {
+            ...(update.open !== undefined && { open: update.open }),
+            ...(update.notes !== undefined && { notes: update.notes }),
+            updatedAt: new Date(),
+          },
+        },
+      },
+    }));
+
+    const result = await Hotspot.bulkWrite(bulkOps);
+
+    if (result.matchedCount !== updates.length) {
+      throw new HTTPException(400, { message: "Some hotspots were not found" });
+    }
+
+    return c.json({
+      message: "Bulk update completed successfully",
+      updatedCount: result.modifiedCount,
+      totalCount: updates.length,
+    });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Error bulk updating hotspots:", error);
+    throw new HTTPException(500, { message: "Failed to bulk update hotspots" });
+  }
+});
+
 hotspots.put("/:id", async (c) => {
   try {
     const id = c.req.param("id");

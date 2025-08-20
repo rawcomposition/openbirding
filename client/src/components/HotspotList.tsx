@@ -14,22 +14,44 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useEditStore } from "@/lib/editStore";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { mutate } from "@/lib/utils";
+import toast from "react-hot-toast";
 import HotspotRow from "./HotspotRow";
 
 type Props = {
   hotspots: Hotspot[];
+  region: string;
   total?: number;
 };
 
-const HotspotList = ({ hotspots, total }: Props) => {
+const HotspotList = ({ hotspots, region, total }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount } = useEditStore();
+  const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount, clearChanges } = useEditStore();
   const changeCount = getChangeCount();
+  const queryClient = useQueryClient();
+
+  const saveChangesMutation = useMutation({
+    mutationFn: async (changes: Array<{ _id: string; open?: boolean | null; notes?: string }>) => {
+      return mutate("PUT", "/hotspots/bulk-update", changes);
+    },
+    onSuccess: () => {
+      toast.success("Changes saved successfully!");
+      clearChanges();
+      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: [`/regions/${region}/hotspots`] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to save changes: ${error.message}`);
+    },
+  });
 
   const handleSaveChanges = () => {
     const changes = getChanges();
-    console.log("Saving changes:", changes);
+    if (changes.length > 0) {
+      saveChangesMutation.mutate(changes);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -123,10 +145,15 @@ const HotspotList = ({ hotspots, total }: Props) => {
         <div className="flex gap-2">
           {isEditMode ? (
             <>
-              <Button variant="primary" size="lg" onClick={handleSaveChanges} disabled={!hasChanges()}>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleSaveChanges}
+                disabled={!hasChanges() || saveChangesMutation.isPending}
+              >
                 <Save className="h-4 w-4" />
-                Save Changes
-                {changeCount > 0 && (
+                {saveChangesMutation.isPending ? "Saving..." : "Save Changes"}
+                {changeCount > 0 && !saveChangesMutation.isPending && (
                   <Badge variant="secondary" className="ml-2 bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
                     {changeCount}
                   </Badge>
