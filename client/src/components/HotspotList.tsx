@@ -12,7 +12,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useHotspotStore } from "@/lib/hotspotStore";
+import { useEditStore } from "@/lib/editStore";
 import HotspotRow from "./HotspotRow";
 
 type Props = {
@@ -23,7 +23,7 @@ type Props = {
 const HotspotList = ({ hotspots, total }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const { isEditMode, setEditMode, hasChanges, getChanges } = useHotspotStore();
+  const { isEditMode, setEditMode, hasChanges, getChanges } = useEditStore();
 
   const handleSaveChanges = () => {
     const changes = getChanges();
@@ -180,6 +180,7 @@ const HotspotList = ({ hotspots, total }: Props) => {
               return (
                 <HotspotRow
                   key={row.id}
+                  id={row.original._id}
                   name={row.original.name}
                   open={row.original.open}
                   notes={row.original.notes}

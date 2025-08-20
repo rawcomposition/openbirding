@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Check, X, HelpCircle } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useHotspotActions, useEditMode } from "@/lib/hotspotStore";
+import { useEditActions, useEditMode } from "@/lib/editStore";
 
 interface HotspotRowProps {
+  id: string;
   name: string;
   open?: boolean;
   notes?: string;
@@ -14,9 +15,9 @@ interface HotspotRowProps {
   lng: number;
 }
 
-const HotspotRow = memo(({ name, open, notes, species, lat, lng }: HotspotRowProps) => {
+const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRowProps) => {
   const isEditMode = useEditMode();
-  const { addChange, removeChange } = useHotspotActions();
+  const { addChange, removeChange } = useEditActions();
   const [localOpen, setLocalOpen] = useState<boolean | undefined>(open);
   const [localNotes, setLocalNotes] = useState<string>(notes || "");
 
@@ -45,9 +46,9 @@ const HotspotRow = memo(({ name, open, notes, species, lat, lng }: HotspotRowPro
     setLocalOpen(boolValue);
 
     if (boolValue !== open) {
-      addChange(name, "open", boolValue);
+      addChange(id, "open", boolValue);
     } else {
-      removeChange(name);
+      removeChange(id);
     }
   };
 
@@ -57,9 +58,9 @@ const HotspotRow = memo(({ name, open, notes, species, lat, lng }: HotspotRowPro
 
   const handleNotesBlur = () => {
     if (localNotes !== (notes || "")) {
-      addChange(name, "notes", localNotes);
+      addChange(id, "notes", localNotes);
     } else {
-      removeChange(name);
+      removeChange(id);
     }
   };
 
