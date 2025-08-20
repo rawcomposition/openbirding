@@ -8,7 +8,6 @@ import type { HotspotsResponse } from "@/lib/types";
 const HotspotList = () => {
   const { data, isLoading, error, refetch } = useQuery<HotspotsResponse>({
     queryKey: ["/hotspots"],
-    meta: { errorMessage: "Failed to load hotspots" },
   });
 
   if (isLoading) {

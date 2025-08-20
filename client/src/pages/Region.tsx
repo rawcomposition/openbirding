@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,34 +26,19 @@ type Region = {
 
 const Region = () => {
   const { regionCode } = useParams<{ regionCode: string }>();
-  const navigate = useNavigate();
 
   const {
     data: region,
     isLoading,
     error,
     refetch,
-  } = useQuery({
-    queryKey: ["region", regionCode],
-    queryFn: async () => {
-      const response = await fetch(`/api/regions/${regionCode}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch region");
-      }
-      return response.json() as Promise<Region>;
-    },
+  } = useQuery<Region>({
+    queryKey: [`/regions/${regionCode}`, {}],
     enabled: !!regionCode,
   });
 
-  const { data: hotspots } = useQuery({
-    queryKey: ["region-hotspots", regionCode],
-    queryFn: async () => {
-      const response = await fetch(`/api/regions/${regionCode}/hotspots`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch region hotspots");
-      }
-      return response.json() as Promise<{ hotspots: Hotspot[] }>;
-    },
+  const { data: hotspots } = useQuery<{ hotspots: Hotspot[] }>({
+    queryKey: [`/regions/${regionCode}/hotspots`, {}],
     enabled: !!regionCode,
   });
 

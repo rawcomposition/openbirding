@@ -10,7 +10,6 @@ const Map = () => {
 
   const { data: hotspotsData } = useQuery<HotspotsResponse>({
     queryKey: ["/hotspots"],
-    meta: { errorMessage: "Failed to load hotspots" },
   });
 
   useEffect(() => {
