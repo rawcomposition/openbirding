@@ -53,10 +53,14 @@ const HotspotList = ({ hotspots, total }: Props) => {
       header: "Species",
       enableSorting: true,
     },
-    {
-      accessorKey: "location",
-      header: "Map",
-    },
+    ...(isEditMode
+      ? []
+      : [
+          {
+            accessorKey: "location",
+            header: "Map",
+          },
+        ]),
   ];
 
   const table = useReactTable({
@@ -96,6 +100,14 @@ const HotspotList = ({ hotspots, total }: Props) => {
 
   return (
     <div className="space-y-4">
+      <style>
+        {`
+          .row-number::before {
+            content: counter(row-counter) ".";
+            counter-increment: row-counter;
+          }
+        `}
+      </style>
       {total !== undefined && <p className="text-gray-300">Found {total} hotspots</p>}
 
       <div className="flex sm:flex-row flex-col justify-between gap-4">
@@ -128,7 +140,7 @@ const HotspotList = ({ hotspots, total }: Props) => {
       </div>
 
       <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg overflow-hidden">
-        <table className="w-full">
+        <table className="w-full" style={{ counterReset: "row-counter" }}>
           <thead className="sticky top-0 bg-gray-300/10 backdrop-blur-sm z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-white/20">
@@ -174,7 +186,6 @@ const HotspotList = ({ hotspots, total }: Props) => {
                   species={row.original.species}
                   lat={row.original.location?.coordinates[1]}
                   lng={row.original.location?.coordinates[0]}
-                  index={virtualRow.index}
                 />
               );
             })}

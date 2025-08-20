@@ -12,11 +12,9 @@ interface HotspotRowProps {
   species: number;
   lat: number;
   lng: number;
-  index: number;
 }
 
-const HotspotRow = memo(({ name, open, notes, species, lat, lng, index }: HotspotRowProps) => {
-  console.log("RENDER!");
+const HotspotRow = memo(({ name, open, notes, species, lat, lng }: HotspotRowProps) => {
   const isEditMode = useEditMode();
   const { addChange, removeChange } = useHotspotActions();
   const [localOpen, setLocalOpen] = useState<boolean | undefined>(open);
@@ -69,9 +67,7 @@ const HotspotRow = memo(({ name, open, notes, species, lat, lng, index }: Hotspo
     <tr className="border-b border-white/10">
       <td className="p-4">
         <div className="flex items-center gap-3">
-          <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-300 flex-shrink-0">
-            {index + 1}.
-          </span>
+          <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-300 flex-shrink-0 row-number"></span>
           <div>
             <div className="font-medium text-white">{name}</div>
           </div>
@@ -101,7 +97,7 @@ const HotspotRow = memo(({ name, open, notes, species, lat, lng, index }: Hotspo
             value={localNotes}
             onChange={(e) => handleNotesChange(e.target.value)}
             onBlur={handleNotesBlur}
-            className="min-h-[60px] max-h-[120px] bg-white/10 border-white/20 text-white resize-none"
+            className="min-h-[60px] max-h-[120px] min-w-[200px] md:min-w-[300px] bg-white/10 border-white/20 text-white resize-none"
             rows={2}
             placeholder="Add notes..."
           />
@@ -119,19 +115,21 @@ const HotspotRow = memo(({ name, open, notes, species, lat, lng, index }: Hotspo
         </Badge>
       </td>
 
-      <td className="p-4">
-        {lat && lng ? (
-          <button
-            onClick={() => openGoogleMaps(lat, lng)}
-            className="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition-colors whitespace-nowrap"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View Map
-          </button>
-        ) : (
-          <span className="text-sm text-gray-500">N/A</span>
-        )}
-      </td>
+      {!isEditMode && (
+        <td className="p-4">
+          {lat && lng ? (
+            <button
+              onClick={() => openGoogleMaps(lat, lng)}
+              className="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition-colors whitespace-nowrap"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View Map
+            </button>
+          ) : (
+            <span className="text-sm text-gray-500">N/A</span>
+          )}
+        </td>
+      )}
     </tr>
   );
 });

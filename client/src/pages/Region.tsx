@@ -18,7 +18,7 @@ const Region = () => {
 
   const {
     data: region,
-    isLoading,
+    isLoading: isLoadingRegion,
     error,
     refetch,
   } = useQuery<Region>({
@@ -27,21 +27,21 @@ const Region = () => {
     refetchOnWindowFocus: false,
   });
 
-  const { data: hotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
+  const { data: hotspots, isLoading: isLoadingHotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
     queryKey: [`/regions/${regionCode}/hotspots`],
     enabled: !!regionCode,
     refetchOnWindowFocus: false,
   });
 
-  if (isLoading) {
+  if (isLoadingRegion || isLoadingHotspots) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="animate-pulse">
           <div className="h-8 bg-slate-700 rounded w-1/3 mb-4"></div>
           <div className="h-4 bg-slate-700 rounded w-1/2 mb-8"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-48 bg-slate-700 rounded"></div>
+              <div key={i} className="h-12 bg-slate-700 rounded"></div>
             ))}
           </div>
         </div>
