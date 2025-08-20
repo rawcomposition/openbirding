@@ -15,7 +15,8 @@
     "build:client": "cd client && npm run build",
     "build:api": "cd api && npm run build",
     "install:all": "npm install && cd client && npm install && cd ../api && npm install",
-    "sync-regions": "cd api && npx tsx scripts/sync-regions.ts"
+    "sync-regions": "cd api && npx tsx scripts/sync-regions.ts",
+    "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

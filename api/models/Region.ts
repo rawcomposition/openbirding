@@ -12,6 +12,14 @@ const RegionSchema: Schema = new Schema({
     type: String,
     required: true,
   },
+  longName: String,
+  parents: [
+    {
+      id: String,
+      name: String,
+      _id: false,
+    },
+  ],
   isCountry: Boolean,
 });
 

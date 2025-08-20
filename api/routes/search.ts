@@ -18,11 +18,11 @@ search.get("/", async (c) => {
     const searchTerm = query.trim();
     const regex = new RegExp(searchTerm, "i");
 
-    const regions = await Region.find({ name: regex }).limit(10).lean().exec();
+    const regions = await Region.find({ longName: regex }).limit(10).lean().exec();
 
     const results = regions.map((region) => ({
       value: `/region/${region._id}`,
-      label: region.name,
+      label: region.longName,
     }));
 
     return c.json({ results });

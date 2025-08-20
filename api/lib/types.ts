@@ -40,5 +40,10 @@ export type Tag = {
 export type Region = {
   _id: string;
   name: string;
+  longName: string;
+  parents: {
+    name: string;
+    id: string;
+  }[];
   isCountry?: boolean;
 };
