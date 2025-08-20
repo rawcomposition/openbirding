@@ -21,18 +21,22 @@ places.get("/:coordinates", async (c) => {
 
     await connect();
 
-    const hotspots = await Hotspot.find({
-      location: {
-        $near: {
-          $geometry: {
+    const hotspots = await Hotspot.aggregate([
+      {
+        $geoNear: {
+          near: {
             type: "Point",
             coordinates: [lng, lat],
           },
+          distanceField: "distance",
+          spherical: true,
+          maxDistance: 50000000,
         },
       },
-    })
-      .limit(200)
-      .lean();
+      {
+        $limit: 200,
+      },
+    ]);
 
     const count = hotspots.length;
 
