@@ -1,8 +1,9 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Bird, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type Hotspot = {
   _id: string;
@@ -25,11 +26,13 @@ type Region = {
 
 const Region = () => {
   const { regionCode } = useParams<{ regionCode: string }>();
+  const navigate = useNavigate();
 
   const {
     data: region,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["region", regionCode],
     queryFn: async () => {
@@ -74,8 +77,11 @@ const Region = () => {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Card className="bg-red-900/20 border-red-500/30">
-          <CardContent className="pt-6">
+          <CardContent className="space-y-2">
             <p className="text-red-300">Error loading region: {error.message}</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              Try Again
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -86,7 +92,7 @@ const Region = () => {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="pt-6">
+          <CardContent>
             <p className="text-slate-300">Region not found</p>
           </CardContent>
         </Card>
