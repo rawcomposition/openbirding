@@ -2,10 +2,10 @@ import "dotenv/config";
 import connect from "../lib/db.js";
 import Region from "../models/Region.js";
 
-interface EBirdRegion {
+type EBirdRegion = {
   code: string;
   name: string;
-}
+};
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

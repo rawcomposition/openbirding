@@ -1,8 +1,8 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-interface SettingsType {
+type SettingsType = {
   regionSyncTimestamps?: Record<string, number>;
-}
+};
 
 export type Settings = Document & SettingsType;
 

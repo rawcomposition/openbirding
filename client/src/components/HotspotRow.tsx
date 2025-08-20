@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useEditActions, useEditMode } from "@/lib/editStore";
 
-interface HotspotRowProps {
+type HotspotRowProps = {
   id: string;
   name: string;
   open: boolean | null;
@@ -13,7 +13,7 @@ interface HotspotRowProps {
   species: number;
   lat: number;
   lng: number;
-}
+};
 
 const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRowProps) => {
   const isEditMode = useEditMode();

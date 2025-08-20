@@ -1,10 +1,10 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-interface LogType {
+type LogType = {
   user: string;
   type: string;
   message: string;
-}
+};
 
 export type Log = Document & LogType;
 

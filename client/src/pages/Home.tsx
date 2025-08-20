@@ -2,7 +2,7 @@ import { Bird, MapPin, Users, Camera } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import RegionSearch from "@/components/RegionSearch";
+import PlaceSearch from "@/components/PlaceSearch";
 
 const Home = () => {
   return (
@@ -19,7 +19,7 @@ const Home = () => {
           </p>
 
           <div className="max-w-md mx-auto mb-8">
-            <RegionSearch pill />
+            <PlaceSearch pill />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
