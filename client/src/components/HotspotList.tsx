@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Check, X, HelpCircle, ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
+import { ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
 import type { Hotspot } from "@/lib/types";
 import {
   useReactTable,
@@ -13,8 +12,8 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { useHotspotStore } from "@/lib/hotspotStore";
+import HotspotRow from "./HotspotRow";
 
 type Props = {
   hotspots: Hotspot[];
@@ -24,142 +23,39 @@ type Props = {
 const HotspotList = ({ hotspots, total }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editedHotspots, setEditedHotspots] = useState<Record<string, Partial<Hotspot>>>({});
-
-  const openGoogleMaps = (lat: number, lng: number) => {
-    const url = `https://www.google.com/maps?q=${lat},${lng}&z=15&t=m`;
-    window.open(url, "_blank");
-  };
-
-  const getOpenAccessIcon = (open: boolean | undefined) => {
-    if (open === true) {
-      return <Check className="h-4 w-4 text-green-400" />;
-    } else if (open === false) {
-      return <X className="h-4 w-4 text-red-400" />;
-    } else {
-      return <HelpCircle className="h-4 w-4 text-gray-400" />;
-    }
-  };
-
-  const handleEditHotspot = (hotspotId: string, field: keyof Hotspot, value: string | boolean | undefined) => {
-    setEditedHotspots((prev) => ({
-      ...prev,
-      [hotspotId]: {
-        ...prev[hotspotId],
-        [field]: value,
-      },
-    }));
-  };
+  const { isEditMode, setEditMode, hasChanges, getChanges } = useHotspotStore();
 
   const handleSaveChanges = () => {
-    console.log("Saving changes:", editedHotspots);
+    const changes = getChanges();
+    console.log("Saving changes:", changes);
   };
 
   const handleCancelEdit = () => {
-    setIsEditMode(false);
-    setEditedHotspots({});
+    setEditMode(false);
   };
 
   const columns: ColumnDef<Hotspot>[] = [
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => {
-        const index = row.index;
-        return (
-          <div className="flex items-center gap-3">
-            <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-300 flex-shrink-0">
-              {index + 1}.
-            </span>
-            <div>
-              <div className="font-medium text-white">{row.original.name}</div>
-            </div>
-          </div>
-        );
-      },
     },
     {
       accessorKey: "open",
       header: "Open Access",
-      cell: ({ row }) => {
-        if (isEditMode) {
-          const editedValue = editedHotspots[row.original._id]?.open;
-          const currentValue = editedValue !== undefined ? editedValue : row.original.open;
-
-          return (
-            <Select
-              value={currentValue === undefined ? "unknown" : currentValue.toString()}
-              onChange={(e) => {
-                const value = e.target.value;
-                const boolValue = value === "true" ? true : value === "false" ? false : undefined;
-                handleEditHotspot(row.original._id, "open", boolValue);
-              }}
-              options={[
-                { value: "true", label: "Yes" },
-                { value: "false", label: "No" },
-                { value: "unknown", label: "Unknown" },
-              ]}
-              className="w-32 bg-white/10 border-white/20 text-white"
-            />
-          );
-        }
-        return getOpenAccessIcon(row.original.open);
-      },
       enableSorting: true,
     },
     {
       accessorKey: "notes",
       header: "Notes",
-      cell: ({ row }) => {
-        if (isEditMode) {
-          const editedValue = editedHotspots[row.original._id]?.notes;
-          const currentValue = editedValue !== undefined ? editedValue : row.original.notes;
-
-          return (
-            <Textarea
-              value={currentValue || ""}
-              onChange={(e) => handleEditHotspot(row.original._id, "notes", e.target.value)}
-              className="min-h-[60px] max-h-[120px] bg-white/10 border-white/20 text-white resize-none"
-              rows={2}
-              placeholder="Add notes..."
-            />
-          );
-        }
-        const notes = row.original.notes;
-        return notes ? <div className="text-sm text-gray-300 max-w-xs truncate">{notes}</div> : null;
-      },
     },
     {
       accessorKey: "species",
       header: "Species",
-      cell: ({ row }) => (
-        <Badge
-          variant="secondary"
-          className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30 whitespace-nowrap"
-        >
-          {row.original.species} species
-        </Badge>
-      ),
       enableSorting: true,
     },
     {
       accessorKey: "location",
       header: "Map",
-      cell: ({ row }) => {
-        const coordinates = row.original.location?.coordinates;
-        return coordinates ? (
-          <button
-            onClick={() => openGoogleMaps(coordinates[1], coordinates[0])}
-            className="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition-colors whitespace-nowrap"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View Map
-          </button>
-        ) : (
-          <span className="text-sm text-gray-500">N/A</span>
-        );
-      },
     },
   ];
 
@@ -213,12 +109,7 @@ const HotspotList = ({ hotspots, total }: Props) => {
         <div className="flex gap-2">
           {isEditMode ? (
             <>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleSaveChanges}
-                disabled={Object.keys(editedHotspots).length === 0}
-              >
+              <Button variant="primary" size="lg" onClick={handleSaveChanges} disabled={!hasChanges()}>
                 <Save className="h-4 w-4" />
                 Save Changes
               </Button>
@@ -228,7 +119,7 @@ const HotspotList = ({ hotspots, total }: Props) => {
               </Button>
             </>
           ) : (
-            <Button variant="primary" size="lg" onClick={() => setIsEditMode(true)}>
+            <Button variant="primary" size="lg" onClick={() => setEditMode(true)}>
               <Edit className="h-4 w-4" />
               Edit Hotspots
             </Button>
@@ -275,13 +166,16 @@ const HotspotList = ({ hotspots, total }: Props) => {
             {virtualRows.map((virtualRow) => {
               const row = rows[virtualRow.index];
               return (
-                <tr key={row.id} className="border-b border-white/10" style={{ height: `${virtualRow.size}px` }}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="p-4">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
+                <HotspotRow
+                  key={row.id}
+                  name={row.original.name}
+                  open={row.original.open}
+                  notes={row.original.notes}
+                  species={row.original.species}
+                  lat={row.original.location?.coordinates[1]}
+                  lng={row.original.location?.coordinates[0]}
+                  index={virtualRow.index}
+                />
               );
             })}
             {paddingBottom > 0 && (

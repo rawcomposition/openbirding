@@ -24,11 +24,13 @@ const Region = () => {
   } = useQuery<Region>({
     queryKey: [`/regions/${regionCode}`],
     enabled: !!regionCode,
+    refetchOnWindowFocus: false,
   });
 
   const { data: hotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
     queryKey: [`/regions/${regionCode}/hotspots`],
     enabled: !!regionCode,
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) {
