@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Header from "./components/Header";
 import Home from "./pages/Home";
-import Hotspots from "./pages/Hotspots";
 import Map from "./pages/Map";
 import AddHotspot from "./pages/AddHotspot";
 import Region from "./pages/Region";
@@ -32,7 +31,6 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/hotspots" element={<Hotspots />} />
               <Route path="/map" element={<Map />} />
               <Route path="/add-hotspot" element={<AddHotspot />} />
               <Route path="/region/:regionCode" element={<Region />} />

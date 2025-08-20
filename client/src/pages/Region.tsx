@@ -90,7 +90,7 @@ const Region = () => {
       </div>
 
       {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
-        <HotspotList hotspots={hotspots.hotspots} title={`Hotspots in ${region.name}`} showCount={true} />
+        <HotspotList hotspots={hotspots.hotspots} showCount={true} />
       ) : (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>

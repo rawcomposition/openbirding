@@ -10,6 +10,8 @@ export type Hotspot = {
     type: "Point";
     coordinates: [number, number];
   };
+  open?: boolean;
+  notes?: string;
   updatedAt: Date;
   tags?: string[];
 };
