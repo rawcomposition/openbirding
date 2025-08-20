@@ -2,6 +2,9 @@ export type Hotspot = {
   _id: string;
   name: string;
   region: string;
+  country: string;
+  state: string;
+  county: string;
   species: number;
   location: {
     type: "Point";

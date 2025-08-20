@@ -1,22 +1,11 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Bird, Calendar } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-type Hotspot = {
-  _id: string;
-  name: string;
-  region: string;
-  species: number;
-  location: {
-    type: "Point";
-    coordinates: [number, number];
-  };
-  updatedAt: Date;
-  tags?: string[];
-};
+import HotspotList from "@/components/HotspotList";
+import type { Hotspot } from "@/lib/types";
 
 type Region = {
   _id: string;
@@ -100,40 +89,11 @@ const Region = () => {
         <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {hotspots?.hotspots?.map((hotspot: Hotspot) => (
-          <Card key={hotspot._id} className="bg-slate-800/50 border-slate-700 hover:bg-slate-700/50 transition-colors">
-            <CardHeader>
-              <CardTitle className="text-white text-lg">{hotspot.name}</CardTitle>
-              <CardDescription className="text-slate-300">
-                <div className="flex items-center gap-2">
-                  <Bird className="h-4 w-4" />
-                  <span>{hotspot.species} species</span>
-                </div>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-slate-400">
-                <Calendar className="h-4 w-4" />
-                <span>Updated {new Date(hotspot.updatedAt).toLocaleDateString()}</span>
-              </div>
-              {hotspot.tags && hotspot.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-3">
-                  {hotspot.tags.map((tag: string) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {(!hotspots || hotspots.hotspots.length === 0) && (
+      {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
+        <HotspotList hotspots={hotspots.hotspots} title={`Hotspots in ${region.name}`} showCount={true} />
+      ) : (
         <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="pt-6">
+          <CardContent>
             <p className="text-slate-300 text-center">No hotspots found in this region</p>
           </CardContent>
         </Card>
