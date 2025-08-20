@@ -51,11 +51,9 @@ const HotspotList = ({ hotspots, showCount = true }: Props) => {
                     </div>
                   </td>
                   <td className="p-4">{getOpenAccessIcon(hotspot.open)}</td>
-                  {hotspot.notes && (
-                    <td className="p-4">
-                      <div className="text-sm text-gray-300 max-w-xs truncate">{hotspot.notes}</div>
-                    </td>
-                  )}
+                  <td className="p-4">
+                    {hotspot.notes && <div className="text-sm text-gray-300 max-w-xs truncate">{hotspot.notes}</div>}
+                  </td>
                   <td className="p-4">
                     <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
                       {hotspot.species} species
