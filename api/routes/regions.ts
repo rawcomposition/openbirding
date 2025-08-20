@@ -43,7 +43,7 @@ regions.get("/:regionCode/hotspots", async (c) => {
     await connect();
 
     const page = parseInt(c.req.query("page") || "1");
-    const limit = parseInt(c.req.query("limit") || "50");
+    const limit = parseInt(c.req.query("limit") || "50000");
     const skip = (page - 1) * limit;
 
     const [hotspots, totalCount] = await Promise.all([

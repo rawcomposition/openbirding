@@ -5,32 +5,6 @@ import Hotspot from "../models/Hotspot.js";
 
 const hotspots = new Hono();
 
-hotspots.get("/", async (c) => {
-  try {
-    await connect();
-
-    const page = parseInt(c.req.query("page") || "1");
-    const limit = parseInt(c.req.query("limit") || "50");
-    const skip = (page - 1) * limit;
-
-    const [hotspots, totalCount] = await Promise.all([
-      Hotspot.find({}).sort({ species: -1 }).skip(skip).limit(limit).lean(),
-      Hotspot.countDocuments({}),
-    ]);
-
-    return c.json({
-      hotspots,
-      count: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-    });
-  } catch (error) {
-    console.error("Error fetching hotspots:", error);
-    throw new HTTPException(500, { message: "Failed to fetch hotspots" });
-  }
-});
-
 hotspots.put("/:id", async (c) => {
   try {
     const id = c.req.param("id");

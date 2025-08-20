@@ -22,12 +22,12 @@ const Region = () => {
     error,
     refetch,
   } = useQuery<Region>({
-    queryKey: [`/regions/${regionCode}`, {}],
+    queryKey: [`/regions/${regionCode}`],
     enabled: !!regionCode,
   });
 
-  const { data: hotspots } = useQuery<{ hotspots: Hotspot[] }>({
-    queryKey: [`/regions/${regionCode}/hotspots`, {}],
+  const { data: hotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
+    queryKey: [`/regions/${regionCode}/hotspots`],
     enabled: !!regionCode,
   });
 
@@ -90,7 +90,7 @@ const Region = () => {
       </div>
 
       {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
-        <HotspotList hotspots={hotspots.hotspots} showCount={true} />
+        <HotspotList hotspots={hotspots.hotspots} total={hotspots.count} />
       ) : (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>

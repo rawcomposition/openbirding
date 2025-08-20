@@ -18,6 +18,8 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.11",
     "@tanstack/react-query": "^5.83.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.12",
     "@types/lodash": "^4.17.20",
     "@types/mapbox-gl": "^3.4.1",
     "@types/react-highlight-words": "^0.20.0",
