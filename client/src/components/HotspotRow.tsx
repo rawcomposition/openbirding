@@ -13,9 +13,11 @@ type HotspotRowProps = {
   species: number;
   lat: number;
   lng: number;
+  distance?: number;
+  showDistance?: boolean;
 };
 
-const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRowProps) => {
+const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, showDistance }: HotspotRowProps) => {
   const isEditMode = useEditMode();
   const { addChange, removeChange } = useEditActions();
   const [localOpen, setLocalOpen] = useState<boolean | null>(open);
@@ -75,7 +77,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
         </div>
       </td>
 
-      <td className="p-4">
+      <td className="p-4 w-0 whitespace-nowrap">
         {isEditMode ? (
           <RadioGroup
             value={localOpen === null ? "unknown" : localOpen.toString()}
@@ -121,17 +123,29 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
         ) : null}
       </td>
 
-      <td className="p-4">
+      <td className="p-4 w-0 whitespace-nowrap">
         <Badge
           variant="secondary"
           className="bg-emerald-500/20 text-emerald-200 border-emerald-400/30 whitespace-nowrap"
         >
-          {species} species
+          {species}
         </Badge>
       </td>
 
+      {showDistance && (
+        <td className="p-4 w-0 whitespace-nowrap">
+          {distance !== undefined ? (
+            <span className="text-sm text-gray-300">
+              {distance < 10000 ? `${(distance / 1000).toFixed(1)} km` : `${Math.round(distance / 1000)} km`}
+            </span>
+          ) : (
+            <span className="text-sm text-gray-500">-</span>
+          )}
+        </td>
+      )}
+
       {!isEditMode && (
-        <td className="p-4">
+        <td className="p-4 w-0 whitespace-nowrap">
           {lat && lng ? (
             <button
               onClick={() => openGoogleMaps(lat, lng)}

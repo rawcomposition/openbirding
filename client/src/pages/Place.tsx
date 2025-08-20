@@ -7,33 +7,30 @@ import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import type { Hotspot } from "@/lib/types";
 
-type Region = {
-  _id: string;
-  name: string;
-  isCountry?: boolean;
+type PlaceData = {
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  hotspots: Hotspot[];
+  count: number;
 };
 
-const Region = () => {
-  const { regionCode } = useParams<{ regionCode: string }>();
+const Place = () => {
+  const { placeName, coordinates } = useParams<{ placeName: string; coordinates: string }>();
 
   const {
-    data: region,
-    isLoading: isLoadingRegion,
+    data: placeData,
+    isLoading,
     error,
     refetch,
-  } = useQuery<Region>({
-    queryKey: [`/regions/${regionCode}`],
-    enabled: !!regionCode,
+  } = useQuery<PlaceData>({
+    queryKey: [`/places/${coordinates}`],
+    enabled: !!(placeName && coordinates),
     refetchOnWindowFocus: false,
   });
 
-  const { data: hotspots, isLoading: isLoadingHotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
-    queryKey: [`/regions/${regionCode}/hotspots`],
-    enabled: !!regionCode,
-    refetchOnWindowFocus: false,
-  });
-
-  if (isLoadingRegion || isLoadingHotspots) {
+  if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="animate-pulse">
@@ -54,7 +51,7 @@ const Region = () => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Card className="bg-red-900/20 border-red-500/30">
           <CardContent className="space-y-2">
-            <p className="text-red-300">Error loading region: {error.message}</p>
+            <p className="text-red-300">Error loading place: {error.message}</p>
             <Button variant="outline" onClick={() => refetch()}>
               Try Again
             </Button>
@@ -64,39 +61,47 @@ const Region = () => {
     );
   }
 
-  if (!region) {
+  if (!placeData) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>
-            <p className="text-slate-300">Region not found</p>
+            <p className="text-slate-300">Place not found</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const { coordinates: coords, hotspots } = placeData;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <MapPin className="h-6 w-6 text-emerald-400" />
-          <h1 className="text-3xl font-bold text-white">{region.name}</h1>
-          {region.isCountry && (
-            <Badge variant="secondary" className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30">
-              Country
-            </Badge>
-          )}
+          <h1 className="text-3xl font-bold text-white">{placeName}</h1>
+          <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
+            Place
+          </Badge>
         </div>
-        <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
+        <p className="text-slate-300 text-lg">
+          Coordinates: {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+        </p>
+        <p className="text-slate-400 text-sm">Showing the closest 200 hotspots</p>
       </div>
 
-      {regionCode && hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
-        <HotspotList hotspots={hotspots.hotspots} queryKey={`/regions/${regionCode}/hotspots`} total={hotspots.count} />
+      {hotspots && hotspots.length > 0 ? (
+        <HotspotList
+          hotspots={hotspots}
+          queryKey={`/places/${coordinates}`}
+          defaultSort={{ id: "distance", desc: false }}
+          showDistance={true}
+        />
       ) : (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>
-            <p className="text-slate-300 text-center">No hotspots found in this region</p>
+            <p className="text-slate-300 text-center">No hotspots found near this location</p>
           </CardContent>
         </Card>
       )}
@@ -104,4 +109,4 @@ const Region = () => {
   );
 };
 
-export default Region;
+export default Place;

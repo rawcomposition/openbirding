@@ -14,6 +14,7 @@ export type Hotspot = {
   notes?: string;
   updatedAt: Date;
   tags?: string[];
+  distance?: number;
 };
 
 export type HotspotsResponse = {

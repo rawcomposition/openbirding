@@ -1,6 +1,7 @@
 import { ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Hotspot } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,6 +10,7 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type Row,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
@@ -21,12 +23,14 @@ import HotspotRow from "./HotspotRow";
 
 type Props = {
   hotspots: Hotspot[];
-  region: string;
+  queryKey: string;
   total?: number;
+  defaultSort?: { id: string; desc: boolean };
+  showDistance?: boolean;
 };
 
-const HotspotList = ({ hotspots, region, total }: Props) => {
-  const [sorting, setSorting] = useState<SortingState>([{ id: "species", desc: true }]);
+const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance }: Props) => {
+  const [sorting, setSorting] = useState<SortingState>([defaultSort || { id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
   const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount, clearChanges } = useEditStore();
   const changeCount = getChangeCount();
@@ -40,7 +44,7 @@ const HotspotList = ({ hotspots, region, total }: Props) => {
       toast.success("Changes saved successfully!");
       clearChanges();
       setEditMode(false);
-      queryClient.invalidateQueries({ queryKey: [`/regions/${region}/hotspots`] });
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
     },
     onError: (error) => {
       toast.error(`Failed to save changes: ${error.message}`);
@@ -77,6 +81,21 @@ const HotspotList = ({ hotspots, region, total }: Props) => {
       header: "Species",
       enableSorting: true,
     },
+    ...(showDistance
+      ? [
+          {
+            accessorKey: "distance",
+            header: "Distance",
+            enableSorting: true,
+            cell: ({ row }: { row: Row<Hotspot> }) => {
+              const distance = row.original.distance;
+              if (distance === undefined) return "-";
+              const km = distance / 1000;
+              return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+            },
+          },
+        ]
+      : []),
     ...(isEditMode
       ? []
       : [
@@ -181,14 +200,18 @@ const HotspotList = ({ hotspots, region, total }: Props) => {
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="text-left p-4 text-sm font-medium text-gray-100"
-                    style={{ width: header.getSize() }}
+                    className={cn(
+                      "text-left p-4 text-sm font-medium text-gray-100",
+                      ["open", "species", "distance", "location"].includes(header.column.id) && "w-0 whitespace-nowrap",
+                      header.column.id === "notes" && "sm:w-xs"
+                    )}
                   >
                     {header.isPlaceholder ? null : (
                       <div
-                        className={`flex items-center gap-2 ${
-                          header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                        }`}
+                        className={cn(
+                          "flex items-center gap-2",
+                          header.column.getCanSort() && "cursor-pointer select-none"
+                        )}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -221,6 +244,8 @@ const HotspotList = ({ hotspots, region, total }: Props) => {
                   species={row.original.species}
                   lat={row.original.location?.coordinates[1]}
                   lng={row.original.location?.coordinates[0]}
+                  distance={row.original.distance}
+                  showDistance={showDistance}
                 />
               );
             })}
