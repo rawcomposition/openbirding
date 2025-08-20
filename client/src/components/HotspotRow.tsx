@@ -1,8 +1,8 @@
 import { useState, useEffect, memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Check, X, HelpCircle } from "lucide-react";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useEditActions, useEditMode } from "@/lib/editStore";
 
 interface HotspotRowProps {
@@ -77,16 +77,30 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
 
       <td className="p-4">
         {isEditMode ? (
-          <Select
+          <RadioGroup
             value={localOpen === null ? "unknown" : localOpen.toString()}
-            onChange={(e) => handleOpenChange(e.target.value)}
-            options={[
-              { value: "true", label: "Yes" },
-              { value: "false", label: "No" },
-              { value: "unknown", label: "Unknown" },
-            ]}
-            className="w-32 bg-white/10 border-white/20 text-white"
-          />
+            onValueChange={handleOpenChange}
+            className="flex gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="true" id={`open-yes-${id}`} />
+              <label htmlFor={`open-yes-${id}`} className="text-sm text-slate-200 cursor-pointer">
+                Yes
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="false" id={`open-no-${id}`} />
+              <label htmlFor={`open-no-${id}`} className="text-sm text-slate-200 cursor-pointer">
+                No
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="unknown" id={`open-unknown-${id}`} />
+              <label htmlFor={`open-unknown-${id}`} className="text-sm text-slate-200 cursor-pointer">
+                Unknown
+              </label>
+            </div>
+          </RadioGroup>
         ) : (
           getOpenAccessIcon(open)
         )}
@@ -121,7 +135,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng }: HotspotRo
           {lat && lng ? (
             <button
               onClick={() => openGoogleMaps(lat, lng)}
-              className="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition-colors whitespace-nowrap"
+              className="flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200 transition-colors whitespace-nowrap cursor-pointer"
             >
               <ExternalLink className="h-4 w-4" />
               View Map
