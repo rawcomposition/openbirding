@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Check, X, HelpCircle, ChevronUp, ChevronDown } from "lucide-react";
+import { ExternalLink, Check, X, HelpCircle, ChevronUp, ChevronDown, Edit } from "lucide-react";
 import type { Hotspot } from "@/lib/types";
 import {
   useReactTable,
@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   hotspots: Hotspot[];
@@ -141,13 +142,19 @@ const HotspotList = ({ hotspots, total }: Props) => {
     <div className="space-y-4">
       {total !== undefined && <p className="text-gray-300">Found {total} hotspots</p>}
 
-      <input
-        type="text"
-        placeholder="Search hotspots..."
-        value={globalFilter}
-        onChange={(e) => setGlobalFilter(e.target.value)}
-        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-      />
+      <div className="flex sm:flex-row flex-col justify-between gap-4">
+        <input
+          type="text"
+          placeholder="Search hotspots..."
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
+        />
+        <Button variant="primary" size="lg">
+          <Edit className="h-4 w-4" />
+          Edit Hotspots
+        </Button>
+      </div>
 
       <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg overflow-hidden">
         <table className="w-full">

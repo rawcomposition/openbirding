@@ -41,9 +41,6 @@ const Header = () => {
                 <Link to="/map">Map</Link>
               </Button>
             </nav>
-            <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Link to="/add-hotspot">Add Hotspot</Link>
-            </Button>
           </div>
         </div>
       </div>
