@@ -2,8 +2,8 @@ import { useState, useEffect, memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Check, X, HelpCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useEditActions, useEditMode } from "@/lib/editStore";
+import { cn } from "@/lib/utils";
 
 type HotspotRowProps = {
   id: string;
@@ -103,30 +103,41 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
 
       <td className="p-4 w-0 whitespace-nowrap">
         {isEditMode ? (
-          <RadioGroup
-            value={localOpen === null ? "unknown" : localOpen.toString()}
-            onValueChange={handleOpenChange}
-            className="flex gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="true" id={`open-yes-${id}`} />
-              <label htmlFor={`open-yes-${id}`} className="text-sm text-slate-200 cursor-pointer">
-                Yes
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="false" id={`open-no-${id}`} />
-              <label htmlFor={`open-no-${id}`} className="text-sm text-slate-200 cursor-pointer">
-                No
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="unknown" id={`open-unknown-${id}`} />
-              <label htmlFor={`open-unknown-${id}`} className="text-sm text-slate-200 cursor-pointer">
-                Unknown
-              </label>
-            </div>
-          </RadioGroup>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleOpenChange("true")}
+              className={cn(
+                "px-3 py-1 text-xs rounded border",
+                localOpen === true
+                  ? "bg-green-700 text-white border-green-700"
+                  : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
+              )}
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => handleOpenChange("false")}
+              className={cn(
+                "px-3 py-1 text-xs rounded border",
+                localOpen === false
+                  ? "bg-red-800 text-white border-red-800"
+                  : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
+              )}
+            >
+              No
+            </button>
+            <button
+              onClick={() => handleOpenChange("unknown")}
+              className={cn(
+                "px-3 py-1 text-xs rounded border",
+                localOpen === null
+                  ? "bg-gray-600 text-white border-gray-600"
+                  : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
+              )}
+            >
+              ?
+            </button>
+          </div>
         ) : (
           getOpenAccessIcon(open)
         )}
