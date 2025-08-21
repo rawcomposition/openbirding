@@ -73,6 +73,30 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
           <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-300 flex-shrink-0 row-number"></span>
           <div>
             <div className="font-medium text-white">{name}</div>
+            {isEditMode && (
+              <div className="flex gap-4 mt-1">
+                {lat && lng && (
+                  <a
+                    href={`https://www.google.com/maps?q=${lat},${lng}&z=15&t=m`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-200 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    View Map
+                  </a>
+                )}
+                <a
+                  href={`https://ebird.org/hotspot/${id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-200 transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  eBird
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </td>

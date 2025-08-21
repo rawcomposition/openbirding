@@ -85,11 +85,6 @@ const Region = () => {
           <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
             Region
           </Badge>
-          {region.isCountry && (
-            <Badge variant="secondary" className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30">
-              Country
-            </Badge>
-          )}
         </div>
         <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
       </div>
