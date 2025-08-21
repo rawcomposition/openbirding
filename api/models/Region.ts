@@ -21,6 +21,7 @@ const RegionSchema: Schema = new Schema({
     },
   ],
   isCountry: Boolean,
+  hasChildren: Boolean,
 });
 
 export default mongoose.model<Region>("Region", RegionSchema);

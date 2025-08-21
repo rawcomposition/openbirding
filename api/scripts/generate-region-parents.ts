@@ -48,6 +48,11 @@ const generateLongName = (regionName: string, parents: ParentInfo[]): string => 
   return [regionName, ...parentNames].join(", ");
 };
 
+const hasChildren = (regionId: string, allRegionIds: string[]): boolean => {
+  const childPrefix = `${regionId}-`;
+  return allRegionIds.some((id) => id.startsWith(childPrefix));
+};
+
 const main = async () => {
   try {
     const regionCode = process.argv[2];
@@ -65,6 +70,8 @@ const main = async () => {
     console.log(`Found ${regions.length} regions to process`);
 
     const regionMap = new Map<string, string>();
+    const allRegionIds = regions.map((r) => r._id);
+
     for (const region of regions) {
       regionMap.set(region._id, region.name);
     }
@@ -80,11 +87,12 @@ const main = async () => {
       for (const region of batch) {
         const parents = getParentRegions(region._id, regionMap);
         const longName = generateLongName(region.name, parents);
+        const children = hasChildren(region._id, allRegionIds);
 
         bulkOps.push({
           updateOne: {
             filter: { _id: region._id },
-            update: { $set: { parents, longName } },
+            update: { $set: { parents, longName, hasChildren: children } },
           },
         });
       }

@@ -46,4 +46,5 @@ export type Region = {
     id: string;
   }[];
   isCountry?: boolean;
+  hasChildren?: boolean;
 };
