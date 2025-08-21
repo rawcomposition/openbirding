@@ -82,6 +82,9 @@ const Region = () => {
         <div className="flex items-center gap-3 mb-4">
           <MapPin className="h-6 w-6 text-emerald-400" />
           <h1 className="text-3xl font-bold text-white">{region.name}</h1>
+          <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
+            Region
+          </Badge>
           {region.isCountry && (
             <Badge variant="secondary" className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30">
               Country

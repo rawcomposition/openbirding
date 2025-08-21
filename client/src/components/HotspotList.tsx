@@ -12,7 +12,6 @@ import {
   type SortingState,
   type Row,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useEditStore } from "@/lib/editStore";
@@ -129,18 +128,6 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance }: P
 
   const { rows } = table.getRowModel();
 
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => document.documentElement,
-    estimateSize: () => 80,
-    overscan: 10,
-  });
-
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
-  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start || 0 : 0;
-  const paddingBottom = virtualRows.length > 0 ? totalSize - (virtualRows[virtualRows.length - 1].end || 0) : 0;
-
   return (
     <div className="space-y-4">
       <style>
@@ -227,33 +214,20 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance }: P
             ))}
           </thead>
           <tbody>
-            {paddingTop > 0 && (
-              <tr>
-                <td style={{ height: `${paddingTop}px` }} />
-              </tr>
-            )}
-            {virtualRows.map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              return (
-                <HotspotRow
-                  key={row.id}
-                  id={row.original._id}
-                  name={row.original.name}
-                  open={row.original.open}
-                  notes={row.original.notes}
-                  species={row.original.species}
-                  lat={row.original.location?.coordinates[1]}
-                  lng={row.original.location?.coordinates[0]}
-                  distance={row.original.distance}
-                  showDistance={showDistance}
-                />
-              );
-            })}
-            {paddingBottom > 0 && (
-              <tr>
-                <td style={{ height: `${paddingBottom}px` }} />
-              </tr>
-            )}
+            {rows.map((row) => (
+              <HotspotRow
+                key={row.id}
+                id={row.original._id}
+                name={row.original.name}
+                open={row.original.open}
+                notes={row.original.notes}
+                species={row.original.species}
+                lat={row.original.location?.coordinates[1]}
+                lng={row.original.location?.coordinates[0]}
+                distance={row.original.distance}
+                showDistance={showDistance}
+              />
+            ))}
           </tbody>
         </table>
       </div>
