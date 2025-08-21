@@ -120,7 +120,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
               className={cn(
                 "px-3 py-1 text-xs rounded border",
                 localOpen === false
-                  ? "bg-red-800 text-white border-red-800"
+                  ? "bg-red-800/80 text-white border-red-800/80"
                   : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
               )}
             >
