@@ -24,9 +24,9 @@ const Home = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/hotspots">
+            <Link to="/region/world">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                Browse Hotspots
+                Explore Regions
               </Button>
             </Link>
             <Link to="/map">
