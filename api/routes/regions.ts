@@ -223,4 +223,77 @@ regions.get("/:regionCode/subregions", async (c) => {
   }
 });
 
+regions.get("/:regionCode/stats", async (c) => {
+  try {
+    const regionCode = c.req.param("regionCode");
+
+    if (!regionCode) {
+      throw new HTTPException(400, { message: "Region code is required" });
+    }
+
+    await connect();
+
+    let hotspotStats;
+
+    if (regionCode === "world") {
+      hotspotStats = await Hotspot.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalCount: { $sum: 1 },
+            openCount: {
+              $sum: {
+                $cond: [{ $eq: ["$open", true] }, 1, 0],
+              },
+            },
+            reviewedCount: {
+              $sum: {
+                $cond: [{ $ne: ["$open", null] }, 1, 0],
+              },
+            },
+          },
+        },
+      ]);
+    } else {
+      hotspotStats = await Hotspot.aggregate([
+        {
+          $match: {
+            region: { $regex: `^${regionCode}` },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalCount: { $sum: 1 },
+            openCount: {
+              $sum: {
+                $cond: [{ $eq: ["$open", true] }, 1, 0],
+              },
+            },
+            reviewedCount: {
+              $sum: {
+                $cond: [{ $ne: ["$open", null] }, 1, 0],
+              },
+            },
+          },
+        },
+      ]);
+    }
+
+    const stats = hotspotStats[0] || { totalCount: 0, openCount: 0, reviewedCount: 0 };
+
+    return c.json({
+      hotspotCount: stats.totalCount,
+      openHotspotCount: stats.openCount,
+      reviewedHotspotCount: stats.reviewedCount,
+    });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Error fetching region stats:", error);
+    throw new HTTPException(500, { message: "Failed to fetch region stats" });
+  }
+});
+
 export default regions;

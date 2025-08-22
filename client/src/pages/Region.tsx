@@ -6,6 +6,7 @@ import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import RegionList from "@/components/RegionList";
+import RegionStats from "@/components/RegionStats";
 import type { Hotspot } from "@/lib/types";
 
 type Region = {
@@ -76,14 +77,19 @@ const Region = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <MapPin className="h-6 w-6 text-emerald-400" />
-          <h1 className="text-3xl font-bold text-white">{region.name}</h1>
-          <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
-            Region
-          </Badge>
+        <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <MapPin className="h-6 w-6 text-emerald-400" />
+              <h1 className="text-3xl font-bold text-white">{region.name}</h1>
+              <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
+                Region
+              </Badge>
+            </div>
+            <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
+          </div>
+          <RegionStats regionCode={regionCode!} />
         </div>
-        <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
       </div>
 
       {region.hasChildren ? (
