@@ -7,39 +7,19 @@ import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import type { Hotspot } from "@/lib/types";
 
-type PlaceData = {
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-  hotspots: Hotspot[];
-  count: number;
-};
-
 const Place = () => {
   const { placeName, coordinates } = useParams<{ placeName: string; coordinates: string }>();
 
   const {
-    data: placeData,
+    data: hotspots,
     isLoading,
     error,
     refetch,
-  } = useQuery<PlaceData>({
+  } = useQuery<Hotspot[]>({
     queryKey: [`/places/${coordinates}`],
     enabled: !!(placeName && coordinates),
     refetchOnWindowFocus: false,
   });
-
-  if (isLoading) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-slate-700 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-slate-700 rounded w-1/2 mb-8"></div>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -56,19 +36,17 @@ const Place = () => {
     );
   }
 
-  if (!placeData) {
+  if (!hotspots?.length && !isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>
-            <p className="text-slate-300">Place not found</p>
+            <p className="text-slate-300">No hotspots found</p>
           </CardContent>
         </Card>
       </div>
     );
   }
-
-  const { coordinates: coords, hotspots } = placeData;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -80,9 +58,7 @@ const Place = () => {
             Place
           </Badge>
         </div>
-        <p className="text-slate-300 text-lg">
-          Coordinates: {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
-        </p>
+        <p className="text-slate-300 text-lg">Coordinates: {coordinates}</p>
         <p className="text-slate-400 text-sm">Showing the closest 200 hotspots</p>
       </div>
 

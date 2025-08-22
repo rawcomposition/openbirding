@@ -38,13 +38,7 @@ places.get("/:coordinates", async (c) => {
       },
     ]);
 
-    const count = hotspots.length;
-
-    return c.json({
-      coordinates: { lat, lng },
-      hotspots,
-      count,
-    });
+    return c.json(hotspots);
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;
