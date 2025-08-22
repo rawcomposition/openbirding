@@ -56,17 +56,30 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-gradient-to-r from-emerald-900/20 via-emerald-800/20 to-emerald-900/20 border-y border-emerald-500/20">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="mb-4">
-            <div className="text-5xl font-bold text-emerald-400 mb-2">{openHotspots.toLocaleString()}+</div>
-            <div className="text-2xl font-semibold text-white mb-2">Open Access Hotspots</div>
-            <p className="text-lg text-emerald-200">Worldwide and growing every day</p>
+      <section className="py-20 px-4 bg-gradient-to-br from-slate-800/40 via-slate-700/30 to-slate-800/40">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-white mb-4">Community Driven</h2>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Join thousands of birders who have contributed to our worldwide database of freely accessible locations.
+            </p>
           </div>
-          <p className="text-gray-300 max-w-2xl mx-auto">
-            Join thousands of birders who have contributed to our global database of freely accessible birding
-            locations.
-          </p>
+          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="flex-1 text-center lg:text-left">
+                <h3 className="text-2xl font-semibold text-white mb-4">Open Access Birding</h3>
+                <p className="text-lg text-gray-300 mb-4">
+                  No fees, no permits, no restrictions — just pure birding freedom.
+                </p>
+                <p className="text-gray-400">Every location verified by the community for true open access.</p>
+              </div>
+              <div className="text-center">
+                <div className="text-7xl font-bold text-emerald-400 mb-4">{openHotspots.toLocaleString()}</div>
+                <div className="text-2xl font-semibold text-white">Open Hotspots</div>
+                <div className="text-lg text-emerald-200 mt-1">Worldwide</div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
