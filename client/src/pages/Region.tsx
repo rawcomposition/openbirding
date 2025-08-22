@@ -20,9 +20,9 @@ const Region = () => {
 
   const {
     data: region,
-    isLoading: isLoadingRegion,
     error,
     refetch,
+    isLoading: isLoadingRegion,
   } = useQuery<Region>({
     queryKey: [`/regions/${regionCode}`],
     enabled: !!regionCode,
@@ -31,25 +31,9 @@ const Region = () => {
 
   const { data: hotspots, isLoading: isLoadingHotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
     queryKey: [`/regions/${regionCode}/hotspots`],
-    enabled: !!regionCode && !!region && !region?.hasChildren,
+    enabled: !!regionCode && !!region && !region.hasChildren,
     refetchOnWindowFocus: false,
   });
-
-  if (isLoadingRegion || isLoadingHotspots) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-slate-700 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-slate-700 rounded w-1/2 mb-8"></div>
-          <div className="flex flex-col gap-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-700 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -62,6 +46,17 @@ const Region = () => {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (isLoadingRegion) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-slate-700 rounded w-1/3 mb-4"></div>
+          <div className="h-4 bg-slate-700 rounded w-1/2 mb-8"></div>
+        </div>
       </div>
     );
   }
@@ -93,19 +88,25 @@ const Region = () => {
 
       {region.hasChildren ? (
         <RegionList regionCode={regionCode!} />
-      ) : regionCode && hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
-        <HotspotList
-          hotspots={hotspots.hotspots}
-          queryKey={`/regions/${regionCode}/hotspots`}
-          total={hotspots.count}
-          isLoading={isLoadingHotspots}
-        />
       ) : (
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent>
-            <p className="text-slate-300 text-center">No hotspots found in this region</p>
-          </CardContent>
-        </Card>
+        <>
+          {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
+            <HotspotList
+              hotspots={hotspots.hotspots}
+              queryKey={`/regions/${regionCode}/hotspots`}
+              total={hotspots.count}
+              isLoading={isLoadingHotspots}
+            />
+          ) : !isLoadingHotspots ? (
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardContent>
+                <p className="text-slate-300 text-center">No hotspots found in this region</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <HotspotList hotspots={[]} queryKey={`/regions/${regionCode}/hotspots`} isLoading={isLoadingHotspots} />
+          )}
+        </>
       )}
     </div>
   );

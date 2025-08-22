@@ -109,14 +109,6 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
 
   const { rows } = table.getRowModel();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-gray-400">Loading subregions...</div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -182,14 +174,24 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={columns.length} className="p-8">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
-                    <span className="ml-3 text-gray-400">Loading subregions...</span>
-                  </div>
-                </td>
-              </tr>
+              <>
+                {[...Array(8)].map((_, i) => (
+                  <tr key={i} className="border-b border-white/10">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 bg-slate-700 rounded animate-pulse"></div>
+                        <div className="h-4 bg-slate-700 rounded w-32 animate-pulse"></div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="h-4 bg-slate-700 rounded w-24 animate-pulse"></div>
+                    </td>
+                    <td className="p-4 w-0 whitespace-nowrap">
+                      <div className="h-4 bg-slate-700 rounded w-16 animate-pulse"></div>
+                    </td>
+                  </tr>
+                ))}
+              </>
             ) : (
               rows.map((row) => (
                 <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">

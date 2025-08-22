@@ -36,11 +36,6 @@ const Place = () => {
         <div className="animate-pulse">
           <div className="h-8 bg-slate-700 rounded w-1/3 mb-4"></div>
           <div className="h-4 bg-slate-700 rounded w-1/2 mb-8"></div>
-          <div className="flex flex-col gap-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-700 rounded"></div>
-            ))}
-          </div>
         </div>
       </div>
     );
@@ -97,13 +92,22 @@ const Place = () => {
           queryKey={`/places/${coordinates}`}
           defaultSort={{ id: "distance", desc: false }}
           showDistance={true}
+          isLoading={isLoading}
         />
-      ) : (
+      ) : !isLoading ? (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>
             <p className="text-slate-300 text-center">No hotspots found near this location</p>
           </CardContent>
         </Card>
+      ) : (
+        <HotspotList
+          hotspots={[]}
+          queryKey={`/places/${coordinates}`}
+          defaultSort={{ id: "distance", desc: false }}
+          showDistance={true}
+          isLoading={isLoading}
+        />
       )}
     </div>
   );
