@@ -87,7 +87,10 @@ const Region = () => {
       </div>
 
       {region.hasChildren ? (
-        <RegionList regionCode={regionCode!} />
+        <RegionList
+          regionCode={regionCode!}
+          defaultSort={regionCode === "world" ? { id: "openHotspotCount", desc: true } : undefined}
+        />
       ) : (
         <>
           {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
