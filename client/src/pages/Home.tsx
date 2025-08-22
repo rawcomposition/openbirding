@@ -1,4 +1,4 @@
-import { Bird, MapPin, Users, Camera } from "lucide-react";
+import { Bird, MapPin, Users, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -12,10 +12,11 @@ const Home = () => {
           <div className="flex justify-center mb-6">
             <Bird className="h-16 w-16 text-emerald-400" />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-6">Welcome to OpenBirding</h1>
+          <h1 className="text-5xl font-bold text-white mb-6">Open Birding</h1>
           <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
-            Discover, track, and share your bird watching adventures. Connect with fellow birders and explore the
-            world's avian diversity.
+            Discover <span className="text-emerald-400 font-semibold">open access</span> birding hotspots you can visit
+            freely — without fees, permits, guides, or other restrictions — contributed and verified by the birding
+            community.
           </p>
 
           <div className="max-w-md mx-auto mb-8">
@@ -25,7 +26,7 @@ const Home = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/hotspots">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                Explore Hotspots
+                Browse Hotspots
               </Button>
             </Link>
             <Link to="/map">
@@ -43,18 +44,19 @@ const Home = () => {
 
       <section className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">Features Coming Soon</h2>
+          <h2 className="text-3xl font-bold text-white text-center mb-12">What is Open Birding?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-6 w-6 text-emerald-400" />
-                  <CardTitle className="text-white">Location Tracking</CardTitle>
+                  <CardTitle className="text-white">Explore Without Barriers</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-gray-300">
-                  Track your bird watching locations and share hotspots with the community.
+                <CardDescription className="text-gray-300 text-md">
+                  Birding should be free and open to all. Our global map highlights places you can step into nature
+                  without restrictions standing in the way.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -62,13 +64,14 @@ const Home = () => {
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <Camera className="h-6 w-6 text-emerald-400" />
-                  <CardTitle className="text-white">Photo Sharing</CardTitle>
+                  <Info className="h-6 w-6 text-emerald-400" />
+                  <CardTitle className="text-white">What “Open Access” Means</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-gray-300">
-                  Upload and share your bird photos with identification assistance.
+                <CardDescription className="text-gray-300 text-md">
+                  Open access hotspots allow anyone to visit freely — no entrance fees, no permits, no required guides,
+                  and no “guests only” restrictions. Just show up and bird.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -77,12 +80,13 @@ const Home = () => {
               <CardHeader>
                 <div className="flex items-center space-x-2">
                   <Users className="h-6 w-6 text-emerald-400" />
-                  <CardTitle className="text-white">Community</CardTitle>
+                  <CardTitle className="text-white">Built by Birders</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-gray-300">
-                  Connect with fellow birders and join local bird watching groups.
+                <CardDescription className="text-gray-300 text-md">
+                  OpenBirding is powered by volunteers who share local knowledge so everyone can enjoy accessible
+                  birding. It’s a community effort to keep birding open and welcoming worldwide.
                 </CardDescription>
               </CardContent>
             </Card>
