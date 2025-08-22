@@ -34,4 +34,5 @@ export type Region = {
   hasChildren?: boolean;
   hotspotCount?: number;
   openHotspotCount?: number;
+  reviewedHotspotCount?: number;
 };

@@ -21,7 +21,7 @@ type Props = {
 };
 
 const RegionList = ({ regionCode, defaultSort }: Props) => {
-  const [sorting, setSorting] = useState<SortingState>([defaultSort || { id: "name", desc: false }]);
+  const [sorting, setSorting] = useState<SortingState>([defaultSort || { id: "openHotspotCount", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
 
   const {
@@ -68,6 +68,24 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       },
     },
     {
+      accessorKey: "reviewedHotspotCount",
+      header: "Reviewed Hotspots",
+      enableSorting: true,
+      cell: ({ row }) => {
+        const { hotspotCount, reviewedHotspotCount } = row.original;
+        if (hotspotCount === undefined || reviewedHotspotCount === undefined) {
+          return <span className="text-gray-400">-</span>;
+        }
+
+        const percentage = hotspotCount > 0 ? Math.round((reviewedHotspotCount / hotspotCount) * 100) : 0;
+        return (
+          <span className="text-gray-200">
+            {reviewedHotspotCount.toLocaleString()} <span className="text-gray-400 text-xs">({percentage}%)</span>
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "actions",
       header: "Actions",
       cell: ({ row }) => (
@@ -95,7 +113,7 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
         if (currentSort) {
           setSorting([{ id: currentSort.id, desc: !currentSort.desc }]);
         } else {
-          setSorting([{ id: "name", desc: false }]);
+          setSorting([{ id: "openHotspotCount", desc: true }]);
         }
       } else {
         setSorting(newSorting);
@@ -149,7 +167,8 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
                     key={header.id}
                     className={cn(
                       "text-left p-4 text-sm font-medium text-gray-100",
-                      ["openHotspots", "actions"].includes(header.column.id) && "w-0 whitespace-nowrap"
+                      ["openHotspotCount", "reviewedHotspotCount", "actions"].includes(header.column.id) &&
+                        "w-0 whitespace-nowrap"
                     )}
                   >
                     {header.isPlaceholder ? null : (
@@ -186,6 +205,9 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
                     <td className="p-4">
                       <div className="h-4 bg-slate-700 rounded w-24 animate-pulse"></div>
                     </td>
+                    <td className="p-4">
+                      <div className="h-4 bg-slate-700 rounded w-24 animate-pulse"></div>
+                    </td>
                     <td className="p-4 w-0 whitespace-nowrap">
                       <div className="h-4 bg-slate-700 rounded w-16 animate-pulse"></div>
                     </td>
@@ -200,7 +222,8 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
                       key={cell.id}
                       className={cn(
                         "p-4 text-gray-200",
-                        ["openHotspots", "actions"].includes(cell.column.id) && "w-0 whitespace-nowrap"
+                        ["openHotspotCount", "reviewedHotspotCount", "actions"].includes(cell.column.id) &&
+                          "w-0 whitespace-nowrap"
                       )}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

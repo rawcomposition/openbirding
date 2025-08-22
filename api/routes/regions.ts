@@ -128,52 +128,63 @@ regions.get("/:regionCode/subregions", async (c) => {
 
     let hotspotStats;
 
-    if (regionCode === "world") {
-      hotspotStats = await Hotspot.aggregate([
-        {
-          $match: {
-            region: { $regex: `^(${subregionIds.join("|")})` },
-          },
+    hotspotStats = await Hotspot.aggregate([
+      {
+        $match: {
+          region: { $regex: `^${regionCode}-` },
         },
-        {
-          $group: {
-            _id: { $substr: ["$region", 0, { $indexOfBytes: ["$region", "-"] }] },
-            totalCount: { $sum: 1 },
-            openCount: {
-              $sum: {
-                $cond: [{ $eq: ["$open", true] }, 1, 0],
+      },
+      {
+        $addFields: {
+          subregionCode: {
+            $let: {
+              vars: {
+                parts: { $split: ["$region", "-"] },
+                currentParts: { $split: [regionCode, "-"] },
+              },
+              in: {
+                $concat: [
+                  { $arrayElemAt: ["$$parts", 0] },
+                  "-",
+                  { $arrayElemAt: ["$$parts", 1] },
+                  { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, "-", ""] },
+                  { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, { $arrayElemAt: ["$$parts", 2] }, ""] },
+                ],
               },
             },
           },
         },
-      ]);
-    } else {
-      hotspotStats = await Hotspot.aggregate([
-        {
-          $match: {
-            region: { $in: subregionIds },
+      },
+      {
+        $group: {
+          _id: "$subregionCode",
+          totalCount: { $sum: 1 },
+          openCount: {
+            $sum: {
+              $cond: [{ $eq: ["$open", true] }, 1, 0],
+            },
           },
-        },
-        {
-          $group: {
-            _id: "$region",
-            totalCount: { $sum: 1 },
-            openCount: {
-              $sum: {
-                $cond: [{ $eq: ["$open", true] }, 1, 0],
-              },
+          reviewedCount: {
+            $sum: {
+              $cond: [{ $ne: ["$open", null] }, 1, 0],
             },
           },
         },
-      ]);
-    }
+      },
+    ]);
 
-    const statsMap = new Map(hotspotStats.map((stat) => [stat._id, { total: stat.totalCount, open: stat.openCount }]));
+    const statsMap = new Map(
+      hotspotStats.map((stat) => [
+        stat._id,
+        { total: stat.totalCount, open: stat.openCount, reviewed: stat.reviewedCount },
+      ])
+    );
 
     const subregionsWithHotspots = subregions.map((subregion) => ({
       ...subregion,
       hotspotCount: statsMap.get(subregion._id)?.total || 0,
       openHotspotCount: statsMap.get(subregion._id)?.open || 0,
+      reviewedHotspotCount: statsMap.get(subregion._id)?.reviewed || 0,
     }));
 
     return c.json(subregionsWithHotspots);
