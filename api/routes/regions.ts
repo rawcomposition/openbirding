@@ -16,10 +16,23 @@ regions.get("/:regionCode", async (c) => {
 
     await connect();
 
-    const region = await Region.findById(regionCode).lean();
+    let region;
 
-    if (!region) {
-      throw new HTTPException(404, { message: "Region not found" });
+    if (regionCode === "world") {
+      region = {
+        _id: "world",
+        name: "World",
+        longName: "World",
+        parents: [],
+        isCountry: false,
+        hasChildren: true,
+      };
+    } else {
+      region = await Region.findById(regionCode).lean();
+
+      if (!region) {
+        throw new HTTPException(404, { message: "Region not found" });
+      }
     }
 
     return c.json(region);
@@ -80,36 +93,80 @@ regions.get("/:regionCode/subregions", async (c) => {
 
     await connect();
 
-    const region = await Region.findById(regionCode).lean();
+    let region;
 
-    if (!region) {
-      throw new HTTPException(404, { message: "Region not found" });
+    if (regionCode === "world") {
+      region = {
+        _id: "world",
+        name: "World",
+        longName: "World",
+        parents: [],
+        isCountry: false,
+        hasChildren: true,
+      };
+    } else {
+      region = await Region.findById(regionCode).lean();
+
+      if (!region) {
+        throw new HTTPException(404, { message: "Region not found" });
+      }
     }
 
-    const subregions = await Region.find({
-      _id: { $regex: `^${regionCode}-[^-]+$` },
-    }).lean();
+    let subregions;
+
+    if (regionCode === "world") {
+      subregions = await Region.find({
+        isCountry: true,
+      }).lean();
+    } else {
+      subregions = await Region.find({
+        _id: { $regex: `^${regionCode}-[^-]+$` },
+      }).lean();
+    }
 
     const subregionIds = subregions.map((r) => r._id);
 
-    const hotspotStats = await Hotspot.aggregate([
-      {
-        $match: {
-          region: { $in: subregionIds },
+    let hotspotStats;
+
+    if (regionCode === "world") {
+      hotspotStats = await Hotspot.aggregate([
+        {
+          $match: {
+            region: { $regex: `^(${subregionIds.join("|")})` },
+          },
         },
-      },
-      {
-        $group: {
-          _id: "$region",
-          totalCount: { $sum: 1 },
-          openCount: {
-            $sum: {
-              $cond: [{ $eq: ["$open", true] }, 1, 0],
+        {
+          $group: {
+            _id: { $substr: ["$region", 0, { $indexOfBytes: ["$region", "-"] }] },
+            totalCount: { $sum: 1 },
+            openCount: {
+              $sum: {
+                $cond: [{ $eq: ["$open", true] }, 1, 0],
+              },
             },
           },
         },
-      },
-    ]);
+      ]);
+    } else {
+      hotspotStats = await Hotspot.aggregate([
+        {
+          $match: {
+            region: { $in: subregionIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$region",
+            totalCount: { $sum: 1 },
+            openCount: {
+              $sum: {
+                $cond: [{ $eq: ["$open", true] }, 1, 0],
+              },
+            },
+          },
+        },
+      ]);
+    }
 
     const statsMap = new Map(hotspotStats.map((stat) => [stat._id, { total: stat.totalCount, open: stat.openCount }]));
 
