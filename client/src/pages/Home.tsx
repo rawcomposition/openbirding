@@ -2,9 +2,23 @@ import { Bird, MapPin, Users, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import PlaceSearch from "@/components/PlaceSearch";
 
+interface WorldStats {
+  hotspotCount: number;
+  openHotspotCount: number;
+  reviewedHotspotCount: number;
+}
+
 const Home = () => {
+  const { data: worldStats } = useQuery<WorldStats>({
+    queryKey: [`/regions/world/stats`],
+    refetchOnWindowFocus: false,
+  });
+
+  const openHotspots = worldStats?.openHotspotCount || 0;
+
   return (
     <div className="min-h-screen">
       <section className="py-20 px-4 text-center">
@@ -39,6 +53,20 @@ const Home = () => {
               </Button>
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-4 bg-gradient-to-r from-emerald-900/20 via-emerald-800/20 to-emerald-900/20 border-y border-emerald-500/20">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-4">
+            <div className="text-5xl font-bold text-emerald-400 mb-2">{openHotspots.toLocaleString()}+</div>
+            <div className="text-2xl font-semibold text-white mb-2">Open Access Hotspots</div>
+            <p className="text-lg text-emerald-200">Worldwide and growing every day</p>
+          </div>
+          <p className="text-gray-300 max-w-2xl mx-auto">
+            Join thousands of birders who have contributed to our global database of freely accessible birding
+            locations.
+          </p>
         </div>
       </section>
 
