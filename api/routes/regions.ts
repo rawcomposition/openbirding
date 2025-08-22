@@ -70,4 +70,34 @@ regions.get("/:regionCode/hotspots", async (c) => {
   }
 });
 
+regions.get("/:regionCode/subregions", async (c) => {
+  try {
+    const regionCode = c.req.param("regionCode");
+
+    if (!regionCode) {
+      throw new HTTPException(400, { message: "Region code is required" });
+    }
+
+    await connect();
+
+    const region = await Region.findById(regionCode).lean();
+
+    if (!region) {
+      throw new HTTPException(404, { message: "Region not found" });
+    }
+
+    const subregions = await Region.find({
+      _id: { $regex: `^${regionCode}-[^-]+$` },
+    }).lean();
+
+    return c.json(subregions);
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Error fetching subregions:", error);
+    throw new HTTPException(500, { message: "Failed to fetch subregions" });
+  }
+});
+
 export default regions;

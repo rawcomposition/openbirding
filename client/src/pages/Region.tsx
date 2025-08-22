@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
+import RegionList from "@/components/RegionList";
 import type { Hotspot } from "@/lib/types";
 
 type Region = {
   _id: string;
   name: string;
   isCountry?: boolean;
+  hasChildren?: boolean;
 };
 
 const Region = () => {
@@ -89,7 +91,9 @@ const Region = () => {
         <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
       </div>
 
-      {regionCode && hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
+      {region.hasChildren ? (
+        <RegionList regionCode={regionCode!} />
+      ) : regionCode && hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
         <HotspotList hotspots={hotspots.hotspots} queryKey={`/regions/${regionCode}/hotspots`} total={hotspots.count} />
       ) : (
         <Card className="bg-slate-800/50 border-slate-700">

@@ -21,3 +21,15 @@ export type HotspotsResponse = {
   hotspots: Hotspot[];
   count: number;
 };
+
+export type Region = {
+  _id: string;
+  name: string;
+  longName: string;
+  parents: {
+    name: string;
+    id: string;
+  }[];
+  isCountry?: boolean;
+  hasChildren?: boolean;
+};
