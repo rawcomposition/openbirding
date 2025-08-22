@@ -128,50 +128,76 @@ regions.get("/:regionCode/subregions", async (c) => {
 
     let hotspotStats;
 
-    hotspotStats = await Hotspot.aggregate([
-      {
-        $match: {
-          region: { $regex: `^${regionCode}-` },
+    if (regionCode === "world") {
+      hotspotStats = await Hotspot.aggregate([
+        {
+          $match: {
+            region: { $regex: `^(${subregionIds.join("|")})` },
+          },
         },
-      },
-      {
-        $addFields: {
-          subregionCode: {
-            $let: {
-              vars: {
-                parts: { $split: ["$region", "-"] },
-                currentParts: { $split: [regionCode, "-"] },
+        {
+          $group: {
+            _id: { $substr: ["$region", 0, { $indexOfBytes: ["$region", "-"] }] },
+            totalCount: { $sum: 1 },
+            openCount: {
+              $sum: {
+                $cond: [{ $eq: ["$open", true] }, 1, 0],
               },
-              in: {
-                $concat: [
-                  { $arrayElemAt: ["$$parts", 0] },
-                  "-",
-                  { $arrayElemAt: ["$$parts", 1] },
-                  { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, "-", ""] },
-                  { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, { $arrayElemAt: ["$$parts", 2] }, ""] },
-                ],
+            },
+            reviewedCount: {
+              $sum: {
+                $cond: [{ $ne: ["$open", null] }, 1, 0],
               },
             },
           },
         },
-      },
-      {
-        $group: {
-          _id: "$subregionCode",
-          totalCount: { $sum: 1 },
-          openCount: {
-            $sum: {
-              $cond: [{ $eq: ["$open", true] }, 1, 0],
-            },
+      ]);
+    } else {
+      hotspotStats = await Hotspot.aggregate([
+        {
+          $match: {
+            region: { $regex: `^${regionCode}-` },
           },
-          reviewedCount: {
-            $sum: {
-              $cond: [{ $ne: ["$open", null] }, 1, 0],
+        },
+        {
+          $addFields: {
+            subregionCode: {
+              $let: {
+                vars: {
+                  parts: { $split: ["$region", "-"] },
+                  currentParts: { $split: [regionCode, "-"] },
+                },
+                in: {
+                  $concat: [
+                    { $arrayElemAt: ["$$parts", 0] },
+                    "-",
+                    { $arrayElemAt: ["$$parts", 1] },
+                    { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, "-", ""] },
+                    { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, { $arrayElemAt: ["$$parts", 2] }, ""] },
+                  ],
+                },
+              },
             },
           },
         },
-      },
-    ]);
+        {
+          $group: {
+            _id: "$subregionCode",
+            totalCount: { $sum: 1 },
+            openCount: {
+              $sum: {
+                $cond: [{ $eq: ["$open", true] }, 1, 0],
+              },
+            },
+            reviewedCount: {
+              $sum: {
+                $cond: [{ $ne: ["$open", null] }, 1, 0],
+              },
+            },
+          },
+        },
+      ]);
+    }
 
     const statsMap = new Map(
       hotspotStats.map((stat) => [
