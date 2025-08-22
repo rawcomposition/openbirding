@@ -32,4 +32,6 @@ export type Region = {
   }[];
   isCountry?: boolean;
   hasChildren?: boolean;
+  hotspotCount?: number;
+  openHotspotCount?: number;
 };

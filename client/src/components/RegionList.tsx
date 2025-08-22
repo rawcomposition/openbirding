@@ -12,7 +12,7 @@ import {
 } from "@tanstack/react-table";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { mutate } from "@/lib/utils";
+import { get } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
 type Props = {
@@ -31,8 +31,8 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
   } = useQuery({
     queryKey: ["regions", regionCode, "subregions"],
     queryFn: async () => {
-      const response = await mutate("GET", `/regions/${regionCode}/subregions`);
-      return response as Region[];
+      const response = await get(`/regions/${regionCode}/subregions`, {});
+      return response as unknown as Region[];
     },
   });
 
@@ -50,9 +50,22 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       ),
     },
     {
-      accessorKey: "openHotspots",
+      accessorKey: "openHotspotCount",
       header: "Open Hotspots",
-      cell: () => <span className="text-gray-400">-</span>,
+      enableSorting: true,
+      cell: ({ row }) => {
+        const { hotspotCount, openHotspotCount } = row.original;
+        if (hotspotCount === undefined || openHotspotCount === undefined) {
+          return <span className="text-gray-400">-</span>;
+        }
+
+        const percentage = hotspotCount > 0 ? Math.round((openHotspotCount / hotspotCount) * 100) : 0;
+        return (
+          <span className="text-gray-200">
+            {openHotspotCount.toLocaleString()} <span className="text-gray-400 text-xs">({percentage}%)</span>
+          </span>
+        );
+      },
     },
     {
       accessorKey: "actions",
@@ -78,7 +91,12 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
     onSortingChange: (updater) => {
       const newSorting = typeof updater === "function" ? updater(sorting) : updater;
       if (newSorting.length === 0) {
-        setSorting([{ id: "name", desc: false }]);
+        const currentSort = sorting[0];
+        if (currentSort) {
+          setSorting([{ id: currentSort.id, desc: !currentSort.desc }]);
+        } else {
+          setSorting([{ id: "name", desc: false }]);
+        }
       } else {
         setSorting(newSorting);
       }
@@ -163,21 +181,32 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
             ))}
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className={cn(
-                      "p-4 text-gray-200",
-                      ["openHotspots", "actions"].includes(cell.column.id) && "w-0 whitespace-nowrap"
-                    )}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length} className="p-8">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
+                    <span className="ml-3 text-gray-400">Loading subregions...</span>
+                  </div>
+                </td>
               </tr>
-            ))}
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        "p-4 text-gray-200",
+                        ["openHotspots", "actions"].includes(cell.column.id) && "w-0 whitespace-nowrap"
+                      )}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

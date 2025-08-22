@@ -90,7 +90,36 @@ regions.get("/:regionCode/subregions", async (c) => {
       _id: { $regex: `^${regionCode}-[^-]+$` },
     }).lean();
 
-    return c.json(subregions);
+    const subregionIds = subregions.map((r) => r._id);
+
+    const hotspotStats = await Hotspot.aggregate([
+      {
+        $match: {
+          region: { $in: subregionIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$region",
+          totalCount: { $sum: 1 },
+          openCount: {
+            $sum: {
+              $cond: [{ $eq: ["$open", true] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const statsMap = new Map(hotspotStats.map((stat) => [stat._id, { total: stat.totalCount, open: stat.openCount }]));
+
+    const subregionsWithHotspots = subregions.map((subregion) => ({
+      ...subregion,
+      hotspotCount: statsMap.get(subregion._id)?.total || 0,
+      openHotspotCount: statsMap.get(subregion._id)?.open || 0,
+    }));
+
+    return c.json(subregionsWithHotspots);
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;

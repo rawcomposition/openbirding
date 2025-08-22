@@ -26,9 +26,10 @@ type Props = {
   total?: number;
   defaultSort?: { id: string; desc: boolean };
   showDistance?: boolean;
+  isLoading?: boolean;
 };
 
-const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance }: Props) => {
+const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isLoading }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([defaultSort || { id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
   const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount, clearChanges } = useEditStore();
@@ -115,7 +116,12 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance }: P
     onSortingChange: (updater) => {
       const newSorting = typeof updater === "function" ? updater(sorting) : updater;
       if (newSorting.length === 0) {
-        setSorting([{ id: "species", desc: true }]);
+        const currentSort = sorting[0];
+        if (currentSort) {
+          setSorting([{ id: currentSort.id, desc: !currentSort.desc }]);
+        } else {
+          setSorting([{ id: "species", desc: true }]);
+        }
       } else {
         setSorting(newSorting);
       }
@@ -214,20 +220,31 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance }: P
             ))}
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <HotspotRow
-                key={row.id}
-                id={row.original._id}
-                name={row.original.name}
-                open={row.original.open}
-                notes={row.original.notes}
-                species={row.original.species}
-                lat={row.original.location?.coordinates[1]}
-                lng={row.original.location?.coordinates[0]}
-                distance={row.original.distance}
-                showDistance={showDistance}
-              />
-            ))}
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length} className="p-8">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
+                    <span className="ml-3 text-gray-400">Loading hotspots...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <HotspotRow
+                  key={row.id}
+                  id={row.original._id}
+                  name={row.original.name}
+                  open={row.original.open}
+                  notes={row.original.notes}
+                  species={row.original.species}
+                  lat={row.original.location?.coordinates[1]}
+                  lng={row.original.location?.coordinates[0]}
+                  distance={row.original.distance}
+                  showDistance={showDistance}
+                />
+              ))
+            )}
           </tbody>
         </table>
       </div>

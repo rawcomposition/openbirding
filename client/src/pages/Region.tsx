@@ -31,7 +31,7 @@ const Region = () => {
 
   const { data: hotspots, isLoading: isLoadingHotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
     queryKey: [`/regions/${regionCode}/hotspots`],
-    enabled: !!regionCode,
+    enabled: !!regionCode && !region?.hasChildren,
     refetchOnWindowFocus: false,
   });
 
@@ -94,7 +94,12 @@ const Region = () => {
       {region.hasChildren ? (
         <RegionList regionCode={regionCode!} />
       ) : regionCode && hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
-        <HotspotList hotspots={hotspots.hotspots} queryKey={`/regions/${regionCode}/hotspots`} total={hotspots.count} />
+        <HotspotList
+          hotspots={hotspots.hotspots}
+          queryKey={`/regions/${regionCode}/hotspots`}
+          total={hotspots.count}
+          isLoading={isLoadingHotspots}
+        />
       ) : (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent>
