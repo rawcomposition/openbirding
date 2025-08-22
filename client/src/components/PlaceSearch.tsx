@@ -203,9 +203,9 @@ export default function PlaceSearch({ onChange, pill, ...props }: SearchProps) {
       autoFocus
       components={{ DropdownIndicator }}
       formatOptionLabel={formatOptionLabel}
-      noOptionsMessage={({ inputValue }) => (inputValue ? "No places found" : "Search for a place...")}
+      noOptionsMessage={({ inputValue }) => (inputValue ? "No places found" : "Search for a city or town")}
       loadingMessage={() => "Searching..."}
-      placeholder="Search for a place..."
+      placeholder="Find nearby hotspots..."
       onChange={onSelectChange}
       escapeClearsValue
       {...props}
