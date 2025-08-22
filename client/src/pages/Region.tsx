@@ -31,7 +31,7 @@ const Region = () => {
 
   const { data: hotspots, isLoading: isLoadingHotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
     queryKey: [`/regions/${regionCode}/hotspots`],
-    enabled: !!regionCode && !region?.hasChildren,
+    enabled: !!regionCode && !!region && !region?.hasChildren,
     refetchOnWindowFocus: false,
   });
 
