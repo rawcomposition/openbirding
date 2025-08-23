@@ -118,7 +118,7 @@
     @apply bg-background text-foreground;
   }
   .mapboxgl-ctrl-bottom-left {
-    right: 35px !important;
+    right: 34px !important;
     left: unset !important;
     bottom: 5px !important;
   }
