@@ -5,6 +5,48 @@ import Hotspot from "../models/Hotspot.js";
 
 const hotspots = new Hono();
 
+hotspots.get("/", async (c) => {
+  try {
+    const bounds = c.req.query("bounds");
+
+    if (!bounds) {
+      throw new HTTPException(400, { message: "Bounds parameter is required" });
+    }
+
+    const [west, south, east, north] = bounds.split(",").map(Number);
+
+    if (bounds.split(",").length !== 4 || [west, south, east, north].some(isNaN)) {
+      throw new HTTPException(400, { message: "Bounds must be in format: west,south,east,north" });
+    }
+
+    await connect();
+
+    const hotspots = await Hotspot.find({
+      location: {
+        $geoWithin: {
+          $box: [
+            [west, south],
+            [east, north],
+          ],
+        },
+      },
+    })
+      .select({ name: 1, location: 1, open: 1, species: 1 })
+      .lean();
+
+    return c.json({
+      hotspots,
+      count: hotspots.length,
+    });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Error fetching hotspots by bounds:", error);
+    throw new HTTPException(500, { message: "Failed to fetch hotspots by bounds" });
+  }
+});
+
 hotspots.put("/bulk-update", async (c) => {
   try {
     const updates = await c.req.json<Array<{ _id: string; open?: boolean | null; notes?: string }>>();
