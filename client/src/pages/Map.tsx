@@ -122,7 +122,10 @@ const Map = () => {
 
       if (!properties) return;
 
-      const coordinates = (feature.geometry as { coordinates: [number, number] }).coordinates.slice();
+      const coordinates = (feature.geometry as unknown as { coordinates: [number, number] }).coordinates.slice() as [
+        number,
+        number
+      ];
 
       while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
         coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
