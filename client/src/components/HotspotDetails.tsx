@@ -63,20 +63,6 @@ const HotspotDetails = ({ hotspotId, isOpen, onOpenChange }: HotspotDetailsProps
                   <p className="text-sm text-gray-600">{selectedHotspot.notes}</p>
                 </div>
               )}
-
-              {selectedHotspot.tags && selectedHotspot.tags.length > 0 && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-medium text-gray-900 mb-2">Tags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedHotspot.tags.map((tag, index) => (
-                      <span key={index} className="px-2 py-1 bg-blue-100 text-blue-500 text-xs rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="flex gap-3">
                 <a
                   href={`https://ebird.org/hotspot/${selectedHotspot._id}`}

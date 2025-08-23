@@ -36,7 +36,6 @@ const HotspotSchema: Schema = new Schema({
   },
   notes: String,
   updatedAt: Date,
-  tags: [String],
 });
 
 HotspotSchema.index({ location: "2dsphere" });

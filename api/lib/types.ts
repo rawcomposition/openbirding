@@ -11,7 +11,6 @@ export type Hotspot = {
     coordinates: [number, number];
   };
   updatedAt: Date;
-  tags?: string[];
 };
 
 export type HotspotsResponse = {
@@ -20,21 +19,6 @@ export type HotspotsResponse = {
   page: number;
   limit: number;
   totalPages: number;
-};
-
-export enum TagCategory {
-  Fees = "fees",
-  Access = "access",
-  Hours = "hours",
-  Safety = "safety",
-}
-
-export type Tag = {
-  name: string;
-  id: string;
-  category: TagCategory;
-  icon: string;
-  color: string;
 };
 
 export type Region = {

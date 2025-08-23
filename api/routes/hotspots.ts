@@ -93,7 +93,7 @@ hotspots.put("/bulk-update", async (c) => {
 hotspots.put("/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const updateData = await c.req.json<{ tags?: string[] }>();
+    const updateData = await c.req.json<{ notes?: string }>();
 
     if (!id) {
       throw new HTTPException(400, { message: "Hotspot ID is required" });
