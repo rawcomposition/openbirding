@@ -30,7 +30,7 @@ const Map = () => {
 
   const {
     data: hotspotsData,
-    isLoading,
+    refetch,
     error,
   } = useQuery<HotspotsResponse>({
     queryKey: ["/hotspots", { bounds }],
@@ -233,19 +233,16 @@ const Map = () => {
         </div>
       )}
 
-      {isLoading && (
-        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
-          <div className="flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            <span className="text-sm text-gray-700">Loading hotspots...</span>
-          </div>
-        </div>
-      )}
-
       {error && (
-        <div className="absolute bottom-4 right-4 bg-red-100/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-red-300">
-          <div className="flex items-center gap-2">
+        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg py-3 px-4 shadow-lg">
+          <div className="flex items-center gap-4">
             <span className="text-sm text-red-700">Error loading hotspots</span>
+            <button
+              className="text-sm text-red-700 border border-red-700 rounded-md px-2 py-1 cursor-pointer"
+              onClick={() => refetch()}
+            >
+              Retry
+            </button>
           </div>
         </div>
       )}
@@ -254,15 +251,15 @@ const Map = () => {
         <h3 className="text-sm font-semibold text-gray-800 mb-2">Legend</h3>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></div>
+            <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white" />
             <span className="text-xs text-gray-700">Open Access</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-700 border-2 border-white"></div>
+            <div className="w-3 h-3 rounded-full bg-gray-700 border-2 border-white" />
             <span className="text-xs text-gray-700">Not Open Access</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white"></div>
+            <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white" />
             <span className="text-xs text-gray-700">Not Reviewed</span>
           </div>
         </div>
