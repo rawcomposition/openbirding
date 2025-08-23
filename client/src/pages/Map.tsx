@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { HotspotsResponse } from "@/lib/types";
+import Spinner from "@/components/ui/spinner";
 
 const MIN_ZOOM = 7;
 
@@ -31,6 +32,7 @@ const Map = () => {
   const {
     data: hotspotsData,
     refetch,
+    isLoading,
     error,
   } = useQuery<HotspotsResponse>({
     queryKey: ["/hotspots", { bounds }],
@@ -66,6 +68,8 @@ const Map = () => {
       zoom: storedState?.zoom || defaultZoom,
       attributionControl: false,
     });
+
+    map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
     map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
@@ -247,7 +251,7 @@ const Map = () => {
         </div>
       )}
 
-      <div className="absolute bottom-8 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+      <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
         <h3 className="text-sm font-semibold text-gray-800 mb-2">Legend</h3>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -262,6 +266,13 @@ const Map = () => {
             <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white" />
             <span className="text-xs text-gray-700">Not Reviewed</span>
           </div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          {isLoading ? (
+            <Spinner size="md" />
+          ) : (
+            <p className="text-xs text-gray-600">{hotspotsData?.count || "--"} hotspots</p>
+          )}
         </div>
       </div>
     </div>
