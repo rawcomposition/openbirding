@@ -10,6 +10,22 @@ const Map = () => {
   const [bounds, setBounds] = useState<string | null>(null);
   const [isZoomedTooFarOut, setIsZoomedTooFarOut] = useState(false);
 
+  const getStoredMapState = () => {
+    if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem("mapState");
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  };
+
+  const storeMapState = (center: [number, number], zoom: number) => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mapState", JSON.stringify({ center, zoom }));
+  };
+
   const {
     data: hotspotsData,
     isLoading,
@@ -37,11 +53,15 @@ const Map = () => {
 
     mapboxgl.accessToken = mapboxKey;
 
+    const storedState = getStoredMapState();
+    const defaultCenter: [number, number] = [-98, 39];
+    const defaultZoom = 4;
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current!,
       style: "mapbox://styles/mapbox/outdoors-v12",
-      center: [-74.006, 40.7128],
-      zoom: 10,
+      center: storedState?.center || defaultCenter,
+      zoom: storedState?.zoom || defaultZoom,
       attributionControl: false,
     });
 
@@ -98,6 +118,7 @@ const Map = () => {
       if (!currentBounds) return;
 
       const currentZoom = map.current.getZoom();
+      const currentCenter = map.current.getCenter();
       const boundsString = `${currentBounds.getWest()},${currentBounds.getSouth()},${currentBounds.getEast()},${currentBounds.getNorth()}`;
 
       setIsZoomedTooFarOut(currentZoom < 8);
@@ -105,13 +126,18 @@ const Map = () => {
       if (currentZoom >= 8) {
         setBounds(boundsString);
       }
+
+      storeMapState([currentCenter.lng, currentCenter.lat], currentZoom);
     });
 
     map.current.on("zoomend", () => {
       if (!map.current) return;
 
       const currentZoom = map.current.getZoom();
+      const currentCenter = map.current.getCenter();
       setIsZoomedTooFarOut(currentZoom < 8);
+
+      storeMapState([currentCenter.lng, currentCenter.lat], currentZoom);
     });
 
     map.current.on("click", "hotspot-points", (e) => {
@@ -227,11 +253,11 @@ const Map = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></div>
-            <span className="text-xs text-gray-700">Open</span>
+            <span className="text-xs text-gray-700">Open Access</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-gray-700 border-2 border-white"></div>
-            <span className="text-xs text-gray-700">Closed</span>
+            <span className="text-xs text-gray-700">Not Open Access</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white"></div>
