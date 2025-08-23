@@ -158,7 +158,9 @@ const Map = () => {
       if (!properties) return;
 
       setSelectedHotspotId(properties.id);
-      setIsSheetOpen(true);
+      if (!isSheetOpen) {
+        setIsSheetOpen(true);
+      }
     });
 
     map.current.on("mouseenter", "hotspot-points", () => {

@@ -17,7 +17,7 @@ const HotspotDetails = ({ hotspotId, isOpen, onOpenChange }: HotspotDetailsProps
   });
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet open={isOpen} onOpenChange={onOpenChange} modal={false}>
       <SheetContent side="right" className="w-full sm:max-w-lg bg-white text-gray-900">
         <SheetHeader>
           <SheetTitle className="text-left">
