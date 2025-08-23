@@ -4,6 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { HotspotsResponse } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
+import HotspotDetails from "@/components/HotspotDetails";
 
 const MIN_ZOOM = 7;
 
@@ -12,6 +13,8 @@ const Map = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [bounds, setBounds] = useState<string | null>(null);
   const [isZoomedTooFarOut, setIsZoomedTooFarOut] = useState(false);
+  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const getStoredMapState = () => {
     if (typeof window === "undefined") return null;
@@ -154,29 +157,8 @@ const Map = () => {
 
       if (!properties) return;
 
-      const coordinates = (feature.geometry as unknown as { coordinates: [number, number] }).coordinates.slice() as [
-        number,
-        number
-      ];
-
-      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-      }
-
-      new mapboxgl.Popup()
-        .setLngLat(coordinates)
-        .setHTML(
-          `
-          <div class="p-2">
-            <h3 class="font-semibold text-gray-800">${properties.title}</h3>
-            <p class="text-sm text-gray-700">${properties.species} species</p>
-            <p class="text-sm text-gray-700">${
-              properties.open === true ? "Open Access" : properties.open === false ? "Not Open Access" : "Not Reviewed"
-            }</p>
-          </div>
-        `
-        )
-        .addTo(map.current!);
+      setSelectedHotspotId(properties.id);
+      setIsSheetOpen(true);
     });
 
     map.current.on("mouseenter", "hotspot-points", () => {
@@ -275,6 +257,8 @@ const Map = () => {
           )}
         </div>
       </div>
+
+      <HotspotDetails hotspotId={selectedHotspotId} isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} />
     </div>
   );
 };
