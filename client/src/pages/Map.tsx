@@ -251,7 +251,7 @@ const Map = () => {
         </div>
       )}
 
-      <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+      <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg hidden sm:block">
         <h3 className="text-sm font-semibold text-gray-800 mb-2">Legend</h3>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
