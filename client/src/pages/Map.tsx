@@ -4,6 +4,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { HotspotsResponse } from "@/lib/types";
 
+const MIN_ZOOM = 7;
+
 const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -104,9 +106,9 @@ const Map = () => {
       const currentZoom = map.current.getZoom();
       const boundsString = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
 
-      setIsZoomedTooFarOut(currentZoom < 8);
+      setIsZoomedTooFarOut(currentZoom < MIN_ZOOM);
 
-      if (currentZoom >= 8) {
+      if (currentZoom >= MIN_ZOOM) {
         setBounds(boundsString);
       }
     });
@@ -121,9 +123,9 @@ const Map = () => {
       const currentCenter = map.current.getCenter();
       const boundsString = `${currentBounds.getWest()},${currentBounds.getSouth()},${currentBounds.getEast()},${currentBounds.getNorth()}`;
 
-      setIsZoomedTooFarOut(currentZoom < 8);
+      setIsZoomedTooFarOut(currentZoom < MIN_ZOOM);
 
-      if (currentZoom >= 8) {
+      if (currentZoom >= MIN_ZOOM) {
         setBounds(boundsString);
       }
 
@@ -135,7 +137,7 @@ const Map = () => {
 
       const currentZoom = map.current.getZoom();
       const currentCenter = map.current.getCenter();
-      setIsZoomedTooFarOut(currentZoom < 8);
+      setIsZoomedTooFarOut(currentZoom < MIN_ZOOM);
 
       storeMapState([currentCenter.lng, currentCenter.lat], currentZoom);
     });
