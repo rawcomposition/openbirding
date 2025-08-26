@@ -24,8 +24,12 @@ export async function setupDatabase() {
     .addCheckConstraint("chk_open_bool", sql`open IN (0,1) OR open IS NULL`)
     .execute();
 
-  await db.schema.createIndex("hotspots_region_idx").ifNotExists().on("hotspots").column("region").execute();
-  await db.schema.createIndex("hotspots_species_idx").ifNotExists().on("hotspots").column("species").execute();
+  await db.schema
+    .createIndex("hotspots_region_species_idx")
+    .ifNotExists()
+    .on("hotspots")
+    .columns(["region", "species"])
+    .execute();
 
   await db.executeQuery(
     sql`
