@@ -2,9 +2,10 @@ import Database from "better-sqlite3";
 import { Kysely, SqliteDialect } from "kysely";
 import type { SQLiteHotspot } from "./types.js";
 
-interface DatabaseSchema {
+type DatabaseSchema = {
   hotspots: SQLiteHotspot;
-}
+  hotspots_rtree: { rowId: number; minLat: number; maxLat: number; minLng: number; maxLng: number };
+};
 
 const db = new Kysely<DatabaseSchema>({
   dialect: new SqliteDialect({

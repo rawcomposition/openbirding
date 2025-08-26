@@ -3,6 +3,8 @@ import { HTTPException } from "hono/http-exception";
 import connect from "../lib/db.js";
 import Hotspot from "../models/Hotspot.js";
 import db from "../lib/sqlite.js";
+import { getCosLat, getDistanceKm, getRadiusSquared, makeBounds } from "lib/spatial.js";
+import { sql } from "kysely";
 
 const hotspots = new Hono();
 
@@ -109,42 +111,66 @@ hotspots.get("/by-region/:regionCode", async (c) => {
 hotspots.get("/nearby/:coordinates", async (c) => {
   try {
     const { coordinates } = c.req.param();
-
-    if (!coordinates) {
-      throw new HTTPException(400, { message: "Coordinates are required" });
-    }
+    if (!coordinates) throw new HTTPException(400, { message: "Coordinates are required" });
 
     const [lat, lng] = coordinates.split(",").map(Number);
+    if (isNaN(lat) || isNaN(lng)) throw new HTTPException(400, { message: "Invalid coordinates format" });
 
-    if (isNaN(lat) || isNaN(lng)) {
-      throw new HTTPException(400, { message: "Invalid coordinates format" });
-    }
+    const radiusKm = Number(c.req.query("radiusKm") ?? 200);
+    const limit = Math.min(Number(c.req.query("limit") ?? 200), 1000);
 
-    await connect();
+    const cosLat0 = getCosLat(lat);
+    const rSq = getRadiusSquared(radiusKm);
+    const boxes = makeBounds(lat, lng, radiusKm);
 
-    const hotspots = await Hotspot.aggregate([
-      {
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: [lng, lat],
-          },
-          distanceField: "distance",
-          spherical: true,
-          maxDistance: 50000000,
-        },
-      },
-      {
-        $limit: 200,
-      },
-    ]);
+    const distSq = sql<number>`
+      (( (h.lng - ${lng}) * ${cosLat0} ) * ( (h.lng - ${lng}) * ${cosLat0} )
+       + (h.lat - ${lat}) * (h.lat - ${lat}))
+    `;
+
+    const q = db
+      .selectFrom("hotspots as h")
+      .innerJoin(sql`hotspots_rtree`.as("r"), (join) => join.on(sql.ref("r.rowId"), "=", sql.ref("h.rowId")))
+      .select([
+        "h.id as id",
+        "h.name as name",
+        "h.species as species",
+        "h.open as open",
+        "h.notes as notes",
+        "h.lat as lat",
+        "h.lng as lng",
+        distSq.as("distance_sq_deg"),
+      ])
+      .where((eb) =>
+        eb.or(
+          boxes.map((b) =>
+            eb.and([
+              sql<boolean>`r.minLat <= ${b.maxLat} AND r.maxLat >= ${b.minLat}`,
+              sql<boolean>`r.minLng <= ${b.maxLng} AND r.maxLng >= ${b.minLng}`,
+            ])
+          )
+        )
+      )
+      .where(distSq, "<=", rSq)
+      .orderBy(distSq, "asc")
+      .limit(limit);
+
+    const rows = await q.execute();
+
+    const hotspots = rows.map((r) => ({
+      _id: r.id,
+      name: r.name,
+      species: r.species,
+      location: { type: "Point" as const, coordinates: [r.lng, r.lat] as [number, number] },
+      open: r.open === 1 ? true : r.open === 0 ? false : null,
+      notes: r.notes,
+      distance: getDistanceKm(lat, lng, r.lat, r.lng),
+    }));
 
     return c.json(hotspots);
   } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error;
-    }
-    console.error("Error fetching hotspots near coordinates:", error);
+    if (error instanceof HTTPException) throw error;
+    console.error("Error fetching hotspots near coordinates (sqlite):", error);
     throw new HTTPException(500, { message: "Failed to fetch hotspots" });
   }
 });

@@ -171,7 +171,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
         <td className="p-4 w-0 whitespace-nowrap">
           {distance !== undefined ? (
             <span className="text-sm text-gray-300">
-              {distance < 10000 ? `${(distance / 1000).toFixed(1)} km` : `${Math.round(distance / 1000)} km`}
+              {distance < 10 ? `${distance.toFixed(1)} km` : `${Math.round(distance)} km`}
             </span>
           ) : (
             <span className="text-sm text-gray-500">-</span>
