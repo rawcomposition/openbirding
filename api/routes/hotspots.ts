@@ -48,52 +48,6 @@ hotspots.get("/within-bounds", async (c) => {
   }
 });
 
-hotspots.get("/by-region-sqlite/:regionCode", async (c) => {
-  try {
-    const regionCode = c.req.param("regionCode");
-
-    if (!regionCode) {
-      throw new HTTPException(400, { message: "Region code is required" });
-    }
-
-    const hotspots = await db
-      .selectFrom("hotspots")
-      .selectAll()
-      .where("region", "=", regionCode)
-      .orderBy("species", "desc")
-      .execute();
-
-    const transformedHotspots = hotspots.map((hotspot) => ({
-      _id: hotspot.id,
-      name: hotspot.name,
-      region: hotspot.region,
-      country: hotspot.country,
-      state: hotspot.state,
-      county: hotspot.county,
-      species: hotspot.species,
-      location: {
-        type: "Point" as const,
-        coordinates: [hotspot.lng, hotspot.lat] as [number, number],
-      },
-      open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
-      notes: hotspot.notes,
-      updatedAt: hotspot.updatedAt ? new Date(hotspot.updatedAt) : undefined,
-    }));
-
-    return c.json({
-      hotspots: transformedHotspots,
-      count: transformedHotspots.length,
-      regionCode,
-    });
-  } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error;
-    }
-    console.error("Error fetching hotspots by region from SQLite:", error);
-    throw new HTTPException(500, { message: "Failed to fetch hotspots by region" });
-  }
-});
-
 hotspots.get("/by-region/:regionCode", async (c) => {
   try {
     const regionCode = c.req.param("regionCode");
@@ -102,33 +56,53 @@ hotspots.get("/by-region/:regionCode", async (c) => {
       throw new HTTPException(400, { message: "Region code is required" });
     }
 
-    await connect();
-
     const page = parseInt(c.req.query("page") || "1");
-    const limit = parseInt(c.req.query("limit") || "50000");
-    const skip = (page - 1) * limit;
+    const limit = parseInt(c.req.query("limit") || "10000");
+    const offset = (page - 1) * limit;
+
     const [hotspots, totalCount] = await Promise.all([
-      Hotspot.find({ region: { $regex: `^${regionCode}` } }, { name: 1, open: 1, notes: 1, species: 1, location: 1 })
-        .sort({ species: -1 })
-        .skip(skip)
+      db
+        .selectFrom("hotspots")
+        .select(["id", "name", "open", "notes", "species", "lng", "lat"])
+        .where("region", "like", `${regionCode}%`)
+        .orderBy("species", "desc")
         .limit(limit)
-        .lean(),
-      Hotspot.countDocuments({ region: { $regex: `^${regionCode}` } }),
+        .offset(offset)
+        .execute(),
+      db
+        .selectFrom("hotspots")
+        .select(db.fn.count("id").as("count"))
+        .where("region", "like", `${regionCode}%`)
+        .executeTakeFirst(),
     ]);
 
+    const transformedHotspots = hotspots.map((hotspot) => ({
+      _id: hotspot.id,
+      name: hotspot.name,
+      species: hotspot.species,
+      location: {
+        type: "Point" as const,
+        coordinates: [hotspot.lng, hotspot.lat] as [number, number],
+      },
+      open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
+      notes: hotspot.notes,
+    }));
+
+    const count = totalCount?.count || 0;
+
     return c.json({
-      hotspots,
-      count: totalCount,
+      hotspots: transformedHotspots,
+      count: Number(count),
       page,
       limit,
-      totalPages: Math.ceil(totalCount / limit),
+      totalPages: Math.ceil(Number(count) / limit),
     });
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;
     }
-    console.error("Error fetching region hotspots:", error);
-    throw new HTTPException(500, { message: "Failed to fetch region hotspots" });
+    console.error("Error fetching hotspots by region:", error);
+    throw new HTTPException(500, { message: "Failed to fetch hotspots by region" });
   }
 });
 
