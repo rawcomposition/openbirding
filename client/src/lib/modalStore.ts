@@ -11,8 +11,14 @@ type ModalStore = {
 export const useModalStore = create<ModalStore>((set) => ({
   isOpen: false,
   hotspotId: null,
+  isSwitching: false,
   openModal: (hotspotId: string) => set({ isOpen: true, hotspotId }),
-  closeModal: () => set({ isOpen: false, hotspotId: null }),
+  closeModal: () => {
+    set({ isOpen: false });
+    setTimeout(() => {
+      set({ hotspotId: null });
+    }, 300);
+  },
   clickOutside: (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (
@@ -21,7 +27,10 @@ export const useModalStore = create<ModalStore>((set) => ({
       !target.closest('[role="button"]') &&
       !target.closest(".mapboxgl-canvas")
     ) {
-      set({ isOpen: false, hotspotId: null });
+      set({ isOpen: false });
+      setTimeout(() => {
+        set({ hotspotId: null });
+      }, 300);
     }
   },
 }));
