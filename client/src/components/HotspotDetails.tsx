@@ -34,10 +34,10 @@ const HotspotDetails = () => {
           </SheetTitle>
           <SheetDescription className="text-left">
             {selectedHotspot && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="flex items-center gap-2 text-sm text-gray-600">
                 <Bird className="h-4 w-4" />
                 <span>{selectedHotspot.species} species</span>
-              </div>
+              </span>
             )}
           </SheetDescription>
         </SheetHeader>
