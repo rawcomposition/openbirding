@@ -8,7 +8,9 @@
     "dev": "tsx watch --env-file=.env index.ts",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "sync-regions": "tsx --env-file=.env scripts/sync-regions.ts"
+    "sync-regions": "tsx --env-file=.env scripts/sync-regions.ts",
+    "setup-sqlite": "tsx --env-file=.env scripts/setup-sqlite.ts",
+    "migrate-hotspots": "tsx --env-file=.env scripts/migrate-hotspots.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,8 +20,10 @@
     "@hono/node-server": "^1.8.2",
     "@types/mongoose": "^5.11.96",
     "@types/node": "^24.1.0",
+    "better-sqlite3": "^11.6.0",
     "dotenv": "^16.4.5",
     "hono": "^4.0.5",
+    "kysely": "^0.27.3",
     "mongoose": "^8.16.5",
     "typescript": "^5.8.3"
   },

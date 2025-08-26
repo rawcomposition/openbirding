@@ -10,7 +10,26 @@ export type Hotspot = {
     type: "Point";
     coordinates: [number, number];
   };
+  notes: string;
+  open: boolean;
+  createdAt: Date;
   updatedAt: Date;
+};
+
+export type SQLiteHotspot = {
+  id: string;
+  name: string;
+  region: string;
+  country: string | null;
+  state: string | null;
+  county: string | null;
+  species: number;
+  lat: number;
+  lng: number;
+  open: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type HotspotsResponse = {

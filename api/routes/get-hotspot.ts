@@ -2,26 +2,6 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import connect from "../lib/db.js";
 import Hotspot from "../models/Hotspot.js";
-import type { Hotspot as HotspotType } from "../lib/types.js";
-
-type EBirdHotspot = {
-  locId: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  countryCode: string;
-  countryName: string;
-  subnational1Code: string;
-  subnational1Name: string;
-  subnational2Code: string;
-  subnational2Name: string;
-  isHotspot: boolean;
-  locName: string;
-  lat: number;
-  lng: number;
-  hierarchicalName: string;
-  locID: string;
-};
 
 const getHotspot = new Hono();
 
