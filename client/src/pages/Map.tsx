@@ -38,7 +38,7 @@ const Map = () => {
     isLoading,
     error,
   } = useQuery<HotspotsResponse>({
-    queryKey: ["/hotspots", { bounds }],
+    queryKey: ["/hotspots/within-bounds", { bounds }],
     enabled: !!bounds && !isZoomedTooFarOut,
     staleTime: 5 * 60 * 1000,
   });

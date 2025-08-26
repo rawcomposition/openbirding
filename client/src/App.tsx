@@ -4,7 +4,6 @@ import { Toaster } from "react-hot-toast";
 import Header from "./components/Header";
 import Home from "./pages/Home";
 import Map from "./pages/Map";
-import AddHotspot from "./pages/AddHotspot";
 import Region from "./pages/Region";
 import Place from "./pages/Place";
 import { get } from "./lib/utils";
@@ -33,7 +32,6 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/map" element={<Map />} />
-              <Route path="/add-hotspot" element={<AddHotspot />} />
               <Route path="/region/:regionCode" element={<Region />} />
               <Route path="/place/:placeName/:coordinates" element={<Place />} />
             </Routes>

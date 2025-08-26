@@ -45,44 +45,6 @@ regions.get("/:regionCode", async (c) => {
   }
 });
 
-regions.get("/:regionCode/hotspots", async (c) => {
-  try {
-    const regionCode = c.req.param("regionCode");
-
-    if (!regionCode) {
-      throw new HTTPException(400, { message: "Region code is required" });
-    }
-
-    await connect();
-
-    const page = parseInt(c.req.query("page") || "1");
-    const limit = parseInt(c.req.query("limit") || "50000");
-    const skip = (page - 1) * limit;
-    const [hotspots, totalCount] = await Promise.all([
-      Hotspot.find({ region: { $regex: `^${regionCode}` } }, { name: 1, open: 1, notes: 1, species: 1, location: 1 })
-        .sort({ species: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Hotspot.countDocuments({ region: { $regex: `^${regionCode}` } }),
-    ]);
-
-    return c.json({
-      hotspots,
-      count: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-    });
-  } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error;
-    }
-    console.error("Error fetching region hotspots:", error);
-    throw new HTTPException(500, { message: "Failed to fetch region hotspots" });
-  }
-});
-
 regions.get("/:regionCode/subregions", async (c) => {
   try {
     const regionCode = c.req.param("regionCode");

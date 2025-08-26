@@ -3,6 +3,7 @@ import type { Hotspot } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ExternalLink, Bird, Calendar, Globe, Navigation } from "lucide-react";
+import { get } from "@/lib/utils";
 
 interface HotspotDetailsProps {
   hotspotId: string | null;
@@ -12,7 +13,7 @@ interface HotspotDetailsProps {
 
 const HotspotDetails = ({ hotspotId, isOpen, onOpenChange }: HotspotDetailsProps) => {
   const { data: selectedHotspot, isLoading: isLoadingHotspot } = useQuery<Hotspot>({
-    queryKey: ["/get-hotspot", { locationId: hotspotId }],
+    queryKey: [`/hotspots/${hotspotId}`],
     enabled: !!hotspotId,
   });
 

@@ -16,7 +16,7 @@ const Place = () => {
     error,
     refetch,
   } = useQuery<Hotspot[]>({
-    queryKey: [`/places/${coordinates}`],
+    queryKey: [`/hotspots/nearby/${coordinates}`],
     enabled: !!(placeName && coordinates),
     refetchOnWindowFocus: false,
   });
@@ -65,7 +65,7 @@ const Place = () => {
       {hotspots && hotspots.length > 0 ? (
         <HotspotList
           hotspots={hotspots}
-          queryKey={`/places/${coordinates}`}
+          queryKey={`/hotspots/nearby/${coordinates}`}
           defaultSort={{ id: "distance", desc: false }}
           showDistance={true}
           isLoading={isLoading}
@@ -79,7 +79,7 @@ const Place = () => {
       ) : (
         <HotspotList
           hotspots={[]}
-          queryKey={`/places/${coordinates}`}
+          queryKey={`/hotspots/nearby/${coordinates}`}
           defaultSort={{ id: "distance", desc: false }}
           showDistance={true}
           isLoading={isLoading}
