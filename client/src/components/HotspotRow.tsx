@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Check, X, HelpCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useEditActions, useEditMode } from "@/lib/editStore";
+import { useModalStore } from "@/lib/modalStore";
 import { cn } from "@/lib/utils";
 
 type HotspotRowProps = {
@@ -20,6 +21,7 @@ type HotspotRowProps = {
 const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, showDistance }: HotspotRowProps) => {
   const isEditMode = useEditMode();
   const { addChange, removeChange } = useEditActions();
+  const { openModal } = useModalStore();
   const [localOpen, setLocalOpen] = useState<boolean | null>(open);
   const [localNotes, setLocalNotes] = useState<string>(notes || "");
 
@@ -72,7 +74,12 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
         <div className="flex items-center gap-3">
           <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-300 flex-shrink-0 row-number"></span>
           <div>
-            <div className="font-medium text-white">{name}</div>
+            <div
+              className="font-medium text-white cursor-pointer hover:text-emerald-200 transition-colors"
+              onClick={() => openModal(id)}
+            >
+              {name}
+            </div>
             {isEditMode && (
               <div className="flex gap-4 mt-1">
                 {lat && lng && (

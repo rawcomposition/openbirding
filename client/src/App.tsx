@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Map from "./pages/Map";
 import Region from "./pages/Region";
 import Place from "./pages/Place";
+import HotspotDetails from "./components/HotspotDetails";
 import { get } from "./lib/utils";
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ function App() {
             </Routes>
           </main>
         </div>
+        <HotspotDetails />
         <Toaster position="top-right" />
       </Router>
     </QueryClientProvider>

@@ -3,22 +3,25 @@ import type { Hotspot } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ExternalLink, Bird, Calendar, Globe, Navigation } from "lucide-react";
+import { useModalStore } from "@/lib/modalStore";
 
-interface HotspotDetailsProps {
-  hotspotId: string | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+const HotspotDetails = () => {
+  const { isOpen, hotspotId, closeModal } = useModalStore();
 
-const HotspotDetails = ({ hotspotId, isOpen, onOpenChange }: HotspotDetailsProps) => {
   const { data: selectedHotspot, isLoading: isLoadingHotspot } = useQuery<Hotspot>({
     queryKey: [`/hotspots/${hotspotId}`],
     enabled: !!hotspotId,
   });
 
+  console.log("hotspotId", hotspotId);
+
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange} modal={false}>
-      <SheetContent side="right" className="w-full sm:max-w-lg bg-white text-gray-900">
+    <Sheet open={isOpen} onOpenChange={closeModal} modal={false}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg bg-white text-gray-900"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <SheetHeader>
           <SheetTitle className="text-left">
             {isLoadingHotspot ? (

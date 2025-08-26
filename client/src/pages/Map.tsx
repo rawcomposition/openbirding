@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { HotspotsResponse } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
-import HotspotDetails from "@/components/HotspotDetails";
+import { useModalStore } from "@/lib/modalStore";
 
 const MIN_ZOOM = 7;
 
@@ -13,8 +13,7 @@ const Map = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [bounds, setBounds] = useState<string | null>(null);
   const [isZoomedTooFarOut, setIsZoomedTooFarOut] = useState(false);
-  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { openModal, closeModal } = useModalStore();
 
   const getStoredMapState = () => {
     if (typeof window === "undefined") return null;
@@ -157,9 +156,13 @@ const Map = () => {
 
       if (!properties) return;
 
-      setSelectedHotspotId(properties.id);
-      if (!isSheetOpen) {
-        setIsSheetOpen(true);
+      openModal(properties.id);
+    });
+
+    map.current.on("click", (e) => {
+      const features = map.current?.queryRenderedFeatures(e.point, { layers: ["hotspot-points"] });
+      if (!features || features.length === 0) {
+        closeModal();
       }
     });
 
@@ -259,8 +262,6 @@ const Map = () => {
           )}
         </div>
       </div>
-
-      <HotspotDetails hotspotId={selectedHotspotId} isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} />
     </div>
   );
 };
