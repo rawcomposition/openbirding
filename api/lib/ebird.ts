@@ -1,8 +1,5 @@
-import connect from "./db.js";
-import Hotspot from "../models/Hotspot.js";
-import Settings from "../models/Settings.js";
-import Log from "../models/Log.js";
-import { syncRegions } from "../data/sync-regions.js";
+import db from "./sqlite.js";
+import { sql } from "kysely";
 import type { Hotspot as HotspotType } from "./types.js";
 import { REGION_SYNC_INTERVAL } from "./config.js";
 
@@ -61,43 +58,24 @@ const updateHotspot = (dbHotspot: HotspotType, ebird: ProcessedHotspot) => {
   const { name, lat, lng, total, subnational2Code } = ebird;
   const hasChanged =
     name !== dbHotspot.name ||
-    lat !== dbHotspot.location.coordinates[1] ||
-    lng !== dbHotspot.location.coordinates[0] ||
+    lat !== dbHotspot.lat ||
+    lng !== dbHotspot.lng ||
     total !== dbHotspot.species ||
     subnational2Code !== dbHotspot.county;
 
   if (!hasChanged) return null;
 
-  let location: { type: "Point"; coordinates: [number, number] } | null = null;
-  if (lat && lng) {
-    location = {
-      type: "Point",
-      coordinates: [lng, lat],
-    };
-  }
-
   return {
-    updateOne: {
-      filter: { _id: dbHotspot._id },
-      update: {
-        name,
-        species: total,
-        location,
-        county: subnational2Code,
-      },
-    },
+    id: dbHotspot.id,
+    name,
+    species: total,
+    lat,
+    lng,
+    county: subnational2Code,
   };
 };
 
-const deleteHotspot = (id: string) => {
-  return {
-    deleteOne: {
-      filter: { _id: id },
-    },
-  };
-};
-
-const insertHotspot = (ebird: ProcessedHotspot) => {
+const insertHotspot = (ebird: ProcessedHotspot, region: string) => {
   const { lat, lng, locationId, name, total, subnational1Code, subnational2Code } = ebird;
 
   if (!lat || !lng || !locationId || !name) return null;
@@ -106,125 +84,156 @@ const insertHotspot = (ebird: ProcessedHotspot) => {
   const state = hasValidStateCode ? subnational1Code : null;
   const county = subnational2Code;
 
-  let location: { type: "Point"; coordinates: [number, number] } | null = null;
-  if (lat && lng) {
-    location = {
-      type: "Point",
-      coordinates: [lng, lat],
-    };
-  }
-
   return {
-    insertOne: {
-      document: {
-        _id: locationId,
-        name,
-        country: subnational1Code?.split("-")?.[0] || "",
-        state,
-        county,
-        location,
-        species: total,
-      },
-    },
+    id: locationId,
+    name,
+    region,
+    country: subnational1Code?.split("-")?.[0] || "",
+    state,
+    county,
+    species: total,
+    lat,
+    lng,
+    open: null,
+    notes: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 };
 
-export const syncRegion = async (region?: string) => {
-  await connect();
-
-  if (!region) {
-    throw new Error("Region parameter is required");
+export const syncPack = async (packId?: number) => {
+  if (!packId) {
+    throw new Error("Pack ID parameter is required");
   }
 
+  const pack = await db.selectFrom("packs").selectAll().where("id", "=", packId).executeTakeFirst();
+
+  if (!pack) {
+    throw new Error(`Pack with ID ${packId} not found`);
+  }
+
+  console.log(`Starting sync for pack ${packId} (${pack.region})`);
+
   const [hotspots, dbHotspots] = await Promise.all([
-    getHotspotsForRegion(region),
-    Hotspot.find({ $or: [{ state: region }, { country: region }] }).select("_id name location species county"),
+    getHotspotsForRegion(pack.region),
+    db.selectFrom("hotspots").selectAll().where("region", "=", pack.region).execute(),
   ]);
 
-  const dbHotspotIds: string[] = dbHotspots.map((hotspot) => hotspot._id).filter(Boolean) as string[];
-  const ebirdIds = hotspots.map(({ locationId }) => locationId);
+  console.log(`Found ${hotspots.length} hotspots from eBird, ${dbHotspots.length} in database`);
 
-  const bulkWrites: any[] = [];
+  const ebirdIds = new Set(hotspots.map(({ locationId }) => locationId));
+  const existingIds = new Set(dbHotspots.map((h) => h.id));
+
   let insertCount = 0;
   let updateCount = 0;
   let deleteCount = 0;
 
-  hotspots.forEach((ebird: ProcessedHotspot) => {
-    const index = dbHotspotIds.indexOf(ebird.locationId);
-    if (index > -1) {
-      const dbHotspot = dbHotspots[index];
-      const updateOp = updateHotspot(dbHotspot, ebird);
-      if (updateOp) {
-        bulkWrites.push(updateOp);
+  const batchSize = 1000;
+  const totalBatches = Math.ceil(hotspots.length / batchSize);
+
+  for (let i = 0; i < hotspots.length; i += batchSize) {
+    const batch = hotspots.slice(i, i + batchSize);
+    const batchNumber = Math.floor(i / batchSize) + 1;
+
+    console.log(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} hotspots)`);
+
+    const batchValues = batch.map((ebird) => {
+      const hasValidStateCode = (ebird.subnational1Code?.split("-")?.filter(Boolean)?.length || 0) > 1;
+      const state = hasValidStateCode ? ebird.subnational1Code : null;
+
+      if (existingIds.has(ebird.locationId)) {
         updateCount++;
+      } else {
+        insertCount++;
       }
-      return;
-    }
-    const insertOp = insertHotspot(ebird);
-    if (insertOp) {
-      bulkWrites.push(insertOp);
-      insertCount++;
-    }
-  });
 
-  dbHotspots.forEach((dbHotspot: HotspotType) => {
-    if (ebirdIds.includes(dbHotspot._id)) return;
-    bulkWrites.push(deleteHotspot(dbHotspot._id));
-    deleteCount++;
-  });
+      return {
+        id: ebird.locationId,
+        name: ebird.name,
+        region: pack.region,
+        country: ebird.subnational1Code?.split("-")?.[0] || "",
+        state,
+        county: ebird.subnational2Code,
+        species: ebird.total,
+        lat: ebird.lat,
+        lng: ebird.lng,
+        open: null,
+        notes: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
 
-  if (bulkWrites.length > 0) {
-    await Hotspot.bulkWrite(bulkWrites);
+    if (batchValues.length > 0) {
+      await db
+        .insertInto("hotspots")
+        .values(batchValues)
+        .onConflict((oc) =>
+          oc.column("id").doUpdateSet({
+            name: sql`excluded.name`,
+            species: sql`excluded.species`,
+            lat: sql`excluded.lat`,
+            lng: sql`excluded.lng`,
+            region: sql`excluded.region`,
+            country: sql`excluded.country`,
+            state: sql`excluded.state`,
+            county: sql`excluded.county`,
+          })
+        )
+        .execute();
+    }
   }
 
-  const currentTimestamp = Date.now();
+  console.log(`Processing deletions...`);
+  const deletions = dbHotspots.filter((h) => !ebirdIds.has(h.id));
 
-  await Promise.all([
-    Log.create({
-      user: "BirdBot",
-      type: "sync",
-      message: `synced ${region}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
-    }),
-    Settings.updateOne({}, { [`regionSyncTimestamps.${region}`]: currentTimestamp }, { upsert: true }),
-  ]);
+  if (deletions.length > 0) {
+    const deleteIds = deletions.map((h) => h.id);
+    await db.deleteFrom("hotspots").where("id", "in", deleteIds).execute();
+    deleteCount = deletions.length;
+  }
 
-  console.log(`Sync complete for ${region}: ${insertCount} inserted, ${updateCount} updated, ${deleteCount} deleted`);
+  const currentTimestamp = new Date().toISOString();
+
+  await db
+    .updateTable("packs")
+    .set({
+      hotspots: hotspots.length,
+      lastSynced: currentTimestamp,
+    })
+    .where("id", "=", packId)
+    .execute();
+
+  console.log(
+    `Sync complete for pack ${packId} (${pack.region}): ${insertCount} inserted, ${updateCount} updated, ${deleteCount} deleted`
+  );
 
   return {
     success: true,
-    message: `Synced ${region}. Found ${insertCount || 0} new ${insertCount === 1 ? "hotspot" : "hotspots"}.`,
-    region,
+    message: `Synced pack ${packId} (${pack.region}). Inserted ${insertCount}, updated ${updateCount}, deleted ${deleteCount} hotspots.`,
+    packId,
+    region: pack.region,
     insertCount,
     updateCount,
     deleteCount,
   };
 };
 
-export const getRegionsNeedingSync = async () => {
-  await connect();
+export const getPacksNeedingSync = async (limit: number = 1000) => {
+  const currentTime = new Date();
+  const syncIntervalMs = REGION_SYNC_INTERVAL;
 
-  const settings = await Settings.findOne({}, "regionSyncTimestamps");
-  const timestampsMap = settings?.regionSyncTimestamps;
+  const packsNeedingSync = await db
+    .selectFrom("packs")
+    .selectAll()
+    .where((eb) =>
+      eb.or([
+        eb("lastSynced", "is", null),
+        eb("lastSynced", "<=", new Date(currentTime.getTime() - syncIntervalMs).toISOString()),
+      ])
+    )
+    .limit(limit)
+    .execute();
 
-  let timestamps: Record<string, number> = {};
-  if (timestampsMap) {
-    if (timestampsMap instanceof Map) {
-      timestamps = Object.fromEntries(timestampsMap);
-    } else {
-      timestamps = timestampsMap as Record<string, number>;
-    }
-  }
-
-  const currentTime = Date.now();
-
-  const regionsNeedingSync = syncRegions.filter((region) => {
-    const lastSyncTime = timestamps[region];
-    if (!lastSyncTime) return true;
-
-    const timeSinceLastSync = currentTime - lastSyncTime;
-    const needsSync = timeSinceLastSync >= REGION_SYNC_INTERVAL;
-    return needsSync;
-  });
-
-  return regionsNeedingSync;
+  return packsNeedingSync;
 };

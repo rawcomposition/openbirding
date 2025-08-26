@@ -3,11 +3,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import hotspots from "./routes/hotspots.js";
-import syncRegion from "./routes/sync-region.js";
-import syncAllRegions from "./routes/sync-all-regions.js";
+import packs from "./routes/packs.js";
 import search from "./routes/search.js";
 import regions from "./routes/regions.js";
-import places from "./routes/places.js";
 
 const app = new Hono();
 
@@ -18,11 +16,9 @@ if (process.env.CORS_ORIGINS) {
 }
 
 app.route("/api/hotspots", hotspots);
-app.route("/api/sync-region", syncRegion);
-app.route("/api/sync-all-regions", syncAllRegions);
+app.route("/api/packs", packs);
 app.route("/api/search", search);
 app.route("/api/regions", regions);
-app.route("/api/places", places);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);

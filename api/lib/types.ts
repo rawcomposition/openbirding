@@ -1,4 +1,5 @@
 export type Hotspot = {
+  rowId?: number;
   id: string;
   name: string;
   region: string;
