@@ -13,14 +13,13 @@ const HotspotDetails = () => {
     enabled: !!hotspotId,
   });
 
-  console.log("hotspotId", hotspotId);
-
   return (
     <Sheet open={isOpen} onOpenChange={closeModal} modal={false}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-lg bg-white text-gray-900"
         onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
       >
         <SheetHeader>
           <SheetTitle className="text-left">
