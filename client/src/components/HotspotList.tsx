@@ -37,7 +37,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
   const queryClient = useQueryClient();
 
   const saveChangesMutation = useMutation({
-    mutationFn: async (changes: Array<{ _id: string; open?: boolean | null; notes?: string }>) => {
+    mutationFn: async (changes: Array<{ id: string; open?: boolean | null; notes?: string }>) => {
       return mutate("PUT", "/hotspots/bulk-update", changes);
     },
     onSuccess: () => {

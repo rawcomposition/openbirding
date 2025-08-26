@@ -43,8 +43,8 @@ hotspots.get("/within-bounds", async (c) => {
       )
       .execute();
 
-    const hotspotsOut = rows.map((r) => ({
-      _id: r.id,
+    const transformedHotspots = rows.map((r) => ({
+      id: r.id,
       name: r.name,
       species: r.species,
       lat: r.lat,
@@ -53,7 +53,7 @@ hotspots.get("/within-bounds", async (c) => {
       notes: r.notes,
     }));
 
-    return c.json({ hotspots: hotspotsOut, count: hotspotsOut.length });
+    return c.json({ hotspots: transformedHotspots, count: transformedHotspots.length });
   } catch (error) {
     if (error instanceof HTTPException) throw error;
     console.error("Error fetching hotspots by bounds (sqlite):", error);
@@ -90,7 +90,7 @@ hotspots.get("/by-region/:regionCode", async (c) => {
     ]);
 
     const transformedHotspots = hotspots.map((hotspot) => ({
-      _id: hotspot.id,
+      id: hotspot.id,
       name: hotspot.name,
       species: hotspot.species,
       lat: hotspot.lat,
@@ -166,8 +166,8 @@ hotspots.get("/nearby/:coordinates", async (c) => {
 
     const rows = await q.execute();
 
-    const hotspots = rows.map((r) => ({
-      _id: r.id,
+    const transformedHotspots = rows.map((r) => ({
+      id: r.id,
       name: r.name,
       species: r.species,
       lat: r.lat,
@@ -177,7 +177,7 @@ hotspots.get("/nearby/:coordinates", async (c) => {
       distance: getDistanceKm(lat, lng, r.lat, r.lng),
     }));
 
-    return c.json(hotspots);
+    return c.json(transformedHotspots);
   } catch (error) {
     if (error instanceof HTTPException) throw error;
     console.error("Error fetching hotspots near coordinates (sqlite):", error);
@@ -187,36 +187,34 @@ hotspots.get("/nearby/:coordinates", async (c) => {
 
 hotspots.put("/bulk-update", async (c) => {
   try {
-    const updates = await c.req.json<Array<{ _id: string; open?: boolean | null; notes?: string }>>();
+    const updates = await c.req.json<Array<{ id: string; open?: boolean | null; notes?: string }>>();
 
     if (!Array.isArray(updates) || updates.length === 0) {
       throw new HTTPException(400, { message: "Updates array is required and must not be empty" });
     }
 
-    await connect();
+    let updatedCount = 0;
+    const currentTime = new Date().toISOString();
 
-    const bulkOps = updates.map((update) => ({
-      updateOne: {
-        filter: { _id: update._id },
-        update: {
-          $set: {
-            ...(update.open !== undefined && { open: update.open }),
-            ...(update.notes !== undefined && { notes: update.notes }),
-            updatedAt: new Date(),
-          },
-        },
-      },
-    }));
+    await db.transaction().execute(async (trx) => {
+      for (const update of updates) {
+        const updateData = {
+          updatedAt: currentTime,
+          open: update.open === true ? 1 : update.open === false ? 0 : null,
+          notes: update.notes || null,
+        };
 
-    const result = await Hotspot.bulkWrite(bulkOps);
+        const result = await trx.updateTable("hotspots").set(updateData).where("id", "=", update.id).executeTakeFirst();
 
-    if (result.matchedCount !== updates.length) {
-      throw new HTTPException(400, { message: "Some hotspots were not found" });
-    }
+        if (result.numUpdatedRows > 0) {
+          updatedCount++;
+        }
+      }
+    });
 
     return c.json({
       message: "Bulk update completed successfully",
-      updatedCount: result.modifiedCount,
+      updatedCount,
       totalCount: updates.length,
     });
   } catch (error) {
@@ -236,55 +234,35 @@ hotspots.get("/:id", async (c) => {
       throw new HTTPException(400, { message: "Hotspot ID is required" });
     }
 
-    await connect();
-
-    const hotspot = await Hotspot.findById(id);
+    const hotspot = await db.selectFrom("hotspots").selectAll().where("id", "=", id).executeTakeFirst();
 
     if (!hotspot) {
       throw new HTTPException(404, { message: "Hotspot not found" });
     }
 
-    return c.json(hotspot);
+    const transformedHotspot = {
+      id: hotspot.id,
+      name: hotspot.name,
+      region: hotspot.region,
+      country: hotspot.country,
+      state: hotspot.state,
+      county: hotspot.county,
+      species: hotspot.species,
+      lat: hotspot.lat,
+      lng: hotspot.lng,
+      open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
+      notes: hotspot.notes,
+      createdAt: hotspot.createdAt,
+      updatedAt: hotspot.updatedAt,
+    };
+
+    return c.json(transformedHotspot);
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;
     }
     console.error("Error fetching hotspot:", error);
     throw new HTTPException(500, { message: "Failed to fetch hotspot" });
-  }
-});
-
-hotspots.put("/:id", async (c) => {
-  try {
-    const id = c.req.param("id");
-    const updateData = await c.req.json<{ notes?: string }>();
-
-    if (!id) {
-      throw new HTTPException(400, { message: "Hotspot ID is required" });
-    }
-
-    await connect();
-
-    const updatedHotspot = await Hotspot.findByIdAndUpdate(
-      id,
-      {
-        ...updateData,
-        updatedAt: new Date(),
-      },
-      { new: true }
-    );
-
-    if (!updatedHotspot) {
-      throw new HTTPException(404, { message: "Hotspot not found" });
-    }
-
-    return c.json(updatedHotspot);
-  } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error;
-    }
-    console.error("Error updating hotspot:", error);
-    throw new HTTPException(500, { message: "Failed to update hotspot" });
   }
 });
 

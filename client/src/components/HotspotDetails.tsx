@@ -3,7 +3,6 @@ import type { Hotspot } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ExternalLink, Bird, Calendar, Globe, Navigation } from "lucide-react";
-import { get } from "@/lib/utils";
 
 interface HotspotDetailsProps {
   hotspotId: string | null;
@@ -66,7 +65,7 @@ const HotspotDetails = ({ hotspotId, isOpen, onOpenChange }: HotspotDetailsProps
               )}
               <div className="flex gap-3">
                 <a
-                  href={`https://ebird.org/hotspot/${selectedHotspot._id}`}
+                  href={`https://ebird.org/hotspot/${selectedHotspot.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-between p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
@@ -83,7 +82,7 @@ const HotspotDetails = ({ hotspotId, isOpen, onOpenChange }: HotspotDetailsProps
                 </a>
 
                 <a
-                  href={`https://www.google.com/maps?q=${selectedHotspot.location.coordinates[1]},${selectedHotspot.location.coordinates[0]}`}
+                  href={`https://www.google.com/maps?q=${selectedHotspot.lat},${selectedHotspot.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
