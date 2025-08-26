@@ -1,4 +1,4 @@
-import { sql, Kysely } from "kysely";
+import { sql } from "kysely";
 import db from "../lib/sqlite.js";
 
 export async function setupDatabase() {
