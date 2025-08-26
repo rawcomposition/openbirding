@@ -9,7 +9,7 @@ type HotspotRowProps = {
   id: string;
   name: string;
   open: boolean | null;
-  notes?: string;
+  notes: string | null;
   species: number;
   lat: number;
   lng: number;

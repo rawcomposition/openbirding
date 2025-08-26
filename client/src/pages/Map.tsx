@@ -193,12 +193,12 @@ const Map = () => {
       type: "Feature" as const,
       geometry: {
         type: "Point" as const,
-        coordinates: [hotspot.location.coordinates[0], hotspot.location.coordinates[1]],
+        coordinates: [hotspot.lng, hotspot.lat],
       },
       properties: {
         title: hotspot.name,
         species: hotspot.species,
-        id: hotspot._id,
+        id: hotspot.id,
         open: hotspot.open,
       },
     }));

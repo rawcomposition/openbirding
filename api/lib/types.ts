@@ -1,22 +1,4 @@
 export type Hotspot = {
-  _id: string;
-  name: string;
-  region: string;
-  country: string;
-  state: string;
-  county: string;
-  species: number;
-  location: {
-    type: "Point";
-    coordinates: [number, number];
-  };
-  notes: string;
-  open: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type SQLiteHotspot = {
   id: string;
   name: string;
   region: string;

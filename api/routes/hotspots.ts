@@ -11,41 +11,52 @@ const hotspots = new Hono();
 hotspots.get("/within-bounds", async (c) => {
   try {
     const bounds = c.req.query("bounds");
+    if (!bounds) throw new HTTPException(400, { message: "Bounds parameter is required" });
 
-    if (!bounds) {
-      throw new HTTPException(400, { message: "Bounds parameter is required" });
-    }
-
-    const [west, south, east, north] = bounds.split(",").map(Number);
-
-    if (bounds.split(",").length !== 4 || [west, south, east, north].some(isNaN)) {
+    const parts = bounds.split(",");
+    if (parts.length !== 4) {
       throw new HTTPException(400, { message: "Bounds must be in format: west,south,east,north" });
     }
 
-    await connect();
-
-    const hotspots = await Hotspot.find({
-      location: {
-        $geoWithin: {
-          $box: [
-            [west, south],
-            [east, north],
-          ],
-        },
-      },
-    })
-      .select({ name: 1, location: 1, open: 1, species: 1 })
-      .lean();
-
-    return c.json({
-      hotspots,
-      count: hotspots.length,
-    });
-  } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error;
+    const [west, south, east, north] = parts.map(Number);
+    if ([west, south, east, north].some(Number.isNaN)) {
+      throw new HTTPException(400, { message: "Bounds must be numeric: west,south,east,north" });
     }
-    console.error("Error fetching hotspots by bounds:", error);
+
+    const rows = await db
+      .selectFrom("hotspots as h")
+      .innerJoin(sql`hotspots_rtree`.as("r"), (j) => j.on(sql.ref("r.rowId"), "=", sql.ref("h.rowId")))
+      .select([
+        "h.id as id",
+        "h.name as name",
+        "h.species as species",
+        "h.open as open",
+        "h.lat as lat",
+        "h.lng as lng",
+        "h.notes as notes",
+      ])
+      .where((eb) =>
+        eb.and([
+          sql<boolean>`${sql.ref("r.minLat")} <= ${north} AND ${sql.ref("r.maxLat")} >= ${south}`,
+          sql<boolean>`${sql.ref("r.minLng")} <= ${east}  AND ${sql.ref("r.maxLng")} >= ${west}`,
+        ])
+      )
+      .execute();
+
+    const hotspotsOut = rows.map((r) => ({
+      _id: r.id,
+      name: r.name,
+      species: r.species,
+      lat: r.lat,
+      lng: r.lng,
+      open: r.open === 1 ? true : r.open === 0 ? false : null,
+      notes: r.notes,
+    }));
+
+    return c.json({ hotspots: hotspotsOut, count: hotspotsOut.length });
+  } catch (error) {
+    if (error instanceof HTTPException) throw error;
+    console.error("Error fetching hotspots by bounds (sqlite):", error);
     throw new HTTPException(500, { message: "Failed to fetch hotspots by bounds" });
   }
 });
@@ -82,10 +93,8 @@ hotspots.get("/by-region/:regionCode", async (c) => {
       _id: hotspot.id,
       name: hotspot.name,
       species: hotspot.species,
-      location: {
-        type: "Point" as const,
-        coordinates: [hotspot.lng, hotspot.lat] as [number, number],
-      },
+      lat: hotspot.lat,
+      lng: hotspot.lng,
       open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
       notes: hotspot.notes,
     }));
@@ -161,7 +170,8 @@ hotspots.get("/nearby/:coordinates", async (c) => {
       _id: r.id,
       name: r.name,
       species: r.species,
-      location: { type: "Point" as const, coordinates: [r.lng, r.lat] as [number, number] },
+      lat: r.lat,
+      lng: r.lng,
       open: r.open === 1 ? true : r.open === 0 ? false : null,
       notes: r.notes,
       distance: getDistanceKm(lat, lng, r.lat, r.lng),

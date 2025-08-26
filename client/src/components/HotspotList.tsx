@@ -256,13 +256,13 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
               rows.map((row) => (
                 <HotspotRow
                   key={row.id}
-                  id={row.original._id}
+                  id={row.original.id}
                   name={row.original.name}
                   open={row.original.open}
                   notes={row.original.notes}
                   species={row.original.species}
-                  lat={row.original.location?.coordinates[1]}
-                  lng={row.original.location?.coordinates[0]}
+                  lat={row.original.lat}
+                  lng={row.original.lng}
                   distance={row.original.distance}
                   showDistance={showDistance}
                 />
