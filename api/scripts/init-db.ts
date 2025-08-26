@@ -25,6 +25,15 @@ export async function setupDatabase() {
     .execute();
 
   await db.schema
+    .createTable("packs")
+    .ifNotExists()
+    .addColumn("id", "integer", (c) => c.primaryKey())
+    .addColumn("region", "text", (c) => c.notNull().unique())
+    .addColumn("hotspots", "integer")
+    .addColumn("lastSynced", "text")
+    .execute();
+
+  await db.schema
     .createIndex("hotspots_region_species_idx")
     .ifNotExists()
     .on("hotspots")

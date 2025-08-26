@@ -1,65 +1,61 @@
-import connect from "../lib/db.js";
-import Hotspot from "../models/Hotspot.js";
 import db from "../lib/sqlite.js";
 
-async function migrateAllHotspots() {
+const parseRegion = (region: string) => {
+  const parts = region.split("-");
+
+  if (parts.length === 0) {
+    return { country: null, state: null, county: null };
+  }
+
+  const country = parts[0] || null;
+  const state = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : null;
+  const county = parts.length >= 3 ? `${parts[0]}-${parts[1]}-${parts[2]}` : null;
+
+  return { country, state, county };
+};
+
+async function updateHotspotRegions() {
   try {
-    await connect();
+    const totalHotspots = await db.selectFrom("hotspots").select(db.fn.count("id").as("count")).executeTakeFirst();
 
-    const totalHotspots = await Hotspot.countDocuments();
-    console.log(`Found ${totalHotspots} hotspots in MongoDB to migrate`);
+    const count = Number(totalHotspots?.count || 0);
+    console.log(`Found ${count} hotspots in SQLite to update`);
 
-    if (totalHotspots === 0) {
-      console.log("No hotspots found in MongoDB to migrate");
+    if (count === 0) {
+      console.log("No hotspots found in SQLite to update");
       return;
     }
 
     const batchSize = 1000;
-    let migratedCount = 0;
+    let updatedCount = 0;
     let skip = 0;
 
-    while (skip < totalHotspots) {
-      const hotspots = await Hotspot.find({}).skip(skip).limit(batchSize).lean();
+    while (skip < count) {
+      const hotspots = await db.selectFrom("hotspots").select(["id", "region"]).limit(batchSize).offset(skip).execute();
 
       if (hotspots.length === 0) break;
 
-      const insertData = hotspots.map((hotspot) => ({
-        id: hotspot._id,
-        name: hotspot.name,
-        region: hotspot.region,
-        country: hotspot.country || null,
-        state: hotspot.state || null,
-        county: hotspot.county || null,
-        species: hotspot.species || 0,
-        lat: hotspot.location.coordinates[1],
-        lng: hotspot.location.coordinates[0],
-        open: hotspot.open === true ? 1 : hotspot.open === false ? 0 : null,
-        notes: hotspot.notes || null,
-        createdAt: hotspot.updatedAt ? hotspot.updatedAt.toISOString() : new Date().toISOString(),
-        updatedAt: hotspot.updatedAt ? hotspot.updatedAt.toISOString() : new Date().toISOString(),
-      }));
+      const updatePromises = hotspots.map(async (hotspot) => {
+        const { country, state, county } = parseRegion(hotspot.region);
 
-      await db
-        .insertInto("hotspots")
-        .values(insertData)
-        .onConflict((oc) => oc.column("id").doNothing())
-        .execute();
+        return db.updateTable("hotspots").set({ country, state, county }).where("id", "=", hotspot.id).execute();
+      });
 
-      migratedCount += insertData.length;
+      await Promise.all(updatePromises);
+
+      updatedCount += hotspots.length;
       skip += batchSize;
 
-      console.log(
-        `Migrated ${migratedCount}/${totalHotspots} hotspots (${Math.round((migratedCount / totalHotspots) * 100)}%)`
-      );
+      console.log(`Updated ${updatedCount}/${count} hotspots (${Math.round((updatedCount / count) * 100)}%)`);
     }
 
-    console.log(`Successfully migrated ${migratedCount} hotspots to SQLite`);
+    console.log(`Successfully updated ${updatedCount} hotspots in SQLite`);
   } catch (error) {
-    console.error("Error migrating hotspots:", error);
+    console.error("Error updating hotspots:", error);
     throw error;
   } finally {
     await db.destroy();
   }
 }
 
-migrateAllHotspots();
+updateHotspotRegions();

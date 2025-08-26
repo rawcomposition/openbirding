@@ -9,7 +9,7 @@
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sync-regions": "tsx --env-file=.env scripts/sync-regions.ts",
-    "setup-sqlite": "tsx --env-file=.env scripts/setup-sqlite.ts",
+    "init-db": "tsx --env-file=.env scripts/init-db.ts",
     "migrate-hotspots": "tsx --env-file=.env scripts/migrate-hotspots.ts"
   },
   "keywords": [],

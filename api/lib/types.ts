@@ -33,3 +33,10 @@ export type Region = {
   isCountry?: boolean;
   hasChildren?: boolean;
 };
+
+export type Pack = {
+  id?: number;
+  region: string;
+  hotspots: number | null;
+  lastSynced: string | null;
+};

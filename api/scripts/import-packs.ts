@@ -1,4 +1,6 @@
-export const syncRegions = [
+import db from "../lib/sqlite.js";
+
+const syncRegions = [
   "AF",
   "AL",
   "DZ",
@@ -150,7 +152,6 @@ export const syncRegions = [
   "MA",
   "MZ",
   "MM",
-  "MX",
   "NA",
   "NR",
   "NP",
@@ -249,4 +250,103 @@ export const syncRegions = [
   "YE",
   "ZM",
   "ZW",
+  "MX",
+  "US-AL",
+  "US-AK",
+  "US-AZ",
+  "US-AR",
+  "US-CA",
+  "US-CO",
+  "US-CT",
+  "US-DE",
+  "US-FL",
+  "US-GA",
+  "US-HI",
+  "US-ID",
+  "US-IL",
+  "US-IN",
+  "US-IA",
+  "US-KS",
+  "US-KY",
+  "US-LA",
+  "US-ME",
+  "US-MD",
+  "US-MA",
+  "US-MI",
+  "US-MN",
+  "US-MS",
+  "US-MO",
+  "US-MT",
+  "US-NE",
+  "US-NV",
+  "US-NH",
+  "US-NJ",
+  "US-NM",
+  "US-NY",
+  "US-NC",
+  "US-ND",
+  "US-OH",
+  "US-OK",
+  "US-OR",
+  "US-PA",
+  "US-RI",
+  "US-SC",
+  "US-SD",
+  "US-TN",
+  "US-TX",
+  "US-UT",
+  "US-VT",
+  "US-VA",
+  "US-WA",
+  "US-WV",
+  "US-WI",
+  "US-WY",
+  "US-DC",
+  "CA-AB",
+  "CA-BC",
+  "CA-MB",
+  "CA-NB",
+  "CA-NL",
+  "CA-NS",
+  "CA-NT",
+  "CA-NU",
+  "CA-ON",
+  "CA-PE",
+  "CA-QC",
+  "CA-SK",
+  "CA-YT",
+  "AU-NSW",
+  "AU-QLD",
+  "AU-SA",
+  "AU-TAS",
+  "AU-VIC",
+  "AU-WA",
+  "AU-ACT",
+  "AU-NT",
 ];
+
+export async function importPacks() {
+  console.log(`Importing ${syncRegions.length} packs...`);
+
+  for (const region of syncRegions) {
+    try {
+      await db
+        .insertInto("packs")
+        .values({
+          region,
+          hotspots: null,
+          lastSynced: null,
+        })
+        .onConflict((oc) => oc.column("region").doNothing())
+        .execute();
+
+      console.log(`✓ Imported pack for region: ${region}`);
+    } catch (error) {
+      console.error(`✗ Failed to import pack for region ${region}:`, error);
+    }
+  }
+
+  console.log("Pack import complete!");
+}
+
+importPacks().catch(console.error);
