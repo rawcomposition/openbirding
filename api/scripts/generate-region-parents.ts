@@ -1,6 +1,5 @@
 import "dotenv/config";
-import connect from "../lib/db.js";
-import Region from "../models/Region.js";
+import db from "../lib/sqlite.js";
 
 type ParentInfo = {
   name: string;
@@ -57,44 +56,58 @@ const main = async () => {
       console.log(`Processing only regions under: ${regionCode}`);
     }
 
-    await connect();
-    console.log("Connected to database");
+    console.log("Connected to SQLite database");
 
-    const query = regionCode ? { _id: { $regex: `^${regionCode}` } } : {};
-    const regions = await Region.find(query, { _id: 1, name: 1 }).lean();
+    const query = regionCode
+      ? db.selectFrom("regions").select(["id", "name"]).where("id", "like", `${regionCode}%`)
+      : db.selectFrom("regions").select(["id", "name"]);
+
+    const regions = await query.execute();
     console.log(`Found ${regions.length} regions to process`);
 
     const regionMap = new Map<string, string>();
-    const allRegionIds = regions.map((r) => r._id);
+    const allRegionIds = regions.map((r) => r.id);
 
     for (const region of regions) {
-      regionMap.set(region._id, region.name);
+      regionMap.set(region.id, region.name);
     }
 
-    const batchSize = 100;
+    const batchSize = 1000;
     let processed = 0;
     let updated = 0;
 
     for (let i = 0; i < regions.length; i += batchSize) {
       const batch = regions.slice(i, i + batchSize);
-      const bulkOps = [];
+      const batchNumber = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(regions.length / batchSize);
 
-      for (const region of batch) {
-        const parents = getParentRegions(region._id, regionMap);
+      console.log(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} regions)`);
+
+      const batchUpdates = batch.map((region) => {
+        const parents = getParentRegions(region.id, regionMap);
         const longName = generateLongName(region.name, parents);
-        const children = hasChildren(region._id, allRegionIds);
+        const children = hasChildren(region.id, allRegionIds);
 
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: region._id },
-            update: { $set: { parents, longName, hasChildren: children } },
-          },
-        });
-      }
+        return {
+          id: region.id,
+          parents: JSON.stringify(parents),
+          longName,
+          hasChildren: children ? 1 : 0,
+        };
+      });
 
-      if (bulkOps.length > 0) {
-        const result = await Region.bulkWrite(bulkOps);
-        updated += result.modifiedCount || 0;
+      for (const update of batchUpdates) {
+        await db
+          .updateTable("regions")
+          .set({
+            parents: update.parents,
+            longName: update.longName,
+            hasChildren: update.hasChildren,
+          })
+          .where("id", "=", update.id)
+          .execute();
+
+        updated++;
       }
 
       processed += batch.length;
