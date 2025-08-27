@@ -1,12 +1,12 @@
 import "dotenv/config";
-import connect from "../lib/db.js";
-import Region from "../models/Region.js";
+import db from "../lib/sqlite.js";
 
 type EBirdRegion = {
   code: string;
   name: string;
 };
 
+const DELAY = 5000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const fetchRegions = async (regionType: string, parentRegionCode: string): Promise<EBirdRegion[]> => {
@@ -26,45 +26,48 @@ const fetchRegions = async (regionType: string, parentRegionCode: string): Promi
   return (await response.json()) as EBirdRegion[];
 };
 
-const saveRegions = async (
-  regions: EBirdRegion[],
-  isCountry = false
-): Promise<{ inserted: number; updated: number }> => {
-  if (regions.length === 0) return { inserted: 0, updated: 0 };
+const saveRegions = async (regions: EBirdRegion[]): Promise<{ synced: number }> => {
+  if (regions.length === 0) return { synced: 0 };
 
-  const bulkOps = regions.map((region) => ({
-    updateOne: {
-      filter: { _id: region.code },
-      update: { $set: { name: region.name, ...(isCountry && { isCountry: true }) } },
-      upsert: true,
-    },
-  }));
+  for (const region of regions) {
+    const level = region.code.split("-").length;
 
-  const result = await Region.bulkWrite(bulkOps);
-  const inserted = result.upsertedCount || 0;
-  const updated = result.modifiedCount || 0;
+    await db
+      .insertInto("regions")
+      .values({
+        id: region.code,
+        name: region.name,
+        longName: null,
+        parents: "[]",
+        level,
+        hasChildren: 0,
+      })
+      .onConflict((oc) =>
+        oc.column("id").doUpdateSet({
+          name: region.name,
+          level,
+        })
+      )
+      .execute();
+  }
 
-  const type = isCountry ? "countries" : "regions";
-  console.log(`Synced ${regions.length} ${type}: ${inserted} inserted, ${updated} updated`);
+  console.log(`Synced ${regions.length} regions`);
 
-  return { inserted, updated };
+  return { synced: regions.length };
 };
 
 const main = async () => {
   try {
     console.log("Starting region sync...");
-    await connect();
-    console.log("Connected to database");
+    console.log("Connected to SQLite database");
 
     const countries = await fetchRegions("country", "world");
     console.log(`Found ${countries.length} countries`);
 
-    let totalInserted = 0;
-    let totalUpdated = 0;
+    let totalSynced = 0;
 
-    const countryResult = await saveRegions(countries, true);
-    totalInserted += countryResult.inserted;
-    totalUpdated += countryResult.updated;
+    const countryResult = await saveRegions(countries);
+    totalSynced += countryResult.synced;
 
     for (const country of countries) {
       console.log(`\nProcessing country: ${country.code}`);
@@ -78,19 +81,16 @@ const main = async () => {
 
       const allRegions = [...states, ...counties];
       const result = await saveRegions(allRegions);
-      totalInserted += result.inserted;
-      totalUpdated += result.updated;
+      totalSynced += result.synced;
 
       if (country !== countries[countries.length - 1]) {
-        console.log("Waiting 5 seconds before next country...");
-        await delay(5000);
+        console.log(`Waiting ${DELAY / 1000} seconds before next country...`);
+        await delay(DELAY);
       }
     }
 
     console.log("\nRegion sync completed!");
-    console.log(`Total regions inserted: ${totalInserted}`);
-    console.log(`Total regions updated: ${totalUpdated}`);
-    console.log(`Total regions processed: ${totalInserted + totalUpdated}`);
+    console.log(`Total regions synced: ${totalSynced}`);
   } catch (error) {
     console.error("Error during region sync:", error);
     process.exit(1);
