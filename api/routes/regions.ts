@@ -171,7 +171,7 @@ regions.get("/:regionCode/subregions", async (c) => {
     }
 
     const subregionsWithHotspots = subregions.map((subregion) => ({
-      _id: subregion.id,
+      id: subregion.id,
       name: subregion.name,
       longName: subregion.longName,
       parents: subregion.parents ? JSON.parse(subregion.parents) : [],
