@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { syncPack, getPacksNeedingSync } from "../lib/ebird.js";
 
+const DELAY = 5000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const packsRoute = new Hono();
@@ -41,8 +42,6 @@ packsRoute.post("/sync/all", async (c) => {
     let totalInsertCount = 0;
 
     for (const pack of packsToSync) {
-      console.log(`Starting sync for pack ${pack.id} (${pack.region})`);
-
       try {
         const result = await syncPack(pack.id);
         results.push({
@@ -70,8 +69,8 @@ packsRoute.post("/sync/all", async (c) => {
       }
 
       if (pack !== packsToSync[packsToSync.length - 1]) {
-        console.log(`Waiting 10 seconds before next pack...`);
-        await delay(10000);
+        console.log(`Waiting ${DELAY / 1000} seconds before next pack...`);
+        await delay(DELAY);
       }
     }
 
