@@ -7,14 +7,7 @@ import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import RegionList from "@/components/RegionList";
 import RegionStats from "@/components/RegionStats";
-import type { Hotspot } from "@/lib/types";
-
-type Region = {
-  _id: string;
-  name: string;
-  isCountry?: boolean;
-  hasChildren?: boolean;
-};
+import type { Hotspot, Region as RegionType } from "@/lib/types";
 
 const Region = () => {
   const { regionCode } = useParams<{ regionCode: string }>();
@@ -24,7 +17,7 @@ const Region = () => {
     error,
     refetch,
     isLoading: isLoadingRegion,
-  } = useQuery<Region>({
+  } = useQuery<RegionType>({
     queryKey: [`/regions/${regionCode}`],
     enabled: !!regionCode,
     refetchOnWindowFocus: false,

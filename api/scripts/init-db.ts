@@ -53,6 +53,12 @@ export async function setupDatabase() {
     .columns(["region", "species"])
     .execute();
 
+  await db.schema.createIndex("hotspots_country_idx").ifNotExists().on("hotspots").columns(["country"]).execute();
+
+  await db.schema.createIndex("hotspots_state_idx").ifNotExists().on("hotspots").columns(["state"]).execute();
+
+  await db.schema.createIndex("hotspots_county_idx").ifNotExists().on("hotspots").columns(["county"]).execute();
+
   await db.executeQuery(
     sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS hotspots_rtree

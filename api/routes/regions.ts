@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import connect from "../lib/db.js";
 import Region from "../models/Region.js";
 import Hotspot from "../models/Hotspot.js";
+import db from "../lib/sqlite.js";
 
 const regions = new Hono();
 
@@ -14,13 +15,11 @@ regions.get("/:regionCode", async (c) => {
       throw new HTTPException(400, { message: "Region code is required" });
     }
 
-    await connect();
-
     let region;
 
     if (regionCode === "world") {
       region = {
-        _id: "world",
+        id: "world",
         name: "World",
         longName: "World",
         parents: [],
@@ -28,11 +27,20 @@ regions.get("/:regionCode", async (c) => {
         hasChildren: true,
       };
     } else {
-      region = await Region.findById(regionCode).lean();
+      region = await db.selectFrom("regions").selectAll().where("id", "=", regionCode).executeTakeFirst();
 
       if (!region) {
         throw new HTTPException(404, { message: "Region not found" });
       }
+
+      region = {
+        id: region.id,
+        name: region.name,
+        longName: region.longName,
+        parents: region.parents ? JSON.parse(region.parents) : [],
+        isCountry: region.level === 1,
+        hasChildren: Boolean(region.hasChildren),
+      };
     }
 
     return c.json(region);
@@ -53,21 +61,19 @@ regions.get("/:regionCode/subregions", async (c) => {
       throw new HTTPException(400, { message: "Region code is required" });
     }
 
-    await connect();
-
     let region;
 
     if (regionCode === "world") {
       region = {
-        _id: "world",
+        id: "world",
         name: "World",
         longName: "World",
-        parents: [],
-        isCountry: false,
-        hasChildren: true,
+        parents: null,
+        level: 0,
+        hasChildren: 1,
       };
     } else {
-      region = await Region.findById(regionCode).lean();
+      region = await db.selectFrom("regions").selectAll().where("id", "=", regionCode).executeTakeFirst();
 
       if (!region) {
         throw new HTTPException(404, { message: "Region not found" });
@@ -77,102 +83,103 @@ regions.get("/:regionCode/subregions", async (c) => {
     let subregions;
 
     if (regionCode === "world") {
-      subregions = await Region.find({
-        isCountry: true,
-      }).lean();
+      subregions = await db.selectFrom("regions").selectAll().where("level", "=", 1).execute();
     } else {
-      subregions = await Region.find({
-        _id: { $regex: `^${regionCode}-[^-]+$` },
-      }).lean();
+      const regionParts = regionCode.split("-");
+      const nextLevel = regionParts.length + 1;
+
+      subregions = await db
+        .selectFrom("regions")
+        .selectAll()
+        .where("level", "=", nextLevel)
+        .where("id", "like", `${regionCode}-%`)
+        .where("id", "not like", `${regionCode}-%-%`)
+        .execute();
     }
 
-    const subregionIds = subregions.map((r) => r._id);
+    const subregionIds = subregions.map((r) => r.id);
 
     let hotspotStats;
 
     if (regionCode === "world") {
-      hotspotStats = await Hotspot.aggregate([
-        {
-          $match: {
-            region: { $regex: `^(${subregionIds.join("|")})` },
-          },
-        },
-        {
-          $group: {
-            _id: { $substr: ["$region", 0, { $indexOfBytes: ["$region", "-"] }] },
-            totalCount: { $sum: 1 },
-            openCount: {
-              $sum: {
-                $cond: [{ $eq: ["$open", true] }, 1, 0],
-              },
-            },
-            reviewedCount: {
-              $sum: {
-                $cond: [{ $ne: ["$open", null] }, 1, 0],
-              },
-            },
-          },
-        },
-      ]);
+      hotspotStats = await db
+        .selectFrom("hotspots")
+        .select([
+          "country",
+          db.fn.count("id").as("totalCount"),
+          db.fn.sum("open").as("openCount"),
+          db.fn.count("open").as("reviewedCount"),
+        ])
+        .where("country", "is not", null)
+        .groupBy("country")
+        .execute();
     } else {
-      hotspotStats = await Hotspot.aggregate([
-        {
-          $match: {
-            region: { $regex: `^${regionCode}-` },
-          },
-        },
-        {
-          $addFields: {
-            subregionCode: {
-              $let: {
-                vars: {
-                  parts: { $split: ["$region", "-"] },
-                  currentParts: { $split: [regionCode, "-"] },
-                },
-                in: {
-                  $concat: [
-                    { $arrayElemAt: ["$$parts", 0] },
-                    "-",
-                    { $arrayElemAt: ["$$parts", 1] },
-                    { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, "-", ""] },
-                    { $cond: [{ $gt: [{ $size: "$$currentParts" }, 1] }, { $arrayElemAt: ["$$parts", 2] }, ""] },
-                  ],
-                },
-              },
-            },
-          },
-        },
-        {
-          $group: {
-            _id: "$subregionCode",
-            totalCount: { $sum: 1 },
-            openCount: {
-              $sum: {
-                $cond: [{ $eq: ["$open", true] }, 1, 0],
-              },
-            },
-            reviewedCount: {
-              $sum: {
-                $cond: [{ $ne: ["$open", null] }, 1, 0],
-              },
-            },
-          },
-        },
-      ]);
+      const regionParts = regionCode.split("-");
+      const level = regionParts.length;
+
+      if (level === 1) {
+        hotspotStats = await db
+          .selectFrom("hotspots")
+          .select([
+            "state",
+            db.fn.count("id").as("totalCount"),
+            db.fn.sum("open").as("openCount"),
+            db.fn.count("open").as("reviewedCount"),
+          ])
+          .where("country", "=", regionCode)
+          .where("state", "is not", null)
+          .groupBy("state")
+          .execute();
+      } else if (level === 2) {
+        hotspotStats = await db
+          .selectFrom("hotspots")
+          .select([
+            "county",
+            db.fn.count("id").as("totalCount"),
+            db.fn.sum("open").as("openCount"),
+            db.fn.count("open").as("reviewedCount"),
+          ])
+          .where("state", "=", regionCode)
+          .where("county", "is not", null)
+          .groupBy("county")
+          .execute();
+      }
     }
 
-    const statsMap = new Map(
-      hotspotStats.map((stat) => [
-        stat._id,
-        { total: stat.totalCount, open: stat.openCount, reviewed: stat.reviewedCount },
-      ])
-    );
+    const statsMap = new Map();
+
+    if (hotspotStats) {
+      for (const stat of hotspotStats) {
+        let key: string | null = null;
+
+        if (regionCode === "world" && "country" in stat) {
+          key = stat.country;
+        } else if (regionCode.split("-").length === 1 && "state" in stat) {
+          key = stat.state;
+        } else if (regionCode.split("-").length === 2 && "county" in stat) {
+          key = stat.county;
+        }
+
+        if (key) {
+          statsMap.set(key, {
+            total: Number(stat.totalCount),
+            open: Number(stat.openCount || 0),
+            reviewed: Number(stat.reviewedCount),
+          });
+        }
+      }
+    }
 
     const subregionsWithHotspots = subregions.map((subregion) => ({
-      ...subregion,
-      hotspotCount: statsMap.get(subregion._id)?.total || 0,
-      openHotspotCount: statsMap.get(subregion._id)?.open || 0,
-      reviewedHotspotCount: statsMap.get(subregion._id)?.reviewed || 0,
+      _id: subregion.id,
+      name: subregion.name,
+      longName: subregion.longName,
+      parents: subregion.parents ? JSON.parse(subregion.parents) : [],
+      isCountry: subregion.level === 1,
+      hasChildren: Boolean(subregion.hasChildren),
+      hotspotCount: statsMap.get(subregion.id)?.total || 0,
+      openHotspotCount: statsMap.get(subregion.id)?.open || 0,
+      reviewedHotspotCount: statsMap.get(subregion.id)?.reviewed || 0,
     }));
 
     return c.json(subregionsWithHotspots);

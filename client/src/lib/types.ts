@@ -21,16 +21,19 @@ export type HotspotsResponse = {
 };
 
 export type Region = {
-  _id: string;
+  id: string;
   name: string;
   longName: string;
   parents: {
     name: string;
     id: string;
   }[];
-  isCountry?: boolean;
-  hasChildren?: boolean;
-  hotspotCount?: number;
-  openHotspotCount?: number;
-  reviewedHotspotCount?: number;
+  level: number;
+  hasChildren: boolean;
+};
+
+export type Subregion = Region & {
+  hotspotCount: number;
+  openHotspotCount: number;
+  reviewedHotspotCount: number;
 };
