@@ -1,8 +1,5 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import connect from "../lib/db.js";
-import Region from "../models/Region.js";
-import Hotspot from "../models/Hotspot.js";
 import db from "../lib/sqlite.js";
 
 const regions = new Hono();
