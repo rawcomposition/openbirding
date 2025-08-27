@@ -15,28 +15,17 @@ export type Hotspot = {
   updatedAt: string;
 };
 
-export type HotspotsResponse = {
-  hotspots: Hotspot[];
-  count: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-};
-
 export type Region = {
-  _id: string;
+  id: string;
   name: string;
-  longName: string;
-  parents: {
-    name: string;
-    id: string;
-  }[];
-  isCountry?: boolean;
-  hasChildren?: boolean;
+  longName: string | null;
+  parents: string; // JSON array
+  level: number; // 1: country, 2: state, 3: county
+  hasChildren: number; // 0: no, 1: yes
 };
 
 export type Pack = {
-  id?: number;
+  id: number;
   region: string;
   hotspots: number | null;
   lastSynced: string | null;

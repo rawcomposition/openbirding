@@ -22,6 +22,7 @@ export async function setupDatabase() {
     .addCheckConstraint("chk_lat", sql`lat BETWEEN -90 AND 90`)
     .addCheckConstraint("chk_lng", sql`lng BETWEEN -180 AND 180`)
     .addCheckConstraint("chk_open_bool", sql`open IN (0,1) OR open IS NULL`)
+    .addForeignKeyConstraint("fk_hotspots_region", ["region"], "regions", ["id"])
     .execute();
 
   await db.schema
@@ -31,6 +32,18 @@ export async function setupDatabase() {
     .addColumn("region", "text", (c) => c.notNull().unique())
     .addColumn("hotspots", "integer")
     .addColumn("lastSynced", "text")
+    .addForeignKeyConstraint("fk_packs_region", ["region"], "regions", ["id"])
+    .execute();
+
+  await db.schema
+    .createTable("regions")
+    .ifNotExists()
+    .addColumn("id", "text", (c) => c.primaryKey())
+    .addColumn("name", "text", (c) => c.notNull())
+    .addColumn("longName", "text")
+    .addColumn("parents", "text")
+    .addColumn("level", "integer", (c) => c.notNull().check(sql`level IN (1, 2, 3)`))
+    .addColumn("hasChildren", "integer")
     .execute();
 
   await db.schema
