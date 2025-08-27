@@ -13,7 +13,7 @@ type EditStore = {
   removeChange: (hotspotId: string) => void;
   clearChanges: () => void;
   setEditMode: (isEdit: boolean) => void;
-  getChanges: () => Array<{ _id: string } & HotspotChange>;
+  getChanges: () => Array<{ id: string } & HotspotChange>;
   hasChanges: () => boolean;
 };
 
@@ -59,7 +59,7 @@ export const useEditStore = create<EditStore>((set, get) => ({
   getChanges: () => {
     const changes = get().changes;
     return Object.entries(changes).map(([hotspotId, change]) => ({
-      _id: hotspotId,
+      id: hotspotId,
       ...change,
     }));
   },
