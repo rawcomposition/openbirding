@@ -200,61 +200,60 @@ regions.get("/:regionCode/stats", async (c) => {
       throw new HTTPException(400, { message: "Region code is required" });
     }
 
-    await connect();
-
     let hotspotStats;
 
     if (regionCode === "world") {
-      hotspotStats = await Hotspot.aggregate([
-        {
-          $group: {
-            _id: null,
-            totalCount: { $sum: 1 },
-            openCount: {
-              $sum: {
-                $cond: [{ $eq: ["$open", true] }, 1, 0],
-              },
-            },
-            reviewedCount: {
-              $sum: {
-                $cond: [{ $ne: ["$open", null] }, 1, 0],
-              },
-            },
-          },
-        },
-      ]);
+      hotspotStats = await db
+        .selectFrom("hotspots")
+        .select([
+          db.fn.count("id").as("totalCount"),
+          db.fn.sum("open").as("openCount"),
+          db.fn.count("open").as("reviewedCount"),
+        ])
+        .executeTakeFirst();
     } else {
-      hotspotStats = await Hotspot.aggregate([
-        {
-          $match: {
-            region: { $regex: `^${regionCode}` },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            totalCount: { $sum: 1 },
-            openCount: {
-              $sum: {
-                $cond: [{ $eq: ["$open", true] }, 1, 0],
-              },
-            },
-            reviewedCount: {
-              $sum: {
-                $cond: [{ $ne: ["$open", null] }, 1, 0],
-              },
-            },
-          },
-        },
-      ]);
+      const regionParts = regionCode.split("-");
+      const level = regionParts.length;
+
+      if (level === 1) {
+        hotspotStats = await db
+          .selectFrom("hotspots")
+          .select([
+            db.fn.count("id").as("totalCount"),
+            db.fn.sum("open").as("openCount"),
+            db.fn.count("open").as("reviewedCount"),
+          ])
+          .where("country", "=", regionCode)
+          .executeTakeFirst();
+      } else if (level === 2) {
+        hotspotStats = await db
+          .selectFrom("hotspots")
+          .select([
+            db.fn.count("id").as("totalCount"),
+            db.fn.sum("open").as("openCount"),
+            db.fn.count("open").as("reviewedCount"),
+          ])
+          .where("state", "=", regionCode)
+          .executeTakeFirst();
+      } else if (level === 3) {
+        hotspotStats = await db
+          .selectFrom("hotspots")
+          .select([
+            db.fn.count("id").as("totalCount"),
+            db.fn.sum("open").as("openCount"),
+            db.fn.count("open").as("reviewedCount"),
+          ])
+          .where("county", "=", regionCode)
+          .executeTakeFirst();
+      }
     }
 
-    const stats = hotspotStats[0] || { totalCount: 0, openCount: 0, reviewedCount: 0 };
+    const stats = hotspotStats || { totalCount: 0, openCount: 0, reviewedCount: 0 };
 
     return c.json({
-      hotspotCount: stats.totalCount,
-      openHotspotCount: stats.openCount,
-      reviewedHotspotCount: stats.reviewedCount,
+      hotspotCount: Number(stats.totalCount),
+      openHotspotCount: Number(stats.openCount || 0),
+      reviewedHotspotCount: Number(stats.reviewedCount),
     });
   } catch (error) {
     if (error instanceof HTTPException) {
