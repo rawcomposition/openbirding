@@ -9,9 +9,7 @@
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sync-regions": "tsx --env-file=.env scripts/sync-regions.ts",
-    "init-db": "tsx --env-file=.env scripts/init-db.ts",
-    "migrate-hotspots": "tsx --env-file=.env scripts/migrate-hotspots.ts",
-    "migrate-mongo-to-sqlite": "tsx --env-file=.env scripts/migrate-mongo-to-sqlite.ts"
+    "init-db": "tsx --env-file=.env scripts/init-db.ts"
   },
   "keywords": [],
   "author": "",

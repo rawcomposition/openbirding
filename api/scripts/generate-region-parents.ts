@@ -2,11 +2,6 @@ import "dotenv/config";
 import connect from "../lib/db.js";
 import Region from "../models/Region.js";
 
-type RegionData = {
-  _id: string;
-  name: string;
-};
-
 type ParentInfo = {
   name: string;
   id: string;
