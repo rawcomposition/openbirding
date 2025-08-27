@@ -4,9 +4,10 @@ import { Toaster } from "react-hot-toast";
 import Header from "./components/Header";
 import Home from "./pages/Home";
 import Map from "./pages/Map";
-import AddHotspot from "./pages/AddHotspot";
 import Region from "./pages/Region";
 import Place from "./pages/Place";
+import HotspotDetails from "./components/HotspotDetails";
+import { useModalActions } from "./lib/modalStore";
 import { get } from "./lib/utils";
 
 const queryClient = new QueryClient({
@@ -24,21 +25,26 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const { clickOutside } = useModalActions();
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 text-white">
+        <div
+          className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 text-white"
+          onClick={clickOutside}
+        >
           <Header />
           <main>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/map" element={<Map />} />
-              <Route path="/add-hotspot" element={<AddHotspot />} />
               <Route path="/region/:regionCode" element={<Region />} />
               <Route path="/place/:placeName/:coordinates" element={<Place />} />
             </Routes>
           </main>
         </div>
+        <HotspotDetails />
         <Toaster position="top-right" />
       </Router>
     </QueryClientProvider>

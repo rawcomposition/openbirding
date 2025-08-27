@@ -1,5 +1,5 @@
 import { ChevronUp, ChevronDown } from "lucide-react";
-import type { Region } from "@/lib/types";
+import type { Subregion } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   useReactTable,
@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-table";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { get } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
 type Props = {
@@ -28,15 +27,11 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
     data: regions = [],
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["regions", regionCode, "subregions"],
-    queryFn: async () => {
-      const response = await get(`/regions/${regionCode}/subregions`, {});
-      return response as unknown as Region[];
-    },
+  } = useQuery<Subregion[]>({
+    queryKey: [`/regions/${regionCode}/subregions`],
   });
 
-  const columns: ColumnDef<Region>[] = [
+  const columns: ColumnDef<Subregion>[] = [
     {
       accessorKey: "name",
       header: "Name",
@@ -90,7 +85,7 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       header: "Actions",
       cell: ({ row }) => (
         <Link
-          to={`/region/${row.original._id}`}
+          to={`/region/${row.original.id}`}
           className="text-emerald-400 hover:text-emerald-300 transition-colors text-sm"
         >
           {row.original.hasChildren ? "View Region" : "View Hotspots"}

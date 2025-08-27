@@ -1,34 +1,32 @@
 export type Hotspot = {
-  _id: string;
+  rowId?: number;
+  id: string;
   name: string;
   region: string;
-  country: string;
-  state: string;
-  county: string;
+  country: string | null;
+  state: string | null;
+  county: string | null;
   species: number;
-  location: {
-    type: "Point";
-    coordinates: [number, number];
-  };
-  updatedAt: Date;
-};
-
-export type HotspotsResponse = {
-  hotspots: Hotspot[];
-  count: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  lat: number;
+  lng: number;
+  open: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Region = {
-  _id: string;
+  id: string;
   name: string;
-  longName: string;
-  parents: {
-    name: string;
-    id: string;
-  }[];
-  isCountry?: boolean;
-  hasChildren?: boolean;
+  longName: string | null;
+  parents: string; // JSON array
+  level: number; // 1: country, 2: state, 3: county
+  hasChildren: number; // 0: no, 1: yes
+};
+
+export type Pack = {
+  id: number;
+  region: string;
+  hotspots: number | null;
+  lastSynced: string | null;
 };

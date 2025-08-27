@@ -1,20 +1,18 @@
 export type Hotspot = {
-  _id: string;
+  id: string;
   name: string;
   region: string;
-  country: string;
-  state: string;
-  county: string;
+  country: string | null;
+  state: string | null;
+  county: string | null;
   species: number;
-  location: {
-    type: "Point";
-    coordinates: [number, number];
-  };
+  lat: number;
+  lng: number;
   open: boolean | null;
-  notes?: string;
-  updatedAt: Date;
-  tags?: string[];
-  distance?: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  distance?: number; // only for nearby hotspots
 };
 
 export type HotspotsResponse = {
@@ -23,16 +21,19 @@ export type HotspotsResponse = {
 };
 
 export type Region = {
-  _id: string;
+  id: string;
   name: string;
   longName: string;
   parents: {
     name: string;
     id: string;
   }[];
-  isCountry?: boolean;
-  hasChildren?: boolean;
-  hotspotCount?: number;
-  openHotspotCount?: number;
-  reviewedHotspotCount?: number;
+  level: number;
+  hasChildren: boolean;
+};
+
+export type Subregion = Region & {
+  hotspotCount: number;
+  openHotspotCount: number;
+  reviewedHotspotCount: number;
 };

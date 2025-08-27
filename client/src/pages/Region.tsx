@@ -7,14 +7,7 @@ import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import RegionList from "@/components/RegionList";
 import RegionStats from "@/components/RegionStats";
-import type { Hotspot } from "@/lib/types";
-
-type Region = {
-  _id: string;
-  name: string;
-  isCountry?: boolean;
-  hasChildren?: boolean;
-};
+import type { Hotspot, Region as RegionType } from "@/lib/types";
 
 const Region = () => {
   const { regionCode } = useParams<{ regionCode: string }>();
@@ -24,14 +17,14 @@ const Region = () => {
     error,
     refetch,
     isLoading: isLoadingRegion,
-  } = useQuery<Region>({
+  } = useQuery<RegionType>({
     queryKey: [`/regions/${regionCode}`],
     enabled: !!regionCode,
     refetchOnWindowFocus: false,
   });
 
   const { data: hotspots, isLoading: isLoadingHotspots } = useQuery<{ hotspots: Hotspot[]; count: number }>({
-    queryKey: [`/regions/${regionCode}/hotspots`],
+    queryKey: [`/hotspots/by-region/${regionCode}`],
     enabled: !!regionCode && !!region && !region.hasChildren,
     refetchOnWindowFocus: false,
   });
@@ -102,7 +95,7 @@ const Region = () => {
           {hotspots?.hotspots && hotspots.hotspots.length > 0 ? (
             <HotspotList
               hotspots={hotspots.hotspots}
-              queryKey={`/regions/${regionCode}/hotspots`}
+              queryKey={`/hotspots/by-region/${regionCode}`}
               total={hotspots.count}
               isLoading={isLoadingHotspots}
             />
@@ -113,7 +106,7 @@ const Region = () => {
               </CardContent>
             </Card>
           ) : (
-            <HotspotList hotspots={[]} queryKey={`/regions/${regionCode}/hotspots`} isLoading={isLoadingHotspots} />
+            <HotspotList hotspots={[]} queryKey={`/hotspots/by-region/${regionCode}`} isLoading={isLoadingHotspots} />
           )}
         </>
       )}
