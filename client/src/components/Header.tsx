@@ -19,7 +19,7 @@ const Header = () => {
 
   const logoutMutation = useMutation({
     mutationFn: async (): Promise<void> => {
-      await mutate("POST", "/api/auth/logout");
+      await mutate("POST", "/auth/logout");
     },
     onSuccess: () => {
       logout();

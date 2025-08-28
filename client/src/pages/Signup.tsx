@@ -64,6 +64,7 @@ const Signup = () => {
           icon={<Mail className="h-4 w-4" />}
           className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
           required
+          autoFocus
         />
 
         <FormInput
