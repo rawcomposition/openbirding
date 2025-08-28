@@ -37,3 +37,31 @@ export type Subregion = Region & {
   openHotspotCount: number;
   reviewedHotspotCount: number;
 };
+
+export type User = {
+  id: string;
+  email: string;
+  emailVerified: number;
+  isAdmin: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AuthResponse = {
+  user: User;
+  session: {
+    id: string;
+    userId: string;
+    createdAt: string;
+  };
+};
+
+export type LoginData = {
+  email: string;
+  password: string;
+};
+
+export type SignupData = {
+  email: string;
+  password: string;
+};
