@@ -47,7 +47,7 @@ const Header = () => {
           </Link>
 
           <div className="flex items-center space-x-4">
-            <nav className="flex items-center space-x-4">
+            <nav className="hidden md:flex items-center space-x-4">
               <Button
                 asChild
                 variant={isActive("/") ? "default" : "ghost"}
