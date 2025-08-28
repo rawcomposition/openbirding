@@ -16,7 +16,8 @@
     "build:api": "cd api && npm run build",
     "install:all": "npm install && cd client && npm install && cd ../api && npm install",
     "sync-regions": "cd api && npx tsx scripts/sync-regions.ts",
-    "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts"
+    "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts",
+    "init-db": "cd api && npx tsx scripts/init-db.ts"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
