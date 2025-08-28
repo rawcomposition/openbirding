@@ -1,6 +1,13 @@
 import { Bird, LogOut, User } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/authStore";
 import { mutate } from "@/lib/utils";
@@ -36,7 +43,7 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
             <Bird className="h-8 w-8 text-emerald-400" />
-            <span className="text-xl font-bold text-white">OpenBirding</span>
+            <span className="text-xl font-bold text-white">Open Birding</span>
           </Link>
 
           <div className="flex items-center space-x-4">
@@ -67,21 +74,28 @@ const Header = () => {
 
             <div className="flex items-center space-x-2">
               {user ? (
-                <>
-                  <div className="flex items-center space-x-2 text-slate-300">
-                    <User className="h-4 w-4" />
-                    <span className="text-sm">{user.email}</span>
-                  </div>
-                  <Button
-                    onClick={handleLogout}
-                    disabled={logoutMutation.isPending}
-                    variant="ghost"
-                    size="sm"
-                    className="text-slate-300 hover:text-white hover:bg-slate-800/50"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0 hover:bg-slate-800/50">
+                      <User className="h-5 w-5 text-slate-300" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
+                    <div className="flex items-center px-2 py-1.5 text-sm text-slate-300">
+                      <User className="h-4 w-4 mr-2" />
+                      {user.email}
+                    </div>
+                    <DropdownMenuSeparator className="bg-slate-700" />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      disabled={logoutMutation.isPending}
+                      className="text-slate-300 hover:text-white hover:bg-slate-700 focus:bg-slate-700 focus:text-white"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      {logoutMutation.isPending ? "Logging out..." : "Logout"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white">
                   <Link to="/login">Login</Link>
