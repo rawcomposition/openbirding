@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import hotspots from "./routes/hotspots.js";
 import packs from "./routes/packs.js";
 import regions from "./routes/regions.js";
+import auth from "./routes/auth.js";
 
 const app = new Hono();
 
@@ -17,6 +18,7 @@ if (process.env.CORS_ORIGINS) {
 app.route("/api/hotspots", hotspots);
 app.route("/api/packs", packs);
 app.route("/api/regions", regions);
+app.route("/api/auth", auth);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);

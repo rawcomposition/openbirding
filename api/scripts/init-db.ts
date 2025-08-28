@@ -47,6 +47,66 @@ export async function setupDatabase() {
     .execute();
 
   await db.schema
+    .createTable("user")
+    .ifNotExists()
+    .addColumn("id", "text", (c) => c.primaryKey())
+    .addColumn("email", "text", (c) => c.notNull().unique())
+    .addColumn("password", "text", (c) => c.notNull())
+    .addColumn("emailVerified", "integer", (c) =>
+      c
+        .notNull()
+        .defaultTo(0)
+        .check(sql`emailVerified IN (0, 1)`)
+    )
+    .addColumn("isAdmin", "integer", (c) =>
+      c
+        .notNull()
+        .defaultTo(0)
+        .check(sql`isAdmin IN (0, 1)`)
+    )
+    .addColumn("createdAt", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("updatedAt", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .execute();
+
+  await db.schema
+    .createTable("session")
+    .ifNotExists()
+    .addColumn("id", "text", (c) => c.primaryKey())
+    .addColumn("userId", "text", (c) => c.notNull())
+    .addColumn("secretHash", "blob", (c) => c.notNull())
+    .addColumn("createdAt", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addForeignKeyConstraint("fk_session_user", ["userId"], "user", ["id"], (cb) => cb.onDelete("cascade"))
+    .execute();
+
+  await db.schema
+    .createTable("login_attempt")
+    .ifNotExists()
+    .addColumn("id", "integer", (c) => c.primaryKey())
+    .addColumn("email", "text", (c) => c.notNull())
+    .addColumn("ipAddress", "text", (c) => c.notNull())
+    .addColumn("attemptedAt", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("success", "integer", (c) => c.notNull().check(sql`success IN (0, 1)`))
+    .execute();
+
+  await db.schema
+    .createTable("email_verification_token")
+    .ifNotExists()
+    .addColumn("id", "text", (c) => c.primaryKey())
+    .addColumn("userId", "text", (c) => c.notNull())
+    .addColumn("expiresAt", "text", (c) => c.notNull())
+    .addForeignKeyConstraint("fk_email_verification_user", ["userId"], "user", ["id"], (cb) => cb.onDelete("cascade"))
+    .execute();
+
+  await db.schema
+    .createTable("password_reset_token")
+    .ifNotExists()
+    .addColumn("id", "text", (c) => c.primaryKey())
+    .addColumn("userId", "text", (c) => c.notNull())
+    .addColumn("expiresAt", "text", (c) => c.notNull())
+    .addForeignKeyConstraint("fk_password_reset_user", ["userId"], "user", ["id"], (cb) => cb.onDelete("cascade"))
+    .execute();
+
+  await db.schema
     .createIndex("hotspots_region_species_idx")
     .ifNotExists()
     .on("hotspots")
@@ -58,6 +118,36 @@ export async function setupDatabase() {
   await db.schema.createIndex("hotspots_state_idx").ifNotExists().on("hotspots").columns(["state"]).execute();
 
   await db.schema.createIndex("hotspots_county_idx").ifNotExists().on("hotspots").columns(["county"]).execute();
+
+  await db.schema.createIndex("idx_session_user_id").ifNotExists().on("session").columns(["userId"]).execute();
+
+  await db.schema
+    .createIndex("idx_login_attempt_email_ip")
+    .ifNotExists()
+    .on("login_attempt")
+    .columns(["email", "ipAddress"])
+    .execute();
+
+  await db.schema
+    .createIndex("idx_login_attempt_attempted_at")
+    .ifNotExists()
+    .on("login_attempt")
+    .columns(["attemptedAt"])
+    .execute();
+
+  await db.schema
+    .createIndex("idx_email_verification_token_user_id")
+    .ifNotExists()
+    .on("email_verification_token")
+    .columns(["userId"])
+    .execute();
+
+  await db.schema
+    .createIndex("idx_password_reset_token_user_id")
+    .ifNotExists()
+    .on("password_reset_token")
+    .columns(["userId"])
+    .execute();
 
   await db.executeQuery(
     sql`
