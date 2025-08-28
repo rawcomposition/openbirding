@@ -58,7 +58,7 @@ function App() {
       <Router>
         <AppContent />
         <HotspotDetails />
-        <Toaster position="top-right" />
+        <Toaster />
       </Router>
     </QueryClientProvider>
   );

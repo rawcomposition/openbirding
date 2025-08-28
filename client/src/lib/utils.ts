@@ -63,7 +63,7 @@ export const mutate = async (method: "POST" | "PUT" | "DELETE" | "PATCH", url: s
   }
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error("Unauthorized");
+    if (res.status === 401) throw new Error((json.error as string) || "Unauthorized");
     if (res.status === 403) throw new Error("Forbidden");
     if (res.status === 404) throw new Error("Route not found");
     if (res.status === 405) throw new Error("Method not allowed");
