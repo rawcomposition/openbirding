@@ -17,6 +17,7 @@ export async function setupDatabase() {
     .addColumn("lng", "real", (c) => c.notNull())
     .addColumn("open", "integer")
     .addColumn("notes", "text")
+    .addColumn("last_updated_by", "text")
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .addColumn("updated_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .addCheckConstraint("chk_lat", sql`lat BETWEEN -90 AND 90`)
@@ -26,6 +27,25 @@ export async function setupDatabase() {
     .addForeignKeyConstraint("fk_hotspots_country", ["country"], "regions", ["id"], (cb) => cb.onDelete("set null"))
     .addForeignKeyConstraint("fk_hotspots_state", ["state"], "regions", ["id"], (cb) => cb.onDelete("set null"))
     .addForeignKeyConstraint("fk_hotspots_county", ["county"], "regions", ["id"], (cb) => cb.onDelete("set null"))
+    .addForeignKeyConstraint("fk_hotspots_last_updated_by", ["last_updated_by"], "user", ["id"], (cb) =>
+      cb.onDelete("set null")
+    )
+    .execute();
+
+  await db.schema
+    .createTable("hotspot_revisions")
+    .ifNotExists()
+    .addColumn("id", "integer", (c) => c.primaryKey())
+    .addColumn("hotspot_id", "text", (c) => c.notNull())
+    .addColumn("user_id", "text", (c) => c.notNull())
+    .addColumn("notes", "text")
+    .addColumn("open", "integer")
+    .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addForeignKeyConstraint("fk_hotspot_revisions_hotspot", ["hotspot_id"], "hotspots", ["id"], (cb) =>
+      cb.onDelete("cascade")
+    )
+    .addForeignKeyConstraint("fk_hotspot_revisions_user", ["user_id"], "user", ["id"], (cb) => cb.onDelete("cascade"))
+    .addCheckConstraint("chk_revision_open_bool", sql`open IN (0,1) OR open IS NULL`)
     .execute();
 
   await db.schema
@@ -122,6 +142,20 @@ export async function setupDatabase() {
   await db.schema.createIndex("hotspots_state_idx").ifNotExists().on("hotspots").columns(["state"]).execute();
 
   await db.schema.createIndex("hotspots_county_idx").ifNotExists().on("hotspots").columns(["county"]).execute();
+
+  await db.schema
+    .createIndex("idx_hotspot_revisions_hotspot_id")
+    .ifNotExists()
+    .on("hotspot_revisions")
+    .columns(["hotspot_id"])
+    .execute();
+
+  await db.schema
+    .createIndex("idx_hotspot_revisions_user_id")
+    .ifNotExists()
+    .on("hotspot_revisions")
+    .columns(["user_id"])
+    .execute();
 
   await db.schema.createIndex("idx_session_user_id").ifNotExists().on("session").columns(["user_id"]).execute();
 

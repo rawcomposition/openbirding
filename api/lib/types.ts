@@ -1,8 +1,8 @@
 export type Hotspot = {
-  rowId?: number;
   id: string;
+  rowId?: number;
   name: string;
-  region: string;
+  region: string | null;
   country: string | null;
   state: string | null;
   county: string | null;
@@ -11,8 +11,18 @@ export type Hotspot = {
   lng: number;
   open: number | null;
   notes: string | null;
+  lastUpdatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type HotspotRevision = {
+  id: number;
+  hotspotId: string;
+  userId: string;
+  notes: string | null;
+  open: number | null;
+  createdAt: string;
 };
 
 export type Region = {
@@ -53,7 +63,7 @@ export type SessionWithToken = Session & {
 };
 
 export type LoginAttempt = {
-  id?: number; // Auto-incrementing, optional when inserting
+  id?: number;
   email: string;
   ipAddress: string;
   attemptedAt: string; // ISO date string

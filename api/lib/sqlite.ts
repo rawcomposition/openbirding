@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin } from "kysely";
 import type {
   Hotspot,
+  HotspotRevision,
   Pack,
   Region,
   User,
@@ -13,6 +14,7 @@ import type {
 
 type DatabaseSchema = {
   hotspots: Hotspot;
+  hotspot_revisions: HotspotRevision;
   packs: Pack;
   regions: Region;
   hotspots_rtree: { rowId: number; minLat: number; maxLat: number; minLng: number; maxLng: number };
