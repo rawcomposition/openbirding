@@ -11,6 +11,7 @@ import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import SetPassword from "./pages/SetPassword";
+import NotFound from "./pages/NotFound";
 import HotspotDetails from "./components/HotspotDetails";
 import { useModalActions } from "./lib/modalStore";
 import { get } from "./lib/utils";
@@ -54,6 +55,7 @@ function AppContent() {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </div>
