@@ -10,7 +10,7 @@ type AuthWrapperProps = {
 
 const AuthWrapper = ({ title, description, children, hideHeader = false }: AuthWrapperProps) => {
   return (
-    <div className="min-h-screen flex items-start justify-center px-4 pt-4 sm:pt-24 md:pt-32">
+    <div className="min-h-screen flex items-start justify-center px-4 pt-4 sm:pt-24 md:pt-32 pb-4">
       <div className="w-full max-w-md">
         <Card className="bg-slate-800/50 border-slate-700/50">
           {!hideHeader && (
