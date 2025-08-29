@@ -14,7 +14,12 @@ import {
   verifyEmailToken,
   markEmailAsVerified,
   deleteEmailVerificationToken,
+  createPasswordResetToken,
+  verifyPasswordResetToken,
+  deletePasswordResetToken,
+  updateUserPassword,
 } from "../lib/auth.js";
+import { sendPasswordResetEmail } from "../lib/email.js";
 import type { User } from "../lib/types.js";
 
 const auth = new Hono();
@@ -235,6 +240,79 @@ auth.post("/resend-verification", async (c) => {
     });
   } catch (error) {
     console.error("Resend verification error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+auth.post("/forgot-password", async (c) => {
+  const origin = c.req.header("Origin") || null;
+  const method = c.req.method;
+
+  if (!(await verifyRequestOrigin(method, origin))) {
+    return c.json({ error: "Invalid origin" }, 403);
+  }
+
+  try {
+    const { email } = await c.req.json();
+
+    if (!email) {
+      return c.json({ error: "Email is required" }, 400);
+    }
+
+    const user = await getUserByEmail(email);
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    await sendPasswordResetEmail(user.email, await createPasswordResetToken(user.id));
+
+    return c.json({
+      message: "Password reset email sent successfully.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+auth.post("/reset-password", async (c) => {
+  const origin = c.req.header("Origin") || null;
+  const method = c.req.method;
+
+  if (!(await verifyRequestOrigin(method, origin))) {
+    return c.json({ error: "Invalid origin" }, 403);
+  }
+
+  try {
+    const { token, password } = await c.req.json();
+
+    if (!token || !password) {
+      return c.json({ error: "Token and password are required" }, 400);
+    }
+
+    if (password.length < 8) {
+      return c.json({ error: "Password must be at least 8 characters long" }, 400);
+    }
+
+    const userId = await verifyPasswordResetToken(token);
+    if (!userId) {
+      return c.json({ error: "Invalid or expired reset token" }, 400);
+    }
+
+    await updateUserPassword(userId, password);
+    await deletePasswordResetToken(token);
+
+    const user = await getUser(userId);
+    if (user && !user.emailVerified) {
+      await markEmailAsVerified(userId);
+    }
+
+    return c.json({
+      message: "Password reset successfully.",
+      email: user?.email,
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });

@@ -33,3 +33,37 @@ export const sendEmailVerification = async (email: string, token: string) => {
     throw new Error("Failed to send verification email");
   }
 };
+
+export const sendPasswordResetEmail = async (email: string, token: string) => {
+  const resetUrl = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: "OpenBirding.org <noreply@system.openbirding.org>",
+      to: [email],
+      replyTo: "adam@openbirding.org",
+      subject: "Reset your password",
+      html: `
+        <p>You requested a password reset for your OpenBirding.org account.</p>
+        
+        <p>Click the link below to reset your password:</p>
+        
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        
+        <p>This link will expire in 1 hour.</p>
+        
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
+      `,
+    });
+
+    if (error) {
+      console.error("Resend error:", error);
+      throw new Error("Failed to send password reset email");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Email sending error:", error);
+    throw new Error("Failed to send password reset email");
+  }
+};

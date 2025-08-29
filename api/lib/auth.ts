@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import db from "./sqlite.js";
 import type { User, Session, SessionWithToken, LoginAttempt } from "./types.js";
 import { sendEmailVerification } from "./email.js";
@@ -310,4 +311,63 @@ export function encodeSessionPublicJSON(session: Session): string {
     userId: session.userId,
     createdAt: session.createdAt,
   });
+}
+
+export async function createPasswordResetToken(userId: string): Promise<string> {
+  const token = generateSecureRandomString();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+  await db
+    .insertInto("password_reset_token")
+    .values({
+      id: token,
+      userId,
+      expiresAt,
+    })
+    .execute();
+
+  return token;
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<string | null> {
+  const now = new Date().toISOString();
+
+  const result = await db
+    .selectFrom("password_reset_token")
+    .select(["id", "userId", "expiresAt"])
+    .where("id", "=", token)
+    .executeTakeFirst();
+
+  if (!result) {
+    return null;
+  }
+
+  if (new Date(result.expiresAt) < new Date(now)) {
+    await deletePasswordResetToken(token);
+    return null;
+  }
+
+  return result.userId;
+}
+
+export async function deletePasswordResetToken(token: string): Promise<void> {
+  await db.deleteFrom("password_reset_token").where("id", "=", token).execute();
+}
+
+export async function deleteUserPasswordResetTokens(userId: string): Promise<void> {
+  await db.deleteFrom("password_reset_token").where("userId", "=", userId).execute();
+}
+
+export async function updateUserPassword(userId: string, newPassword: string): Promise<void> {
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  const now = new Date().toISOString();
+
+  await db
+    .updateTable("user")
+    .set({
+      password: hashedPassword,
+      updatedAt: now,
+    })
+    .where("id", "=", userId)
+    .execute();
 }

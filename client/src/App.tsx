@@ -9,6 +9,8 @@ import Place from "./pages/Place";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import SetPassword from "./pages/SetPassword";
 import HotspotDetails from "./components/HotspotDetails";
 import { useModalActions } from "./lib/modalStore";
 import { get } from "./lib/utils";
@@ -31,7 +33,9 @@ function AppContent() {
   const { clickOutside } = useModalActions();
   const location = useLocation();
 
-  const isAuthPage = ["/login", "/signup"].includes(location.pathname);
+  const isAuthPage = ["/login", "/signup", "/forgot-password", "/set-password", "/verify-email"].includes(
+    location.pathname
+  );
 
   return (
     <div
@@ -48,6 +52,8 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/set-password" element={<SetPassword />} />
         </Routes>
       </main>
     </div>
