@@ -18,6 +18,8 @@ import { useEditStore } from "@/lib/editStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { useAuthStore } from "@/lib/authStore";
+import { useNavigate, useLocation } from "react-router-dom";
 import HotspotRow from "./HotspotRow";
 
 type Props = {
@@ -35,6 +37,9 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
   const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount, clearChanges } = useEditStore();
   const changeCount = getChangeCount();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const saveChangesMutation = useMutation({
     mutationFn: async (changes: Array<{ id: string; open?: boolean | null; notes?: string }>) => {
@@ -60,6 +65,14 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
 
   const handleCancelEdit = () => {
     setEditMode(false);
+  };
+
+  const handleEditClick = () => {
+    if (!user) {
+      navigate("/login", { state: { redirect: location.pathname + location.search } });
+      return;
+    }
+    setEditMode(true);
   };
 
   const columns: ColumnDef<Hotspot>[] = [
@@ -177,7 +190,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
               </Button>
             </>
           ) : (
-            <Button variant="primary" size="lg" onClick={() => setEditMode(true)}>
+            <Button variant="primary" size="lg" onClick={handleEditClick}>
               <Edit className="h-4 w-4" />
               Edit Hotspots
             </Button>
