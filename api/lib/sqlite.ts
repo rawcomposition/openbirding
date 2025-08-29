@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { Kysely, SqliteDialect } from "kysely";
+import { Kysely, SqliteDialect, CamelCasePlugin } from "kysely";
 import type {
   Hotspot,
   Pack,
@@ -23,10 +23,15 @@ type DatabaseSchema = {
   password_reset_token: PasswordResetToken;
 };
 
+const sqliteDb = new (Database as any)("../openbirding.db");
+
+sqliteDb.pragma("foreign_keys = ON");
+
 const db = new Kysely<DatabaseSchema>({
   dialect: new SqliteDialect({
-    database: new (Database as any)("../openbirding.db"),
+    database: sqliteDb,
   }),
+  plugins: [new CamelCasePlugin()],
 });
 
 export default db;
