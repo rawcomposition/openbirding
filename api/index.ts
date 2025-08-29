@@ -9,11 +9,15 @@ import auth from "./routes/auth.js";
 
 const app = new Hono();
 
-if (process.env.CORS_ORIGINS) {
-  app.use("*", cors({ origin: process.env.CORS_ORIGINS.split(",") }));
-} else {
-  console.error("CORS_ORIGINS is not set");
-}
+app.use(
+  "*",
+  cors({
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(",")
+      : ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000"],
+    credentials: true,
+  })
+);
 
 app.route("/api/hotspots", hotspots);
 app.route("/api/packs", packs);

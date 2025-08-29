@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../lib/sqlite.js";
 import { getCosLat, getDistanceKm, getRadiusSquared, makeBounds } from "lib/spatial.js";
 import { sql } from "kysely";
+import { requireAuth } from "../lib/middleware.js";
 
 const hotspots = new Hono();
 
@@ -183,9 +184,10 @@ hotspots.get("/nearby/:coordinates", async (c) => {
   }
 });
 
-hotspots.put("/bulk-update", async (c) => {
+hotspots.put("/bulk-update", requireAuth, async (c) => {
   try {
-    const updates = await c.req.json<Array<{ id: string; open?: boolean | null; notes?: string }>>();
+    const updates = await c.req.json();
+    const userId = c.get("userId") as string;
 
     if (!Array.isArray(updates) || updates.length === 0) {
       throw new HTTPException(400, { message: "Updates array is required and must not be empty" });

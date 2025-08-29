@@ -26,6 +26,7 @@ export const get = async (url: string, params: Params) => {
 
   const res = await fetch(fullUrl, {
     method: "GET",
+    credentials: "include",
   });
 
   let json: Record<string, unknown> = {};
@@ -52,6 +53,7 @@ export const mutate = async (method: "POST" | "PUT" | "DELETE" | "PATCH", url: s
   const res = await fetch(fullUrl, {
     method,
     body: JSON.stringify(data),
+    credentials: "include",
   });
 
   let json: Record<string, unknown> = {};
