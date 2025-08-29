@@ -44,7 +44,7 @@ export async function setupDatabase() {
     .addForeignKeyConstraint("fk_hotspot_revisions_hotspot", ["hotspot_id"], "hotspots", ["id"], (cb) =>
       cb.onDelete("cascade")
     )
-    .addForeignKeyConstraint("fk_hotspot_revisions_user", ["user_id"], "user", ["id"], (cb) => cb.onDelete("cascade"))
+    .addForeignKeyConstraint("fk_hotspot_revisions_user", ["user_id"], "user", ["id"], (cb) => cb.onDelete("set null"))
     .addCheckConstraint("chk_revision_open_bool", sql`open IN (0,1) OR open IS NULL`)
     .execute();
 
@@ -79,7 +79,6 @@ export async function setupDatabase() {
     .addColumn("parents", "text")
     .addColumn("level", "integer", (c) => c.notNull().check(sql`level IN (1, 2, 3)`))
     .addColumn("has_children", "integer")
-    .addForeignKeyConstraint("fk_regions_parents", ["parents"], "regions", ["id"], (cb) => cb.onDelete("set null"))
     .execute();
 
   await db.schema
