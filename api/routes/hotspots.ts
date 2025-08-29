@@ -25,15 +25,7 @@ hotspots.get("/within-bounds", async (c) => {
     const rows = await db
       .selectFrom("hotspots as h")
       .innerJoin(sql`hotspots_rtree`.as("r"), (j) => j.on(sql.ref("r.rowId"), "=", sql.ref("h.rowId")))
-      .select([
-        "h.id as id",
-        "h.name as name",
-        "h.species as species",
-        "h.open as open",
-        "h.lat as lat",
-        "h.lng as lng",
-        "h.notes as notes",
-      ])
+      .select(["h.id as id", "h.lat as lat", "h.lng as lng", "h.open as open"])
       .where((eb) =>
         eb.and([
           sql<boolean>`${sql.ref("r.minLat")} <= ${north} AND ${sql.ref("r.maxLat")} >= ${south}`,
@@ -44,12 +36,9 @@ hotspots.get("/within-bounds", async (c) => {
 
     const transformedHotspots = rows.map((r) => ({
       id: r.id,
-      name: r.name,
-      species: r.species,
       lat: r.lat,
       lng: r.lng,
       open: r.open === 1 ? true : r.open === 0 ? false : null,
-      notes: r.notes,
     }));
 
     return c.json({ hotspots: transformedHotspots, count: transformedHotspots.length });

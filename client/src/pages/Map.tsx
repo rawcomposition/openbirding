@@ -2,11 +2,20 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { HotspotsResponse } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
 import { useModalStore } from "@/lib/modalStore";
 
 const MIN_ZOOM = 7;
+
+export type HotspotsResponse = {
+  hotspots: {
+    id: string;
+    lat: number;
+    lng: number;
+    open: boolean;
+  }[];
+  count: number;
+};
 
 const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -199,8 +208,6 @@ const Map = () => {
         coordinates: [hotspot.lng, hotspot.lat],
       },
       properties: {
-        title: hotspot.name,
-        species: hotspot.species,
         id: hotspot.id,
         open: hotspot.open,
       },

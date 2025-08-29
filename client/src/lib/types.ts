@@ -15,11 +15,6 @@ export type Hotspot = {
   distance?: number; // only for nearby hotspots
 };
 
-export type HotspotsResponse = {
-  hotspots: Hotspot[];
-  count: number;
-};
-
 export type Region = {
   id: string;
   name: string;
