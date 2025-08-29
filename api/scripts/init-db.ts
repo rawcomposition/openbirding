@@ -37,7 +37,7 @@ export async function setupDatabase() {
     .ifNotExists()
     .addColumn("id", "integer", (c) => c.primaryKey())
     .addColumn("hotspot_id", "text", (c) => c.notNull())
-    .addColumn("user_id", "text", (c) => c.notNull())
+    .addColumn("user_id", "text")
     .addColumn("notes", "text")
     .addColumn("open", "integer")
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
