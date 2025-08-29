@@ -48,6 +48,18 @@ export async function setupDatabase() {
     .addCheckConstraint("chk_revision_open_bool", sql`open IN (0,1) OR open IS NULL`)
     .execute();
 
+  await db.executeQuery(
+    sql`
+    CREATE TRIGGER IF NOT EXISTS hotspots_revision_trigger
+    AFTER UPDATE OF notes, open ON hotspots
+    WHEN (OLD.notes IS NOT NEW.notes OR OLD.open IS NOT NEW.open)
+    BEGIN
+      INSERT INTO hotspot_revisions (hotspot_id, user_id, notes, open)
+      VALUES (NEW.id, NEW.last_updated_by, NEW.notes, NEW.open);
+    END;
+  `.compile(db)
+  );
+
   await db.schema
     .createTable("packs")
     .ifNotExists()
