@@ -1,10 +1,12 @@
 import crypto from "crypto";
 import db from "./sqlite.js";
 import type { User, Session, SessionWithToken, LoginAttempt } from "./types.js";
+import { sendEmailVerification } from "./email.js";
 
 const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 365; // 1 year
 const LOGIN_ATTEMPT_WINDOW_SECONDS = 15 * 60; // 15 minutes
 const MAX_LOGIN_ATTEMPS = 5;
+const EMAIL_VERIFICATION_EXPIRES_IN_SECONDS = 60 * 60 * 24; // 24 hours
 
 function generateSecureRandomString(): string {
   const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
@@ -33,6 +35,69 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
     c |= a[i] ^ b[i];
   }
   return c === 0;
+}
+
+export async function createEmailVerificationToken(userId: string): Promise<string> {
+  const token = generateSecureRandomString();
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_EXPIRES_IN_SECONDS * 1000).toISOString();
+
+  await db
+    .insertInto("email_verification_token")
+    .values({
+      id: token,
+      userId,
+      expiresAt,
+    })
+    .execute();
+
+  return token;
+}
+
+export async function verifyEmailToken(token: string): Promise<string | null> {
+  const now = new Date().toISOString();
+
+  const result = await db
+    .selectFrom("email_verification_token")
+    .select(["id", "userId", "expiresAt"])
+    .where("id", "=", token)
+    .executeTakeFirst();
+
+  if (!result) {
+    return null;
+  }
+
+  if (new Date(result.expiresAt) < new Date(now)) {
+    await deleteEmailVerificationToken(token);
+    return null;
+  }
+
+  return result.userId;
+}
+
+export async function deleteEmailVerificationToken(token: string): Promise<void> {
+  await db.deleteFrom("email_verification_token").where("id", "=", token).execute();
+}
+
+export async function deleteUserEmailVerificationTokens(userId: string): Promise<void> {
+  await db.deleteFrom("email_verification_token").where("userId", "=", userId).execute();
+}
+
+export async function markEmailAsVerified(userId: string): Promise<void> {
+  const now = new Date().toISOString();
+
+  await db
+    .updateTable("user")
+    .set({
+      emailVerified: 1,
+      updatedAt: now,
+    })
+    .where("id", "=", userId)
+    .execute();
+}
+
+export async function sendVerificationEmail(userId: string, email: string): Promise<void> {
+  const token = await createEmailVerificationToken(userId);
+  await sendEmailVerification(email, token);
 }
 
 export async function createSession(userId: string): Promise<SessionWithToken> {

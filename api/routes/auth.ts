@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import bcrypt from "bcryptjs";
 import {
   createUser,
+  getUser,
   getUserByEmail,
   createSession,
   validateSessionToken,
@@ -9,6 +10,10 @@ import {
   recordLoginAttempt,
   isRateLimited,
   verifyRequestOrigin,
+  sendVerificationEmail,
+  verifyEmailToken,
+  markEmailAsVerified,
+  deleteEmailVerificationToken,
 } from "../lib/auth.js";
 import type { User } from "../lib/types.js";
 
@@ -59,27 +64,13 @@ auth.post("/signup", async (c) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = await createUser(email, hashedPassword);
-    const session = await createSession(user.id);
 
-    const response: AuthResponse = {
-      user: {
-        id: user.id,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        isAdmin: user.isAdmin,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
-      session: {
-        id: session.id,
-        userId: session.userId,
-        createdAt: session.createdAt,
-      },
-    };
+    await sendVerificationEmail(user.id, email);
 
-    c.header("Set-Cookie", `session_token=${session.token}; Max-Age=31536000; HttpOnly; Secure; Path=/; SameSite=Lax`);
-
-    return c.json(response);
+    return c.json({
+      message: "Account created successfully. Please check your email to verify your account.",
+      email: user.email,
+    });
   } catch (error) {
     console.error("Signup error:", error);
     return c.json({ error: "Internal server error" }, 500);
@@ -116,6 +107,19 @@ auth.post("/login", async (c) => {
     if (!isValidPassword) {
       await recordLoginAttempt(email, ipAddress, false);
       return c.json({ error: "Invalid credentials" }, 401);
+    }
+
+    if (!user.emailVerified) {
+      await recordLoginAttempt(email, ipAddress, false);
+      await sendVerificationEmail(user.id, email);
+      return c.json(
+        {
+          error: "Please verify your email address before logging in. A new verification email has been sent.",
+          needsVerification: true,
+          email: user.email,
+        },
+        401
+      );
     }
 
     await recordLoginAttempt(email, ipAddress, true);
@@ -161,33 +165,78 @@ auth.post("/logout", async (c) => {
   return c.json({ success: true });
 });
 
-auth.get("/me", async (c) => {
-  const sessionToken = c.req.header("Cookie")?.match(/session_token=([^;]+)/)?.[1];
+auth.post("/verify-email", async (c) => {
+  const origin = c.req.header("Origin") || null;
+  const method = c.req.method;
 
-  if (!sessionToken) {
-    return c.json({ error: "Unauthorized" }, 401);
+  if (!(await verifyRequestOrigin(method, origin))) {
+    return c.json({ error: "Invalid origin" }, 403);
   }
 
-  const session = await validateSessionToken(sessionToken);
-  if (!session) {
-    return c.json({ error: "Unauthorized" }, 401);
+  const { token } = await c.req.json();
+
+  if (!token) {
+    return c.json({ error: "Verification token is required" }, 400);
   }
 
-  const user = await getUserByEmail(session.userId);
-  if (!user) {
-    return c.json({ error: "User not found" }, 404);
-  }
+  try {
+    const userId = await verifyEmailToken(token);
+    if (!userId) {
+      return c.json({ error: "Invalid or expired verification token" }, 400);
+    }
 
-  return c.json({
-    user: {
-      id: user.id,
+    await markEmailAsVerified(userId);
+    await deleteEmailVerificationToken(token);
+
+    const user = await getUser(userId);
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    return c.json({
+      message: "Email verified successfully! You can now log in.",
       email: user.email,
-      emailVerified: user.emailVerified,
-      isAdmin: user.isAdmin,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Email verification error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+auth.post("/resend-verification", async (c) => {
+  const origin = c.req.header("Origin") || null;
+  const method = c.req.method;
+
+  if (!(await verifyRequestOrigin(method, origin))) {
+    return c.json({ error: "Invalid origin" }, 403);
+  }
+
+  try {
+    const { email } = await c.req.json();
+
+    if (!email) {
+      return c.json({ error: "Email is required" }, 400);
+    }
+
+    const user = await getUserByEmail(email);
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    if (user.emailVerified) {
+      return c.json({ error: "Email is already verified" }, 400);
+    }
+
+    await sendVerificationEmail(user.id, email);
+
+    return c.json({
+      message: "Verification email sent successfully.",
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("Resend verification error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
 });
 
 export default auth;

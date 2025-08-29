@@ -10,7 +10,7 @@ export const sendEmailVerification = async (email: string, token: string) => {
       from: "OpenBirding.org <noreply@system.openbirding.org>",
       to: [email],
       replyTo: "adam@openbirding.org",
-      subject: "Verify your OpenBirding.org email address",
+      subject: "Verify your email address",
       html: `
         <p>Welcome to OpenBirding.org!</p>
         

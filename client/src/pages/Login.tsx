@@ -21,6 +21,13 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const form = useForm<LoginFormData>({
+    defaultValues: {
+      email: (location.state as { email?: string })?.email || "",
+      password: "",
+    },
+  });
+
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData): Promise<AuthResponse> => {
       return mutate("POST", "/auth/login", data) as Promise<AuthResponse>;
@@ -35,19 +42,19 @@ const Login = () => {
     },
   });
 
-  const form = useForm<LoginFormData>({
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
   const onSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data);
   };
 
+  const successMessage = (location.state as { message?: string })?.message;
+
   return (
     <AuthWrapper title="Welcome Back" description="Sign in to your OpenBirding account">
+      {successMessage && (
+        <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-md">
+          <p className="text-emerald-200 text-sm">{successMessage}</p>
+        </div>
+      )}
       <Form form={form} onSubmit={onSubmit} className="space-y-4">
         <FormInput
           name="email"
@@ -66,6 +73,7 @@ const Login = () => {
           icon={<Lock className="h-4 w-4" />}
           className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
           required
+          autoFocus={!!(location.state as { email?: string })?.email}
         />
 
         <Button

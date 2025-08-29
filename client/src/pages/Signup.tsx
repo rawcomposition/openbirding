@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/Form";
 import { FormInput } from "@/components/FormInput";
 import { AuthWrapper } from "@/components/AuthWrapper";
-import { useAuthStore } from "@/lib/authStore";
 import { mutate } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import type { SignupData, AuthResponse } from "@/lib/types";
+import type { SignupData } from "@/lib/types";
+import { useState } from "react";
 
 type SignupFormData = {
   email: string;
@@ -19,17 +18,16 @@ type SignupFormData = {
 };
 
 const Signup = () => {
-  const { setUser } = useAuthStore();
-  const navigate = useNavigate();
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
 
   const signupMutation = useMutation({
-    mutationFn: async (data: SignupData): Promise<AuthResponse> => {
-      return mutate("POST", "/auth/signup", data) as Promise<AuthResponse>;
+    mutationFn: async (data: SignupData): Promise<{ message: string; email: string }> => {
+      return mutate("POST", "/auth/signup", data) as Promise<{ message: string; email: string }>;
     },
     onSuccess: (data) => {
-      setUser(data.user);
-      toast.success("Account created successfully!");
-      navigate("/");
+      setShowVerificationMessage(true);
+      setSignupEmail(data.email);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Signup failed");
@@ -37,6 +35,18 @@ const Signup = () => {
   });
 
   const form = useForm<SignupFormData>();
+
+  const resendMutation = useMutation({
+    mutationFn: async (email: string) => {
+      return mutate("POST", "/auth/resend-verification", { email });
+    },
+    onSuccess: (data: Record<string, unknown>) => {
+      toast.success(data.message as string);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to resend verification email");
+    },
+  });
 
   const onSubmit = (data: SignupFormData) => {
     if (data.password.length < 8) {
@@ -53,6 +63,44 @@ const Signup = () => {
       password: data.password,
     });
   };
+
+  const handleResendVerification = () => {
+    if (signupEmail) {
+      resendMutation.mutate(signupEmail);
+    }
+  };
+
+  if (showVerificationMessage) {
+    return (
+      <AuthWrapper title="Check Your Email" description="We've sent you a verification link" hideHeader>
+        <div className="text-center space-y-6">
+          <div className="flex justify-center">
+            <Mail className="h-16 w-16 text-emerald-500" />
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Verify Your Email</h2>
+            <p className="text-slate-300">
+              We've sent a verification link to <strong>{signupEmail}</strong>
+            </p>
+            <p className="text-slate-400 text-sm">Click the link in your email to complete your registration.</p>
+            <div className="space-y-3">
+              <Button
+                onClick={handleResendVerification}
+                disabled={resendMutation.isPending}
+                variant="outline"
+                className="w-full"
+              >
+                {resendMutation.isPending ? "Sending..." : "Resend Verification Email"}
+              </Button>
+              <Link to="/login" className="block text-center text-emerald-400 hover:text-emerald-300 font-medium">
+                Back to Sign Up
+              </Link>
+            </div>
+          </div>
+        </div>
+      </AuthWrapper>
+    );
+  }
 
   return (
     <AuthWrapper title="Create Account" description="Join OpenBirding to track your birding adventures">

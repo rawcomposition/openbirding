@@ -8,6 +8,7 @@ import Region from "./pages/Region";
 import Place from "./pages/Place";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import VerifyEmail from "./pages/VerifyEmail";
 import HotspotDetails from "./components/HotspotDetails";
 import { useModalActions } from "./lib/modalStore";
 import { get } from "./lib/utils";
@@ -46,6 +47,7 @@ function AppContent() {
           <Route path="/place/:placeName/:coordinates" element={<Place />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
         </Routes>
       </main>
     </div>

@@ -38,12 +38,13 @@ export const get = async (url: string, params: Params) => {
   }
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error("Unauthorized");
-    if (res.status === 403) throw new Error("Forbidden");
-    if (res.status === 404) throw new Error("Route not found");
-    if (res.status === 405) throw new Error("Method not allowed");
-    if (res.status === 504) throw new Error("Operation timed out. Please try again.");
-    throw new Error((json.message as string) || "An error occurred");
+    const errorMessage = (json.error || json.message || "") as string;
+    if (res.status === 401) throw new Error(errorMessage || "Unauthorized");
+    if (res.status === 403) throw new Error(errorMessage || "Forbidden");
+    if (res.status === 404) throw new Error(errorMessage || "Route not found");
+    if (res.status === 405) throw new Error(errorMessage || "Method not allowed");
+    if (res.status === 504) throw new Error(errorMessage || "Operation timed out. Please try again.");
+    throw new Error(errorMessage || "An error occurred");
   }
   return json;
 };
@@ -65,12 +66,13 @@ export const mutate = async (method: "POST" | "PUT" | "DELETE" | "PATCH", url: s
   }
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error((json.error as string) || "Unauthorized");
-    if (res.status === 403) throw new Error("Forbidden");
-    if (res.status === 404) throw new Error("Route not found");
-    if (res.status === 405) throw new Error("Method not allowed");
-    if (res.status === 504) throw new Error("Operation timed out. Please try again.");
-    throw new Error((json.message as string) || (json.error as string) || "An error occurred");
+    const errorMessage = (json.error || json.message || "") as string;
+    if (res.status === 401) throw new Error(errorMessage || "Unauthorized");
+    if (res.status === 403) throw new Error(errorMessage || "Forbidden");
+    if (res.status === 404) throw new Error(errorMessage || "Route not found");
+    if (res.status === 405) throw new Error(errorMessage || "Method not allowed");
+    if (res.status === 504) throw new Error(errorMessage || "Operation timed out. Please try again.");
+    throw new Error(errorMessage || "An error occurred");
   }
 
   return json;
