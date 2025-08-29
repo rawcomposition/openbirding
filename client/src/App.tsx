@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import SetPassword from "./pages/SetPassword";
 import NotFound from "./pages/NotFound";
 import HotspotDetails from "./components/HotspotDetails";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useModalActions } from "./lib/modalStore";
 import { get } from "./lib/utils";
 
@@ -45,18 +46,20 @@ function AppContent() {
     >
       {!isAuthPage && <Header />}
       <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/map" element={<Map />} />
-          <Route path="/region/:regionCode" element={<Region />} />
-          <Route path="/place/:placeName/:coordinates" element={<Place />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/set-password" element={<SetPassword />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/map" element={<Map />} />
+            <Route path="/region/:regionCode" element={<Region />} />
+            <Route path="/place/:placeName/:coordinates" element={<Place />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/set-password" element={<SetPassword />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );
@@ -64,13 +67,15 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <AppContent />
-        <HotspotDetails />
-        <Toaster />
-      </Router>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <AppContent />
+          <HotspotDetails />
+          <Toaster />
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
