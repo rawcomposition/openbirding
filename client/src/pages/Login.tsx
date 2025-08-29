@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { Mail, Lock } from "lucide-react";
@@ -8,7 +8,6 @@ import { FormInput } from "@/components/FormInput";
 import { AuthWrapper } from "@/components/AuthWrapper";
 import { useAuthStore } from "@/lib/authStore";
 import { mutate } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import type { LoginData, AuthResponse } from "@/lib/types";
 
@@ -20,6 +19,7 @@ type LoginFormData = {
 const Login = () => {
   const { setUser } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData): Promise<AuthResponse> => {
@@ -27,7 +27,8 @@ const Login = () => {
     },
     onSuccess: (data) => {
       setUser(data.user);
-      navigate("/");
+      const redirectTo = (location.state as { redirect?: string })?.redirect || "/";
+      navigate(redirectTo);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Login failed");
