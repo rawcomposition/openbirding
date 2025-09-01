@@ -74,49 +74,41 @@ const HotspotDetails = () => {
                     <p className="text-sm text-gray-800">{selectedHotspot.notes}</p>
                   </div>
                 )}
-              </div>
-              <div className="flex gap-3">
-                <a
-                  href={`https://ebird.org/hotspot/${selectedHotspot.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-between p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-lg leading-none -mt-px">e</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-green-900">View on eBird</p>
-                    </div>
+                <div className="mt-3">
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Calendar className="h-3 w-3" />
+                    <span>
+                      Last updated:{" "}
+                      {selectedHotspot.updatedAt ? new Date(selectedHotspot.updatedAt).toLocaleDateString() : "Unknown"}
+                    </span>
                   </div>
-                  <ExternalLink className="h-4 w-4 text-green-600" />
-                </a>
-
-                <a
-                  href={`https://www.google.com/maps?q=${selectedHotspot.lat},${selectedHotspot.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                      <Navigation className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-blue-900">Get Directions</p>
-                    </div>
-                  </div>
-                  <ExternalLink className="h-4 w-4 text-blue-500" />
-                </a>
-              </div>
-
-              {selectedHotspot.updatedAt && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 pt-4 border-t">
-                  <Calendar className="h-3 w-3" />
-                  <span>Last updated: {new Date(selectedHotspot.updatedAt).toLocaleDateString()}</span>
                 </div>
-              )}
+              </div>
+
+              <div className="pt-2">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">External Links</h3>
+                <div className="flex flex-wrap gap-4">
+                  <a
+                    href={`https://ebird.org/hotspot/${selectedHotspot.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-800 hover:text-blue-900 hover:underline transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="text-sm">View on eBird</span>
+                  </a>
+
+                  <a
+                    href={`https://www.google.com/maps?q=${selectedHotspot.lat},${selectedHotspot.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-800 hover:text-blue-900 hover:underline transition-colors"
+                  >
+                    <Navigation className="h-4 w-4" />
+                    <span className="text-sm">Get Directions</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         )}
