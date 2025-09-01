@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Hotspot } from "@/lib/types";
 import Spinner from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { ExternalLink, Bird, Calendar, Globe, Navigation } from "lucide-react";
+import { ExternalLink, Bird, Calendar, Navigation, CheckCircle, XCircle, HelpCircle, Pencil } from "lucide-react";
 import { useModalStore } from "@/lib/modalStore";
 
 const HotspotDetails = () => {
@@ -45,26 +46,35 @@ const HotspotDetails = () => {
         {selectedHotspot && (
           <div className="mt-6 space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Globe className="h-5 w-5 text-gray-600" />
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">Access Status</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedHotspot.open === true
-                      ? "Open Access"
-                      : selectedHotspot.open === false
-                      ? "Not Open Access"
-                      : "Not Reviewed"}
-                  </p>
+              <div className="p-3 bg-gray-50 rounded-lg relative">
+                <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-auto px-2 py-1">
+                  <Pencil className="size-3 mr-px" />
+                  Edit
+                </Button>
+                <div className="flex items-center gap-3">
+                  {selectedHotspot.open === true ? (
+                    <>
+                      <CheckCircle className="text-blue-600" />
+                      <span className="text-base font-medium text-gray-900">Open Access</span>
+                    </>
+                  ) : selectedHotspot.open === false ? (
+                    <>
+                      <XCircle className="text-red-600" />
+                      <span className="text-base font-medium text-gray-900">Not Open Access</span>
+                    </>
+                  ) : (
+                    <>
+                      <HelpCircle className="text-gray-400" />
+                      <span className="text-base font-medium text-gray-900">Not Reviewed</span>
+                    </>
+                  )}
                 </div>
+                {selectedHotspot.notes && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-sm text-gray-800">{selectedHotspot.notes}</p>
+                  </div>
+                )}
               </div>
-
-              {selectedHotspot.notes && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="font-medium text-gray-900 mb-2">Notes</p>
-                  <p className="text-sm text-gray-600">{selectedHotspot.notes}</p>
-                </div>
-              )}
               <div className="flex gap-3">
                 <a
                   href={`https://ebird.org/hotspot/${selectedHotspot.id}`}
