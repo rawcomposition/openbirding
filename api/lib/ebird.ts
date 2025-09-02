@@ -83,12 +83,13 @@ const insertHotspot = (ebird: ProcessedHotspot, region: string) => {
   const hasValidStateCode = (subnational1Code?.split("-")?.filter(Boolean)?.length || 0) > 1;
   const state = hasValidStateCode ? subnational1Code : null;
   const county = subnational2Code;
+  const country = subnational1Code?.split("-")?.[0] || "";
 
   return {
     id: locationId,
     name,
-    region,
-    country: subnational1Code?.split("-")?.[0] || "",
+    region: county || state || country,
+    country,
     state,
     county,
     species: total,
@@ -140,6 +141,8 @@ export const syncPack = async (packId?: number) => {
     const batchValues = batch.map((ebird) => {
       const hasValidStateCode = (ebird.subnational1Code?.split("-")?.filter(Boolean)?.length || 0) > 1;
       const state = hasValidStateCode ? ebird.subnational1Code : null;
+      const county = ebird.subnational2Code;
+      const country = ebird.subnational1Code?.split("-")?.[0] || "";
 
       if (existingIds.has(ebird.locationId)) {
         updateCount++;
@@ -150,10 +153,10 @@ export const syncPack = async (packId?: number) => {
       return {
         id: ebird.locationId,
         name: ebird.name,
-        region: pack.region,
-        country: ebird.subnational1Code?.split("-")?.[0] || "",
+        region: county || state || country,
+        country,
         state,
-        county: ebird.subnational2Code,
+        county,
         species: ebird.total,
         lat: ebird.lat,
         lng: ebird.lng,
