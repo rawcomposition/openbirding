@@ -11,7 +11,7 @@ export type Hotspot = {
   open: boolean | null;
   notes: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | null;
   distance?: number; // only for nearby hotspots
 };
 
@@ -39,7 +39,7 @@ export type User = {
   emailVerified: number;
   isAdmin: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | null;
 };
 
 export type AuthResponse = {

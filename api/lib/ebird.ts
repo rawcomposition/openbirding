@@ -160,7 +160,7 @@ export const syncPack = async (packId?: number) => {
         open: null,
         notes: null,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: null,
       };
     });
 

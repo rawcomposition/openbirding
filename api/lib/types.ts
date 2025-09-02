@@ -13,7 +13,7 @@ export type Hotspot = {
   notes: string | null;
   lastUpdatedBy: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | null;
 };
 
 export type HotspotRevision = {

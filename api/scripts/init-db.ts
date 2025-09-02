@@ -19,7 +19,7 @@ export async function setupDatabase() {
     .addColumn("notes", "text")
     .addColumn("last_updated_by", "text")
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .addColumn("updated_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("updated_at", "text") // Updated by trigger
     .addCheckConstraint("chk_lat", sql`lat BETWEEN -90 AND 90`)
     .addCheckConstraint("chk_lng", sql`lng BETWEEN -180 AND 180`)
     .addCheckConstraint("chk_open_bool", sql`open IN (0,1) OR open IS NULL`)
@@ -54,6 +54,7 @@ export async function setupDatabase() {
     AFTER UPDATE OF notes, open ON hotspots
     WHEN (OLD.notes IS NOT NEW.notes OR OLD.open IS NOT NEW.open)
     BEGIN
+      UPDATE hotspots SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
       INSERT INTO hotspot_revisions (hotspot_id, user_id, notes, open)
       VALUES (NEW.id, NEW.last_updated_by, NEW.notes, NEW.open);
     END;

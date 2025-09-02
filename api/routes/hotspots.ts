@@ -183,12 +183,10 @@ hotspots.put("/bulk-update", requireAuth, async (c) => {
     }
 
     let updatedCount = 0;
-    const currentTime = new Date().toISOString();
 
     await db.transaction().execute(async (trx) => {
       for (const update of updates) {
         const updateData = {
-          updatedAt: currentTime,
           open: update.open === true ? 1 : update.open === false ? 0 : null,
           notes: update.notes || null,
         };
