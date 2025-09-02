@@ -49,6 +49,9 @@ const HotspotDetails = () => {
       toast.success("Changes saved successfully!");
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: [`/hotspots/${hotspotId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/hotspots/within-bounds"] });
+      queryClient.invalidateQueries({ queryKey: ["/hotspots/by-region"] });
+      queryClient.invalidateQueries({ queryKey: ["/hotspots/nearby"] });
     },
     onError: (error) => {
       toast.error(`Failed to save changes: ${error.message}`);
@@ -64,13 +67,6 @@ const HotspotDetails = () => {
   };
 
   const handleSaveChanges = () => {
-    const hasChanges = localOpen !== selectedHotspot?.open || localNotes !== (selectedHotspot?.notes || "");
-
-    if (!hasChanges) {
-      toast("No changes to save");
-      return;
-    }
-
     const changes = [{ id: hotspotId!, open: localOpen, notes: localNotes }];
     saveChangesMutation.mutate(changes);
   };
