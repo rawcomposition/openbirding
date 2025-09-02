@@ -20,6 +20,7 @@ import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/lib/authStore";
 import { useLoginRedirect } from "@/hooks/useLoginRedirect";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import HotspotRow from "./HotspotRow";
 
 type Props = {
@@ -73,6 +74,8 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
     }
     setEditMode(true);
   };
+
+  useUnsavedChangesWarning(hasChanges(), isEditMode);
 
   const columns: ColumnDef<Hotspot>[] = [
     {
