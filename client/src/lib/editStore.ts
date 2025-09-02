@@ -6,11 +6,13 @@ type HotspotChange = {
   notes?: string;
 };
 
+type EditableField = keyof HotspotChange;
+
 type EditStore = {
   changes: Record<string, HotspotChange>;
   isEditMode: boolean;
-  addChange: (hotspotId: string, field: keyof Hotspot, value: string | boolean | null) => void;
-  removeChange: (hotspotId: string) => void;
+
+  addChange: <K extends EditableField>(hotspotId: string, field: K, value: Hotspot[K], original: Hotspot[K]) => void;
   clearChanges: () => void;
   setEditMode: (isEdit: boolean) => void;
   getChanges: () => Array<{ id: string } & HotspotChange>;
@@ -18,22 +20,38 @@ type EditStore = {
   getChangeCount: () => number;
 };
 
+const isSame = (a: unknown, b: unknown) => {
+  if (a == null && b == null) return true;
+  return a === b;
+};
+
 export const useEditStore = create<EditStore>((set, get) => ({
   changes: {},
   isEditMode: false,
 
-  addChange: (hotspotId: string, field: keyof Hotspot, value: string | boolean | null) => {
+  addChange: (hotspotId, field, value, original) => {
     set((state) => {
-      const existingChange = state.changes[hotspotId];
-      const newChange = {
-        ...existingChange,
-        [field]: value,
-      };
+      const existing = state.changes[hotspotId] ?? {};
+      const keepField = !isSame(value, original);
 
+      const nextForHotspot: HotspotChange = { ...existing };
+      if (keepField) {
+        (nextForHotspot as any)[field] = value as any;
+      } else {
+        delete (nextForHotspot as any)[field];
+      }
+
+      // If no fields left for this hotspot, drop the whole hotspot entry
+      if (Object.keys(nextForHotspot).length === 0) {
+        const { [hotspotId]: _, ...rest } = state.changes;
+        return { changes: rest };
+      }
+
+      // Otherwise, upsert hotspot entry
       return {
         changes: {
           ...state.changes,
-          [hotspotId]: newChange,
+          [hotspotId]: nextForHotspot,
         },
       };
     });
@@ -41,45 +59,33 @@ export const useEditStore = create<EditStore>((set, get) => ({
 
   removeChange: (hotspotId: string) => {
     set((state) => {
-      const { [hotspotId]: removed, ...remainingChanges } = state.changes;
-      return { changes: remainingChanges };
+      const { [hotspotId]: _removed, ...remaining } = state.changes;
+      return { changes: remaining };
     });
   },
 
-  clearChanges: () => {
-    set({ changes: {} });
-  },
+  clearChanges: () => set({ changes: {} }),
 
   setEditMode: (isEdit: boolean) => {
     set({ isEditMode: isEdit });
-    if (!isEdit) {
-      set({ changes: {} });
-    }
+    if (!isEdit) set({ changes: {} });
   },
 
   getChanges: () => {
     const changes = get().changes;
-    return Object.entries(changes).map(([hotspotId, change]) => ({
-      id: hotspotId,
-      ...change,
-    }));
+    return Object.entries(changes).map(([id, change]) => ({ id, ...change }));
   },
 
-  hasChanges: () => {
-    return Object.keys(get().changes).length > 0;
-  },
+  hasChanges: () => Object.keys(get().changes).length > 0,
 
-  getChangeCount: () => {
-    return Object.keys(get().changes).length;
-  },
+  getChangeCount: () => Object.keys(get().changes).length,
 }));
 
 export const useEditActions = () => {
   const store = useEditStore.getState();
   return {
     addChange: store.addChange,
-    removeChange: store.removeChange,
   };
 };
 
-export const useEditMode = () => useEditStore((state) => state.isEditMode);
+export const useEditMode = () => useEditStore((s) => s.isEditMode);

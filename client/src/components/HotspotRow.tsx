@@ -20,7 +20,7 @@ type HotspotRowProps = {
 
 const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, showDistance }: HotspotRowProps) => {
   const isEditMode = useEditMode();
-  const { addChange, removeChange } = useEditActions();
+  const { addChange } = useEditActions();
   const { openModal } = useModalStore();
   const [localOpen, setLocalOpen] = useState<boolean | null>(open);
   const [localNotes, setLocalNotes] = useState<string>(notes || "");
@@ -48,11 +48,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
   const handleOpenChange = (value: boolean | null) => {
     setLocalOpen(value);
 
-    if (value !== open) {
-      addChange(id, "open", value);
-    } else {
-      removeChange(id);
-    }
+    addChange(id, "open", value, open);
   };
 
   const handleNotesChange = (value: string) => {
@@ -60,11 +56,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
   };
 
   const handleNotesBlur = () => {
-    if (localNotes !== (notes || "")) {
-      addChange(id, "notes", localNotes);
-    } else {
-      removeChange(id);
-    }
+    addChange(id, "notes", localNotes, notes || "");
   };
 
   return (
