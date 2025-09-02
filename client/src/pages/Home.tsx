@@ -44,11 +44,7 @@ const Home = () => {
               </Button>
             </Link>
             <Link to="/map">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-slate-300/30 text-slate-100 hover:bg-slate-700/50 hover:text-white bg-slate-800/30"
-              >
+              <Button size="lg" variant="outline">
                 View Map
               </Button>
             </Link>

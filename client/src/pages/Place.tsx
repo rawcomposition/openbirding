@@ -1,8 +1,8 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin } from "lucide-react";
+import { MapPin, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import type { Hotspot } from "@/lib/types";
@@ -57,8 +57,14 @@ const Place = () => {
           <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
             Place
           </Badge>
+          <Button asChild variant="outline" size="sm" className="ml-auto">
+            <Link to={`/map?lat=${coordinates?.split(",")[0]}&lng=${coordinates?.split(",")[1]}&zoom=12`}>
+              <Map className="h-4 w-4 mr-1" />
+              View Map
+            </Link>
+          </Button>
         </div>
-        <p className="text-slate-400">Showing the closest 200 hotspots</p>
+        <p className="text-slate-400 mb-4">Showing the closest 200 hotspots</p>
       </div>
 
       {hotspots && hotspots.length > 0 ? (

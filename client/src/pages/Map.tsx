@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Spinner from "@/components/ui/spinner";
@@ -23,6 +24,7 @@ const Map = () => {
   const [bounds, setBounds] = useState<string | null>(null);
   const [isZoomedTooFarOut, setIsZoomedTooFarOut] = useState(false);
   const { openModal, closeModal } = useModalStore();
+  const [searchParams] = useSearchParams();
 
   const getStoredMapState = () => {
     if (typeof window === "undefined") return null;
@@ -72,11 +74,37 @@ const Map = () => {
     const defaultCenter: [number, number] = [-98, 39];
     const defaultZoom = 4;
 
+    const latParam = searchParams.get("lat");
+    const lngParam = searchParams.get("lng");
+    const zoomParam = searchParams.get("zoom");
+
+    let initialCenter: [number, number] = defaultCenter;
+    let initialZoom = defaultZoom;
+
+    if (latParam && lngParam) {
+      const lat = parseFloat(latParam);
+      const lng = parseFloat(lngParam);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        initialCenter = [lng, lat];
+        if (zoomParam) {
+          const zoom = parseFloat(zoomParam);
+          if (!isNaN(zoom)) {
+            initialZoom = Math.max(zoom, MIN_ZOOM);
+          }
+        } else {
+          initialZoom = 12;
+        }
+      }
+    } else if (storedState?.center) {
+      initialCenter = storedState.center;
+      initialZoom = storedState.zoom;
+    }
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current!,
       style: "mapbox://styles/mapbox/outdoors-v12",
-      center: storedState?.center || defaultCenter,
-      zoom: storedState?.zoom || defaultZoom,
+      center: initialCenter,
+      zoom: initialZoom,
       attributionControl: false,
     });
 
