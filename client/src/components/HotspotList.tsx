@@ -75,7 +75,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
     setEditMode(true);
   };
 
-  useUnsavedChangesWarning(hasChanges(), isEditMode);
+  useUnsavedChangesWarning(hasChanges(), isEditMode, clearChanges);
 
   const columns: ColumnDef<Hotspot>[] = [
     {

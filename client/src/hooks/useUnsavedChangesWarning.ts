@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react";
 
-export const useUnsavedChangesWarning = (hasUnsavedChanges: boolean, isEnabled: boolean = true) => {
+export const useUnsavedChangesWarning = (
+  hasUnsavedChanges: boolean,
+  isEnabled: boolean = true,
+  onConfirm?: () => void
+) => {
   const originalPushState = useRef<typeof window.history.pushState>();
   const originalReplaceState = useRef<typeof window.history.replaceState>();
 
@@ -35,6 +39,7 @@ export const useUnsavedChangesWarning = (hasUnsavedChanges: boolean, isEnabled: 
           if (!confirmed) {
             return;
           }
+          onConfirm?.();
         }
         return originalPushState.current!.apply(this, args);
       };
@@ -46,6 +51,7 @@ export const useUnsavedChangesWarning = (hasUnsavedChanges: boolean, isEnabled: 
           if (!confirmed) {
             return;
           }
+          onConfirm?.();
         }
         return originalReplaceState.current!.apply(this, args);
       };
