@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../lib/sqlite.js";
-import { getCosLat, getDistanceKm, getRadiusSquared, makeBounds } from "lib/spatial.js";
+import { getCosLat, getDistanceKm, getRadiusSquared, makeBounds } from "../lib/spatial.js";
 import { sql } from "kysely";
 import { requireAuth } from "../lib/middleware.js";
+import { NOTES_CHARACTER_LIMIT } from "../lib/config.js";
 
 const hotspots = new Hono();
 
@@ -186,6 +187,12 @@ hotspots.put("/bulk-update", requireAuth, async (c) => {
 
     await db.transaction().execute(async (trx) => {
       for (const update of updates) {
+        if (update.notes && update.notes.length > NOTES_CHARACTER_LIMIT) {
+          throw new HTTPException(400, {
+            message: `Notes cannot exceed ${NOTES_CHARACTER_LIMIT} characters`,
+          });
+        }
+
         const updateData = {
           open: update.open === true ? 1 : update.open === false ? 0 : null,
           notes: update.notes || null,

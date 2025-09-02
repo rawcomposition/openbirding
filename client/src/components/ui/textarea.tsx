@@ -9,7 +9,7 @@ export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & 
 };
 
 const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, label, error, required, id, ...props }, ref) => {
+  ({ className, label, error, required, id, maxLength, ...props }, ref) => {
     const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
 
     return (
@@ -28,8 +28,16 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             className
           )}
           ref={ref}
+          maxLength={maxLength}
           {...props}
         />
+        {maxLength && props.value && String(props.value).length >= maxLength * 0.8 && (
+          <div className="flex justify-end">
+            <span className={`text-xs ${String(props.value).length >= maxLength ? "text-red-400" : "text-slate-400"}`}>
+              {String(props.value).length}/{maxLength}
+            </span>
+          </div>
+        )}
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
     );

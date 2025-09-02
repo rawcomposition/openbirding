@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import InputOpenAccess from "@/components/InputOpenAccess";
+import { NOTES_CHARACTER_LIMIT } from "@/lib/config";
 
 const HotspotDetails = () => {
   const { isOpen, hotspotId, closeModal } = useModalStore();
@@ -176,6 +177,7 @@ const HotspotDetails = () => {
                           className="min-h-[80px] bg-white border-gray-300 text-gray-900 resize-none"
                           placeholder="Add notes about this hotspot..."
                           rows={3}
+                          maxLength={NOTES_CHARACTER_LIMIT}
                         />
                         <div className="flex gap-2 mt-3">
                           <Button
