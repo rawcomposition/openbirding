@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
 import RegionList from "@/components/RegionList";
 import RegionStats from "@/components/RegionStats";
+import Breadcrumb from "@/components/Breadcrumb";
 import type { Hotspot, Region as RegionType } from "@/lib/types";
 
 const Region = () => {
@@ -69,6 +70,8 @@ const Region = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {regionCode !== "world" && <Breadcrumb items={region.parents} />}
+
       <div className="mb-8">
         <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
           <div>
@@ -79,7 +82,6 @@ const Region = () => {
                 Region
               </Badge>
             </div>
-            <p className="text-slate-300 text-lg">Region Code: {regionCode}</p>
           </div>
           <RegionStats regionCode={regionCode!} />
         </div>
