@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import HotspotList from "@/components/HotspotList";
+import { useEditMode } from "@/lib/editStore";
 import type { Hotspot } from "@/lib/types";
 
 const Place = () => {
   const { placeName, coordinates } = useParams<{ placeName: string; coordinates: string }>();
+  const isEditMode = useEditMode();
 
   const {
     data: hotspots,
@@ -57,12 +59,19 @@ const Place = () => {
           <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
             Place
           </Badge>
-          <Button asChild variant="outline" size="sm" className="ml-auto">
-            <Link to={`/map?lat=${coordinates?.split(",")[0]}&lng=${coordinates?.split(",")[1]}&zoom=12`}>
+          {isEditMode ? (
+            <Button variant="outline" size="sm" className="ml-auto" disabled>
               <Map className="h-4 w-4 mr-1" />
               View Map
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="ml-auto">
+              <Link to={`/map?lat=${coordinates?.split(",")[0]}&lng=${coordinates?.split(",")[1]}&zoom=12`}>
+                <Map className="h-4 w-4 mr-1" />
+                View Map
+              </Link>
+            </Button>
+          )}
         </div>
         <p className="text-slate-400 mb-4">Showing the closest 200 hotspots</p>
       </div>
