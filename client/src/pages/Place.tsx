@@ -58,8 +58,7 @@ const Place = () => {
             Place
           </Badge>
         </div>
-        <p className="text-slate-300 text-lg">Coordinates: {coordinates}</p>
-        <p className="text-slate-400 text-sm">Showing the closest 200 hotspots</p>
+        <p className="text-slate-400">Showing the closest 200 hotspots</p>
       </div>
 
       {hotspots && hotspots.length > 0 ? (
