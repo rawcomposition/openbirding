@@ -4,7 +4,7 @@ import { ExternalLink, Check, X, HelpCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useEditActions, useEditMode } from "@/lib/editStore";
 import { useModalStore } from "@/lib/modalStore";
-import { cn } from "@/lib/utils";
+import InputOpenAccess from "@/components/InputOpenAccess";
 
 type HotspotRowProps = {
   id: string;
@@ -45,12 +45,11 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
     }
   };
 
-  const handleOpenChange = (value: string) => {
-    const boolValue = value === "true" ? true : value === "false" ? false : null;
-    setLocalOpen(boolValue);
+  const handleOpenChange = (value: boolean | null) => {
+    setLocalOpen(value);
 
-    if (boolValue !== open) {
-      addChange(id, "open", boolValue);
+    if (value !== open) {
+      addChange(id, "open", value);
     } else {
       removeChange(id);
     }
@@ -110,41 +109,7 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
 
       <td className="p-4 w-0 whitespace-nowrap">
         {isEditMode ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleOpenChange("true")}
-              className={cn(
-                "px-3 py-1 text-xs rounded border",
-                localOpen === true
-                  ? "bg-green-700 text-white border-green-700"
-                  : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
-              )}
-            >
-              Yes
-            </button>
-            <button
-              onClick={() => handleOpenChange("false")}
-              className={cn(
-                "px-3 py-1 text-xs rounded border",
-                localOpen === false
-                  ? "bg-red-800/80 text-white border-red-800/80"
-                  : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
-              )}
-            >
-              No
-            </button>
-            <button
-              onClick={() => handleOpenChange("unknown")}
-              className={cn(
-                "px-3 py-1 text-xs rounded border",
-                localOpen === null
-                  ? "bg-gray-600 text-white border-gray-600"
-                  : "bg-transparent text-gray-300 border-gray-500 hover:border-gray-400"
-              )}
-            >
-              ?
-            </button>
-          </div>
+          <InputOpenAccess value={localOpen} onChange={handleOpenChange} size="sm" />
         ) : (
           getOpenAccessIcon(open)
         )}
