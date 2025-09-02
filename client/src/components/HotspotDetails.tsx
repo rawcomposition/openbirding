@@ -74,15 +74,14 @@ const HotspotDetails = () => {
                     <p className="text-sm text-gray-800">{selectedHotspot.notes}</p>
                   </div>
                 )}
-                <div className="mt-3">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      Last updated:{" "}
-                      {selectedHotspot.updatedAt ? new Date(selectedHotspot.updatedAt).toLocaleDateString() : "Unknown"}
-                    </span>
+                {selectedHotspot.updatedAt && (
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Calendar className="h-3 w-3" />
+                      <span>Last updated: {new Date(selectedHotspot.updatedAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="pt-2">
