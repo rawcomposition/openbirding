@@ -28,8 +28,8 @@ hotspots.get("/within-bounds", async (c) => {
       .select(["h.id as id", "h.lat as lat", "h.lng as lng", "h.open as open"])
       .where((eb) =>
         eb.and([
-          sql<boolean>`${sql.ref("r.minLat")} <= ${north} AND ${sql.ref("r.maxLat")} >= ${south}`,
-          sql<boolean>`${sql.ref("r.minLng")} <= ${east}  AND ${sql.ref("r.maxLng")} >= ${west}`,
+          sql<boolean>`${sql.ref("r.min_lat")} <= ${north} AND ${sql.ref("r.max_lat")} >= ${south}`,
+          sql<boolean>`${sql.ref("r.min_lng")} <= ${east}  AND ${sql.ref("r.max_lng")} >= ${west}`,
         ])
       )
       .execute();
@@ -142,8 +142,8 @@ hotspots.get("/nearby/:coordinates", async (c) => {
         eb.or(
           boxes.map((b) =>
             eb.and([
-              sql<boolean>`r.minLat <= ${b.maxLat} AND r.maxLat >= ${b.minLat}`,
-              sql<boolean>`r.minLng <= ${b.maxLng} AND r.maxLng >= ${b.minLng}`,
+              sql<boolean>`r.min_lat <= ${b.maxLat} AND r.max_lat >= ${b.minLat}`,
+              sql<boolean>`r.min_lng <= ${b.maxLng} AND r.max_lng >= ${b.minLng}`,
             ])
           )
         )
