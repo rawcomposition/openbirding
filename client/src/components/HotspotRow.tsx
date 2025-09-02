@@ -114,13 +114,13 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
             value={localNotes}
             onChange={(e) => handleNotesChange(e.target.value)}
             onBlur={handleNotesBlur}
-            className="min-h-[60px] max-h-[120px] min-w-[200px] md:min-w-[300px] bg-white/10 border-white/20 text-white resize-none"
+            className="min-h-[60px] max-h-[120px] min-w-[200px] md:min-w-[300px] bg-white/10 border-white/20 text-white resize-none text-[15px]"
             rows={2}
             placeholder="Add notes..."
             maxLength={NOTES_CHARACTER_LIMIT}
           />
         ) : notes ? (
-          <div className="text-sm text-gray-300 max-w-xs truncate">{notes}</div>
+          <div className="text-sm text-gray-300 max-w-xs">{notes}</div>
         ) : null}
       </td>
 

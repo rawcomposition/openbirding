@@ -174,7 +174,7 @@ const HotspotDetails = () => {
                         <Textarea
                           value={localNotes}
                           onChange={(e) => handleNotesChange(e.target.value)}
-                          className="min-h-[80px] bg-white border-gray-300 text-gray-900 resize-none"
+                          className="min-h-[80px] bg-white border-gray-300 text-gray-900 resize-none text-sm"
                           placeholder="Add notes about this hotspot..."
                           rows={3}
                           maxLength={NOTES_CHARACTER_LIMIT}
