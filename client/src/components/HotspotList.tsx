@@ -19,7 +19,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/lib/authStore";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import HotspotRow from "./HotspotRow";
 
 type Props = {
@@ -38,8 +38,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
   const changeCount = getChangeCount();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { redirectToLogin } = useLoginRedirect();
 
   const saveChangesMutation = useMutation({
     mutationFn: async (changes: Array<{ id: string; open?: boolean | null; notes?: string }>) => {
@@ -69,7 +68,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
 
   const handleEditClick = () => {
     if (!user) {
-      navigate("/login", { state: { redirect: location.pathname + location.search } });
+      redirectToLogin();
       return;
     }
     setEditMode(true);

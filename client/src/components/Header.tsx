@@ -1,5 +1,5 @@
 import { Bird, LogOut, User } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/authStore";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const Header = () => {
-  const location = useLocation();
   const { user, logout } = useAuthStore();
+  const { redirectToLogin } = useLoginRedirect();
 
   const logoutMutation = useMutation({
     mutationFn: async (): Promise<void> => {
@@ -97,8 +98,8 @@ const Header = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                  <Link to="/login">Login</Link>
+                <Button onClick={redirectToLogin} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Login
                 </Button>
               )}
             </div>

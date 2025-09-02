@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { useModalStore } from "@/lib/modalStore";
+import { useAuthStore } from "@/lib/authStore";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { Textarea } from "@/components/ui/textarea";
 import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -25,6 +27,8 @@ import InputOpenAccess from "@/components/InputOpenAccess";
 const HotspotDetails = () => {
   const { isOpen, hotspotId, closeModal } = useModalStore();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { redirectToLogin } = useLoginRedirect();
   const [localOpen, setLocalOpen] = useState<boolean | null>(null);
   const [localNotes, setLocalNotes] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -78,6 +82,10 @@ const HotspotDetails = () => {
   };
 
   const handleEditClick = () => {
+    if (!user) {
+      redirectToLogin();
+      return;
+    }
     setIsEditing(true);
   };
 
