@@ -5,8 +5,8 @@ export const useUnsavedChangesWarning = (
   isEnabled: boolean = true,
   onConfirm?: () => void
 ) => {
-  const originalPushState = useRef<typeof window.history.pushState>();
-  const originalReplaceState = useRef<typeof window.history.replaceState>();
+  const originalPushState = useRef<typeof window.history.pushState | null>(null);
+  const originalReplaceState = useRef<typeof window.history.replaceState | null>(null);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -41,7 +41,7 @@ export const useUnsavedChangesWarning = (
           }
           onConfirm?.();
         }
-        return originalPushState.current!.apply(this, args);
+        return originalPushState.current?.apply(this, args);
       };
 
       // Override replaceState to intercept React Router navigation
@@ -53,7 +53,7 @@ export const useUnsavedChangesWarning = (
           }
           onConfirm?.();
         }
-        return originalReplaceState.current!.apply(this, args);
+        return originalReplaceState.current?.apply(this, args);
       };
 
       window.addEventListener("beforeunload", handleBeforeUnload);
