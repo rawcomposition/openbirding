@@ -64,6 +64,11 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
   };
 
   const handleCancelEdit = () => {
+    const changes = getChanges();
+    if (changes.length > 0 && !confirm("Are you sure you want to cancel editing?")) {
+      return;
+    }
+    clearChanges();
     setEditMode(false);
   };
 

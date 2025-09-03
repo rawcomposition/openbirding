@@ -31,6 +31,13 @@ const HotspotRow = memo(({ id, name, open, notes, species, lat, lng, distance, s
     setLocalNotes(notes || "");
   }, [open, notes]);
 
+  useEffect(() => {
+    if (!isEditMode) {
+      setLocalOpen(open);
+      setLocalNotes(notes || "");
+    }
+  }, [isEditMode, open, notes]);
+
   const openGoogleMaps = (lat: number, lng: number) => {
     const url = `https://www.google.com/maps?q=${lat},${lng}&z=15&t=m`;
     window.open(url, "_blank");
