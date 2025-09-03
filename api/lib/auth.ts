@@ -191,7 +191,7 @@ export async function deleteUserSessions(userId: string): Promise<void> {
 export async function getUser(userId: string): Promise<User | null> {
   const result = await db
     .selectFrom("user")
-    .select(["id", "email", "password", "emailVerified", "isAdmin", "createdAt", "updatedAt"])
+    .select(["id", "email", "name", "password", "emailVerified", "isAdmin", "createdAt", "updatedAt"])
     .where("id", "=", userId)
     .executeTakeFirst();
 
@@ -202,6 +202,7 @@ export async function getUser(userId: string): Promise<User | null> {
   return {
     id: result.id,
     email: result.email,
+    name: result.name,
     password: result.password,
     emailVerified: result.emailVerified,
     isAdmin: result.isAdmin,
@@ -210,13 +211,14 @@ export async function getUser(userId: string): Promise<User | null> {
   };
 }
 
-export async function createUser(email: string, hashedPassword: string): Promise<User> {
+export async function createUser(email: string, name: string | null, hashedPassword: string): Promise<User> {
   const now = new Date().toISOString();
   const userId = generateSecureRandomString();
 
   const user: User = {
     id: userId,
     email,
+    name,
     password: hashedPassword,
     emailVerified: 0,
     isAdmin: 0,
@@ -229,6 +231,7 @@ export async function createUser(email: string, hashedPassword: string): Promise
     .values({
       id: user.id,
       email: user.email,
+      name: user.name,
       password: user.password,
       emailVerified: user.emailVerified,
       isAdmin: user.isAdmin,
@@ -243,7 +246,7 @@ export async function createUser(email: string, hashedPassword: string): Promise
 export async function getUserByEmail(email: string): Promise<User | null> {
   const result = await db
     .selectFrom("user")
-    .select(["id", "email", "password", "emailVerified", "isAdmin", "createdAt", "updatedAt"])
+    .select(["id", "email", "name", "password", "emailVerified", "isAdmin", "createdAt", "updatedAt"])
     .where("email", "=", email)
     .executeTakeFirst();
 
@@ -254,6 +257,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   return {
     id: result.id,
     email: result.email,
+    name: result.name,
     password: result.password,
     emailVerified: result.emailVerified,
     isAdmin: result.isAdmin,

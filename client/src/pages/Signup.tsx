@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/Form";
 import { FormInput } from "@/components/FormInput";
@@ -13,6 +13,7 @@ import { useState } from "react";
 
 type SignupFormData = {
   email: string;
+  name: string;
   password: string;
   confirmPassword: string;
 };
@@ -60,6 +61,7 @@ const Signup = () => {
 
     signupMutation.mutate({
       email: data.email,
+      name: data.name,
       password: data.password,
     });
   };
@@ -105,6 +107,15 @@ const Signup = () => {
   return (
     <AuthWrapper title="Create Account" description="Join OpenBirding to track your birding adventures">
       <Form form={form} onSubmit={onSubmit} className="space-y-4">
+        <FormInput
+          name="name"
+          type="text"
+          placeholder="Enter your name"
+          icon={<User className="h-4 w-4" />}
+          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+          required
+        />
+
         <FormInput
           name="email"
           type="email"

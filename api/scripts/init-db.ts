@@ -87,6 +87,7 @@ export async function setupDatabase() {
     .ifNotExists()
     .addColumn("id", "text", (c) => c.primaryKey())
     .addColumn("email", "text", (c) => c.notNull().unique())
+    .addColumn("name", "text")
     .addColumn("password", "text", (c) => c.notNull())
     .addColumn("email_verified", "integer", (c) =>
       c

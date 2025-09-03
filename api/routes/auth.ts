@@ -26,6 +26,7 @@ const auth = new Hono();
 
 type SignupRequest = {
   email: string;
+  name: string;
   password: string;
 };
 
@@ -52,10 +53,10 @@ auth.post("/signup", async (c) => {
   }
 
   try {
-    const { email, password }: SignupRequest = await c.req.json();
+    const { email, name, password }: SignupRequest = await c.req.json();
 
-    if (!email || !password) {
-      return c.json({ error: "Email and password are required" }, 400);
+    if (!email || !name || !password) {
+      return c.json({ error: "Email, name, and password are required" }, 400);
     }
 
     if (password.length < 8) {
@@ -68,7 +69,7 @@ auth.post("/signup", async (c) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await createUser(email, hashedPassword);
+    const user = await createUser(email, name, hashedPassword);
 
     await sendVerificationEmail(user.id, email);
 
@@ -134,6 +135,7 @@ auth.post("/login", async (c) => {
       user: {
         id: user.id,
         email: user.email,
+        name: user.name,
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
         createdAt: user.createdAt,

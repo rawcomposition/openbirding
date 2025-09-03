@@ -196,6 +196,8 @@ hotspots.put("/bulk-update", requireAuth, async (c) => {
         const updateData = {
           open: update.open === true ? 1 : update.open === false ? 0 : null,
           notes: update.notes || null,
+          lastUpdatedBy: userId,
+          updatedAt: new Date().toISOString(),
         };
 
         const result = await trx.updateTable("hotspots").set(updateData).where("id", "=", update.id).executeTakeFirst();
@@ -228,7 +230,13 @@ hotspots.get("/:id", async (c) => {
       throw new HTTPException(400, { message: "Hotspot ID is required" });
     }
 
-    const hotspot = await db.selectFrom("hotspots").selectAll().where("id", "=", id).executeTakeFirst();
+    const hotspot = await db
+      .selectFrom("hotspots as h")
+      .leftJoin("user as u", "u.id", "h.lastUpdatedBy")
+      .selectAll("h")
+      .select("u.name as lastUpdatedByName")
+      .where("h.id", "=", id)
+      .executeTakeFirst();
 
     if (!hotspot) {
       throw new HTTPException(404, { message: "Hotspot not found" });
@@ -246,6 +254,8 @@ hotspots.get("/:id", async (c) => {
       lng: hotspot.lng,
       open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
       notes: hotspot.notes,
+      lastUpdatedBy: hotspot.lastUpdatedBy,
+      lastUpdatedByName: hotspot.lastUpdatedByName,
       createdAt: hotspot.createdAt,
       updatedAt: hotspot.updatedAt,
     };

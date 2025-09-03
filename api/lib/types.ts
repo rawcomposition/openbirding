@@ -44,6 +44,7 @@ export type Pack = {
 export type User = {
   id: string;
   email: string;
+  name: string | null;
   password?: string;
   emailVerified: number; // 0 or 1
   isAdmin: number; // 0 or 1

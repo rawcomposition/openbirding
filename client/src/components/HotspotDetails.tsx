@@ -208,7 +208,10 @@ const HotspotDetails = () => {
                   <div className="mt-3">
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <Calendar className="h-3 w-3" />
-                      <span>Last updated: {new Date(selectedHotspot.updatedAt).toLocaleDateString()}</span>
+                      <span>
+                        Updated {new Date(selectedHotspot.updatedAt).toLocaleDateString()}
+                        {selectedHotspot.lastUpdatedByName && <span> by {selectedHotspot.lastUpdatedByName}</span>}
+                      </span>
                     </div>
                   </div>
                 )}

@@ -84,7 +84,7 @@ const Header = () => {
                   <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
                     <div className="flex items-center px-2 py-1.5 text-sm text-slate-300">
                       <User className="h-4 w-4 mr-2" />
-                      {user.email}
+                      {user.name || user.email}
                     </div>
                     <DropdownMenuSeparator className="bg-slate-700" />
                     <DropdownMenuItem

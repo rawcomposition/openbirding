@@ -10,6 +10,8 @@ export type Hotspot = {
   lng: number;
   open: boolean | null;
   notes: string | null;
+  lastUpdatedBy: string | null;
+  lastUpdatedByName: string | null;
   createdAt: string;
   updatedAt: string | null;
   distance?: number; // only for nearby hotspots
@@ -36,6 +38,7 @@ export type Subregion = Region & {
 export type User = {
   id: string;
   email: string;
+  name: string | null;
   emailVerified: number;
   isAdmin: number;
   createdAt: string;
@@ -58,5 +61,6 @@ export type LoginData = {
 
 export type SignupData = {
   email: string;
+  name: string;
   password: string;
 };
