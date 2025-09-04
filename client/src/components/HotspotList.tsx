@@ -30,9 +30,10 @@ type Props = {
   defaultSort?: { id: string; desc: boolean };
   showDistance?: boolean;
   isLoading?: boolean;
+  regionCode?: string;
 };
 
-const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isLoading }: Props) => {
+const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isLoading, regionCode }: Props) => {
   const [sorting, setSorting] = useState<SortingState>([defaultSort || { id: "species", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
   const { isEditMode, setEditMode, hasChanges, getChanges, getChangeCount, clearChanges } = useEditStore();
@@ -50,6 +51,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
       clearChanges();
       setEditMode(false);
       queryClient.invalidateQueries({ queryKey: [queryKey] });
+      queryClient.invalidateQueries({ queryKey: [`/regions/${regionCode}/stats`] });
     },
     onError: (error) => {
       toast.error(`Failed to save changes: ${error.message}`);

@@ -100,6 +100,7 @@ const Region = () => {
               queryKey={`/hotspots/by-region/${regionCode}`}
               total={hotspots.count}
               isLoading={isLoadingHotspots}
+              regionCode={regionCode!}
             />
           ) : !isLoadingHotspots ? (
             <Card className="bg-slate-800/50 border-slate-700">
