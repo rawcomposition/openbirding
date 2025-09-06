@@ -25,7 +25,11 @@ type DatabaseSchema = {
   password_reset_token: PasswordResetToken;
 };
 
-const sqliteDb = new (Database as any)("../openbirding.db");
+const sqliteDb = new (Database as any)(process.env.SQLITE_PATH);
+
+if (!sqliteDb) {
+  throw new Error("Failed to connect to SQLite database");
+}
 
 sqliteDb.pragma("foreign_keys = ON");
 
