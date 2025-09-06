@@ -1,8 +1,4 @@
 providers = ["node"]
 
 [phases.setup]
-# Explicitly add Node + npm + toolchain for node-gyp
-nixPkgs = ["nodejs_20", "nodePackages.npm", "python3", "gcc", "gnumake", "pkg-config"]
-
-[phases.install]
-cmds = ["npm ci"]
+nixPkgs = ["python3", "gcc", "gnumake", "pkg-config"]
