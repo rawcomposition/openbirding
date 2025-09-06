@@ -4,7 +4,7 @@ import { components, type DropdownIndicatorProps, type SingleValue, type MultiVa
 import { Search as SearchIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Highlighter from "react-highlight-words";
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 import { get } from "@/lib/utils";
 
 type Option = {

@@ -4,7 +4,7 @@ import { components, type DropdownIndicatorProps, type SingleValue, type MultiVa
 import { MapPin as MapPinIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Highlighter from "react-highlight-words";
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 
 type MapboxFeature = {
   id: string;
