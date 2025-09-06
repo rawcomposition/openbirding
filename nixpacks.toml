@@ -1,4 +1,0 @@
-providers = ["node"]
-
-[phases.setup]
-nixPkgs = ["python3", "gcc", "gnumake", "pkg-config", "nodePackages.npm"]
