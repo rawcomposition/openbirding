@@ -6,6 +6,7 @@ import hotspots from "./routes/hotspots.js";
 import packs from "./routes/packs.js";
 import regions from "./routes/regions.js";
 import auth from "./routes/auth.js";
+import backups from "./routes/backups.js";
 
 const app = new Hono();
 
@@ -21,6 +22,7 @@ app.route("/api/hotspots", hotspots);
 app.route("/api/packs", packs);
 app.route("/api/regions", regions);
 app.route("/api/auth", auth);
+app.route("/api/backups", backups);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);
