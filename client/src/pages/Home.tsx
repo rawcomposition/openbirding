@@ -26,7 +26,7 @@ const Home = () => {
           <div className="flex justify-center mb-6">
             <Bird className="h-16 w-16 text-emerald-400" />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-6">Open Birding</h1>
+          <h1 className="text-5xl font-bold text-white mb-6">OpenBirding</h1>
           <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
             Discover <span className="text-emerald-400 font-semibold">open access</span> birding hotspots you can visit
             freely — without fees, permits, guides, or other restrictions — contributed and verified by the birding
@@ -81,7 +81,7 @@ const Home = () => {
 
       <section className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">What is Open Birding?</h2>
+          <h2 className="text-3xl font-bold text-white text-center mb-12">What is OpenBirding?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>

@@ -44,7 +44,7 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
             <Bird className="h-8 w-8 text-emerald-400" />
-            <span className="text-xl font-bold text-white">Open Birding</span>
+            <span className="text-xl font-bold text-white">OpenBirding</span>
           </Link>
 
           <div className="flex items-center space-x-4">
