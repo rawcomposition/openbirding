@@ -8,9 +8,8 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-const DOWNLOAD_URL =
-  "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip";
-const ZIP_FILE = "ne_110m_admin_0_countries.zip";
+const DOWNLOAD_URL = "https://naturalearth.s3.amazonaws.com/50m_cultural/ne_50m_admin_0_countries.zip";
+const ZIP_FILE = "ne_50m_admin_0_countries.zip";
 const OUTPUT_DIR = "../../";
 const GEOJSON_FILE = "countries.geojson";
 
@@ -64,12 +63,12 @@ const main = async (): Promise<void> => {
     const extractDir = path.join(tempDir, "extracted");
     const outputPath = path.join(OUTPUT_DIR, GEOJSON_FILE);
 
-    console.log("Starting Natural Earth 110m cultural boundaries download...");
+    console.log("Starting Natural Earth 50m cultural boundaries download...");
 
     await downloadFile(DOWNLOAD_URL, zipPath);
     await extractZip(zipPath, extractDir);
 
-    const shapefilePath = path.join(extractDir, "ne_110m_admin_0_countries.shp");
+    const shapefilePath = path.join(extractDir, "ne_50m_admin_0_countries.shp");
 
     if (!fs.existsSync(shapefilePath)) {
       throw new Error("No shapefile found in extracted files");
