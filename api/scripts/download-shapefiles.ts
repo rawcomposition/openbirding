@@ -11,8 +11,8 @@ const execAsync = promisify(exec);
 const DOWNLOAD_URL =
   "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip";
 const ZIP_FILE = "ne_110m_admin_0_countries.zip";
-const OUTPUT_DIR = "/Users/adamjackson/Documents/OpenBirding/web";
-const GEOJSON_FILE = "ne_110m_admin_0_countries.geojson";
+const OUTPUT_DIR = "../../";
+const GEOJSON_FILE = "countries.geojson";
 
 const downloadFile = async (url: string, outputPath: string): Promise<void> => {
   console.log(`Downloading ${url}...`);
