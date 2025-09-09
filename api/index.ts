@@ -18,11 +18,11 @@ app.use(
   })
 );
 
-app.route("/api/hotspots", hotspots);
-app.route("/api/packs", packs);
-app.route("/api/regions", regions);
-app.route("/api/auth", auth);
-app.route("/api/backups", backups);
+app.route("/api/v1/hotspots", hotspots);
+app.route("/api/v1/packs", packs);
+app.route("/api/v1/regions", regions);
+app.route("/api/v1/auth", auth);
+app.route("/api/v1/backups", backups);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);
