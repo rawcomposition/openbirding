@@ -1,11 +1,26 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { syncPack, getPacksNeedingSync } from "../lib/ebird.js";
+import db from "../lib/sqlite.js";
 
 const DELAY = 5000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const packsRoute = new Hono();
+
+packsRoute.get("/", async (c) => {
+  try {
+    const packs = await db.selectFrom("packs").selectAll().orderBy("region", "asc").execute();
+
+    return c.json({
+      data: packs,
+      count: packs.length,
+    });
+  } catch (error) {
+    console.error("Get packs error:", error);
+    throw new HTTPException(500, { message: error instanceof Error ? error.message : "Failed to get packs" });
+  }
+});
 
 packsRoute.post("/sync/all", async (c) => {
   const key = c.req.query("key");
