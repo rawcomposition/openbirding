@@ -10,7 +10,12 @@ const packsRoute = new Hono();
 
 packsRoute.get("/", async (c) => {
   try {
-    const packs = await db.selectFrom("packs").selectAll().orderBy("region", "asc").execute();
+    const packs = await db
+      .selectFrom("packs")
+      .innerJoin("regions", "packs.region", "regions.id")
+      .select(["packs.id", "packs.region", "packs.hotspots", "regions.name"])
+      .orderBy("regions.name", "asc")
+      .execute();
 
     return c.json({
       data: packs,
