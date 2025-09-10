@@ -73,18 +73,14 @@ const Region = () => {
       {regionCode !== "world" && <Breadcrumb items={region.parents} />}
 
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <MapPin className="h-6 w-6 text-emerald-600" />
-              <h1 className="text-3xl font-bold text-slate-900">{region.name}</h1>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
-                Region
-              </Badge>
-            </div>
-          </div>
-          <RegionStats regionCode={regionCode!} />
+        <div className="flex items-center gap-3 mb-6">
+          <MapPin className="h-6 w-6 text-emerald-600" />
+          <h1 className="text-3xl font-bold text-slate-900">{region.name}</h1>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+            Region
+          </Badge>
         </div>
+        <RegionStats regionCode={regionCode!} />
       </div>
 
       {region.hasChildren ? (

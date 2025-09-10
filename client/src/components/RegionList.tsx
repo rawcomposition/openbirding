@@ -131,7 +131,7 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <style>
         {`
           .row-number::before {
@@ -140,15 +140,17 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
           }
         `}
       </style>
-      <p className="text-slate-700">Found {regions.length} subregions</p>
-
-      <div className="flex sm:flex-row flex-col justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Subregions</h2>
+          <p className="text-slate-600 mt-1">Found {regions.length} subregions</p>
+        </div>
         <input
           type="text"
           placeholder="Search subregions..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
+          className="w-full sm:w-80 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
         />
       </div>
 
