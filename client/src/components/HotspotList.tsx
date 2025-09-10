@@ -157,7 +157,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
   const { rows } = table.getRowModel();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <style>
         {`
           .row-number::before {
@@ -166,44 +166,48 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
           }
         `}
       </style>
-      {total !== undefined && <p className="text-slate-700">Found {total} hotspots</p>}
-
-      <div className="flex sm:flex-row flex-col justify-between gap-4">
-        <input
-          type="text"
-          placeholder="Search hotspots..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
-        />
-        <div className="flex gap-2">
-          {isEditMode ? (
-            <>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleSaveChanges}
-                disabled={!hasChanges() || saveChangesMutation.isPending}
-              >
-                <Save className="h-4 w-4" />
-                {saveChangesMutation.isPending ? "Saving..." : "Save Changes"}
-                {changeCount > 0 && !saveChangesMutation.isPending && (
-                  <Badge variant="secondary" className="ml-2 bg-emerald-100 text-emerald-800 border-emerald-200">
-                    {changeCount}
-                  </Badge>
-                )}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Hotspots</h2>
+          <p className="text-slate-600 mt-1">Found {total || hotspots.length} hotspots</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <input
+            type="text"
+            placeholder="Search hotspots..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="w-full sm:w-80 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+          />
+          <div className="flex gap-2">
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleSaveChanges}
+                  disabled={!hasChanges() || saveChangesMutation.isPending}
+                >
+                  <Save className="h-4 w-4" />
+                  {saveChangesMutation.isPending ? "Saving..." : "Save Changes"}
+                  {changeCount > 0 && !saveChangesMutation.isPending && (
+                    <Badge variant="secondary" className="ml-2 bg-emerald-100 text-emerald-800 border-emerald-200">
+                      {changeCount}
+                    </Badge>
+                  )}
+                </Button>
+                <Button variant="outline" size="lg" onClick={handleCancelEdit}>
+                  <CancelIcon className="h-4 w-4" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" size="lg" onClick={handleEditClick}>
+                <Edit className="h-4 w-4" />
+                Edit Hotspots
               </Button>
-              <Button variant="outline" size="lg" onClick={handleCancelEdit}>
-                <CancelIcon className="h-4 w-4" />
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button variant="primary" size="lg" onClick={handleEditClick}>
-              <Edit className="h-4 w-4" />
-              Edit Hotspots
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
