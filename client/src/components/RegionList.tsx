@@ -37,10 +37,13 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       header: "Name",
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-600 flex-shrink-0 row-number"></span>
-          <div>
-            <div className="font-medium text-slate-900">{row.original.name}</div>
-          </div>
+          <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-600 flex-shrink-0 row-number" />
+          <Link
+            to={`/region/${row.original.id}`}
+            className="font-medium text-slate-900 cursor-pointer hover:text-emerald-600 transition-colors"
+          >
+            {row.original.name}
+          </Link>
         </div>
       ),
     },
