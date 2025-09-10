@@ -37,9 +37,9 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       header: "Name",
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-300 flex-shrink-0 row-number"></span>
+          <span className="h-5 w-5 flex items-center justify-center font-bold text-emerald-600 flex-shrink-0 row-number"></span>
           <div>
-            <div className="font-medium text-white">{row.original.name}</div>
+            <div className="font-medium text-slate-900">{row.original.name}</div>
           </div>
         </div>
       ),
@@ -51,13 +51,13 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       cell: ({ row }) => {
         const { hotspotCount, openHotspotCount } = row.original;
         if (hotspotCount === undefined || openHotspotCount === undefined) {
-          return <span className="text-gray-400">-</span>;
+          return <span className="text-slate-500">-</span>;
         }
 
         const percentage = hotspotCount > 0 ? Math.round((openHotspotCount / hotspotCount) * 100) : 0;
         return (
-          <span className="text-gray-200">
-            {openHotspotCount.toLocaleString()} <span className="text-gray-400 text-xs">({percentage}%)</span>
+          <span className="text-slate-700">
+            {openHotspotCount.toLocaleString()} <span className="text-slate-500 text-xs">({percentage}%)</span>
           </span>
         );
       },
@@ -69,13 +69,13 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       cell: ({ row }) => {
         const { hotspotCount, reviewedHotspotCount } = row.original;
         if (hotspotCount === undefined || reviewedHotspotCount === undefined) {
-          return <span className="text-gray-400">-</span>;
+          return <span className="text-slate-500">-</span>;
         }
 
         const percentage = hotspotCount > 0 ? Math.round((reviewedHotspotCount / hotspotCount) * 100) : 0;
         return (
-          <span className="text-gray-200">
-            {reviewedHotspotCount.toLocaleString()} <span className="text-gray-400 text-xs">({percentage}%)</span>
+          <span className="text-slate-700">
+            {reviewedHotspotCount.toLocaleString()} <span className="text-slate-500 text-xs">({percentage}%)</span>
           </span>
         );
       },
@@ -86,7 +86,7 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
       cell: ({ row }) => (
         <Link
           to={`/region/${row.original.id}`}
-          className="text-emerald-400 hover:text-emerald-300 transition-colors text-sm"
+          className="text-emerald-600 hover:text-emerald-700 transition-colors text-sm"
         >
           {row.original.hasChildren ? "View Region" : "View Hotspots"}
         </Link>
@@ -125,7 +125,7 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
   if (error) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-red-400">Error loading subregions: {error.message}</div>
+        <div className="text-red-600">Error loading subregions: {error.message}</div>
       </div>
     );
   }
@@ -140,7 +140,7 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
           }
         `}
       </style>
-      <p className="text-gray-300">Found {regions.length} subregions</p>
+      <p className="text-slate-700">Found {regions.length} subregions</p>
 
       <div className="flex sm:flex-row flex-col justify-between gap-4">
         <input
@@ -148,20 +148,20 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
           placeholder="Search subregions..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
+          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
         />
       </div>
 
-      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <table className="w-full" style={{ counterReset: "row-counter" }}>
-          <thead className="sticky top-0 bg-gray-300/10 backdrop-blur-sm z-10">
+          <thead className="sticky top-0 bg-slate-50 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-white/20">
+              <tr key={headerGroup.id} className="border-b border-slate-200">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
                     className={cn(
-                      "text-left p-4 text-sm font-medium text-gray-100",
+                      "text-left p-4 text-sm font-medium text-slate-700",
                       ["openHotspotCount", "reviewedHotspotCount", "actions"].includes(header.column.id) &&
                         "w-0 whitespace-nowrap"
                     )}
@@ -190,33 +190,33 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
             {isLoading ? (
               <>
                 {[...Array(8)].map((_, i) => (
-                  <tr key={i} className="border-b border-white/10">
+                  <tr key={i} className="border-b border-slate-100">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 bg-slate-700 rounded animate-pulse"></div>
-                        <div className="h-4 bg-slate-700 rounded w-32 animate-pulse"></div>
+                        <div className="h-5 w-5 bg-slate-200 rounded animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="h-4 bg-slate-700 rounded w-24 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-24 animate-pulse"></div>
                     </td>
                     <td className="p-4">
-                      <div className="h-4 bg-slate-700 rounded w-24 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-24 animate-pulse"></div>
                     </td>
                     <td className="p-4 w-0 whitespace-nowrap">
-                      <div className="h-4 bg-slate-700 rounded w-16 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
                     </td>
                   </tr>
                 ))}
               </>
             ) : (
               rows.map((row) => (
-                <tr key={row.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
                       className={cn(
-                        "p-4 text-gray-200",
+                        "p-4 text-slate-700",
                         ["openHotspotCount", "reviewedHotspotCount", "actions"].includes(cell.column.id) &&
                           "w-0 whitespace-nowrap"
                       )}

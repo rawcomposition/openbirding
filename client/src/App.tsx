@@ -41,7 +41,7 @@ function AppContent() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 text-white"
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900"
       onClick={clickOutside}
     >
       {!isAuthPage && <Header />}

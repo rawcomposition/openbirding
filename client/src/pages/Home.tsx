@@ -24,11 +24,11 @@ const Home = () => {
       <section className="py-20 px-4 text-center">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
-            <Bird className="h-16 w-16 text-emerald-400" />
+            <Bird className="h-16 w-16 text-emerald-600" />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-6">OpenBirding</h1>
-          <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
-            Discover <span className="text-emerald-400 font-semibold">open access</span> birding hotspots you can visit
+          <h1 className="text-5xl font-bold text-slate-900 mb-6">OpenBirding</h1>
+          <p className="text-xl text-slate-700 mb-8 max-w-2xl mx-auto">
+            Discover <span className="text-emerald-600 font-semibold">open access</span> birding hotspots you can visit
             freely — without fees, permits, guides, or other restrictions — contributed and verified by the birding
             community.
           </p>
@@ -44,7 +44,7 @@ const Home = () => {
               </Button>
             </Link>
             <Link to="/map">
-              <Button size="lg" variant="outline">
+              <Button size="lg" variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
                 View Map
               </Button>
             </Link>
@@ -52,27 +52,27 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-gradient-to-br from-slate-800/40 via-slate-700/30 to-slate-800/40">
+      <section className="py-20 px-4 bg-gradient-to-br from-slate-100/60 via-slate-50/40 to-slate-100/60">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">Community Driven</h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">Community Driven</h2>
+            <p className="text-xl text-slate-700 max-w-3xl mx-auto">
               Join thousands of birders who have contributed to our worldwide database of freely accessible locations.
             </p>
           </div>
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          <div className="bg-white border border-slate-200 rounded-xl p-8">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
               <div className="flex-1 text-center lg:text-left">
-                <h3 className="text-2xl font-semibold text-white mb-4">Open Access Birding</h3>
-                <p className="text-lg text-gray-300 mb-4">
+                <h3 className="text-2xl font-semibold text-slate-900 mb-4">Open Access Birding</h3>
+                <p className="text-lg text-slate-700 mb-4">
                   No fees, no permits, no restrictions — just pure birding freedom.
                 </p>
-                <p className="text-gray-400">Every location verified by the community for true open access.</p>
+                <p className="text-slate-600">Every location verified by the community for true open access.</p>
               </div>
               <div className="text-center">
-                <div className="text-7xl font-bold text-emerald-400 mb-4">{openHotspots.toLocaleString()}</div>
-                <div className="text-2xl font-semibold text-white">Open Hotspots</div>
-                <div className="text-lg text-emerald-200 mt-1">Worldwide</div>
+                <div className="text-7xl font-bold text-emerald-600 mb-4">{openHotspots.toLocaleString()}</div>
+                <div className="text-2xl font-semibold text-slate-900">Open Hotspots</div>
+                <div className="text-lg text-emerald-700 mt-1">Worldwide</div>
               </div>
             </div>
           </div>
@@ -81,49 +81,49 @@ const Home = () => {
 
       <section className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">What is OpenBirding?</h2>
+          <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">What is OpenBirding?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+            <Card className="bg-white border border-slate-200">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <MapPin className="h-6 w-6 text-emerald-400" />
-                  <CardTitle className="text-white">Explore Without Barriers</CardTitle>
+                  <MapPin className="h-6 w-6 text-emerald-600" />
+                  <CardTitle className="text-slate-900">Explore Without Barriers</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-gray-300 text-md">
+                <CardDescription className="text-slate-700 text-md">
                   Birding should be free and open to all. Our global map highlights places you can step into nature
                   without restrictions standing in the way.
                 </CardDescription>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+            <Card className="bg-white border border-slate-200">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <Info className="h-6 w-6 text-emerald-400" />
-                  <CardTitle className="text-white">What “Open Access” Means</CardTitle>
+                  <Info className="h-6 w-6 text-emerald-600" />
+                  <CardTitle className="text-slate-900">What "Open Access" Means</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-gray-300 text-md">
+                <CardDescription className="text-slate-700 text-md">
                   Open access hotspots allow anyone to visit freely — no entrance fees, no permits, no required guides,
-                  and no “guests only” restrictions. Just show up and bird.
+                  and no "guests only" restrictions. Just show up and bird.
                 </CardDescription>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+            <Card className="bg-white border border-slate-200">
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <Users className="h-6 w-6 text-emerald-400" />
-                  <CardTitle className="text-white">Built by Birders</CardTitle>
+                  <Users className="h-6 w-6 text-emerald-600" />
+                  <CardTitle className="text-slate-900">Built by Birders</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-gray-300 text-md">
+                <CardDescription className="text-slate-700 text-md">
                   OpenBirding is powered by volunteers who share local knowledge so everyone can enjoy accessible
-                  birding. It’s a community effort to keep birding open and welcoming worldwide.
+                  birding. It's a community effort to keep birding open and welcoming worldwide.
                 </CardDescription>
               </CardContent>
             </Card>

@@ -13,14 +13,14 @@ interface BreadcrumbProps {
 const Breadcrumb = ({ items }: BreadcrumbProps) => {
   return (
     <nav className="flex items-center space-x-2 text-sm text-slate-400 mb-4">
-      <Link to="/region/world" className="flex items-center hover:text-emerald-400 transition-colors">
+      <Link to="/region/world" className="flex items-center hover:text-emerald-600 transition-colors">
         World
       </Link>
 
       {[...items].reverse().map((item) => (
         <div key={item.id} className="flex items-center space-x-2">
           <ChevronRight className="h-4 w-4 text-slate-600" />
-          <Link to={`/region/${item.id}`} className="hover:text-emerald-400 transition-colors">
+          <Link to={`/region/${item.id}`} className="hover:text-emerald-600 transition-colors">
             {item.name}
           </Link>
         </div>
