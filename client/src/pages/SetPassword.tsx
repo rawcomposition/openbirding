@@ -72,8 +72,8 @@ const SetPassword = () => {
             <Lock className="h-16 w-16 text-red-500" />
           </div>
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">Invalid Reset Link</h2>
-            <p className="text-slate-300">
+            <h2 className="text-xl font-semibold text-slate-900">Invalid Reset Link</h2>
+            <p className="text-slate-700">
               The password reset link is invalid or has expired. Please request a new reset link.
             </p>
             <Button
@@ -96,7 +96,7 @@ const SetPassword = () => {
           type="password"
           placeholder="Enter new password"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+          large
           required
           autoFocus
         />
@@ -106,7 +106,7 @@ const SetPassword = () => {
           type="password"
           placeholder="Confirm new password"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+          large
           required
         />
 

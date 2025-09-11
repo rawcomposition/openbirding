@@ -46,8 +46,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             <div className="text-center">
               <div className="mb-6">
                 <div className="text-6xl font-bold text-red-400 mb-4">⚠️</div>
-                <h1 className="text-2xl font-bold text-white mb-2">Something went wrong</h1>
-                <p className="text-slate-300 mb-6">
+                <h1 className="text-2xl font-bold text-slate-900 mb-2">Something went wrong</h1>
+                <p className="text-slate-700 mb-6">
                   We encountered an unexpected error. Please try refreshing the page or contact support if the problem
                   persists.
                 </p>
@@ -65,8 +65,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
               {process.env.NODE_ENV === "development" && this.state.error && (
                 <details className="mt-8 text-left">
-                  <summary className="cursor-pointer text-slate-400 hover:text-slate-300 mb-2">Error Details</summary>
-                  <div className="bg-slate-800 p-4 rounded-lg text-sm text-red-300 font-mono overflow-auto">
+                  <summary className="cursor-pointer text-slate-600 hover:text-slate-700 mb-2">Error Details</summary>
+                  <div className="bg-slate-100 p-4 rounded-lg text-sm text-red-700 font-mono overflow-auto">
                     <div className="mb-2">
                       <strong>Error:</strong> {this.state.error.message}
                     </div>

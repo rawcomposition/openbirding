@@ -1,5 +1,6 @@
 import { ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import type { Hotspot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -157,7 +158,7 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
   const { rows } = table.getRowModel();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <style>
         {`
           .row-number::before {
@@ -166,57 +167,61 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
           }
         `}
       </style>
-      {total !== undefined && <p className="text-gray-300">Found {total} hotspots</p>}
-
-      <div className="flex sm:flex-row flex-col justify-between gap-4">
-        <input
-          type="text"
-          placeholder="Search hotspots..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 max-w-xs"
-        />
-        <div className="flex gap-2">
-          {isEditMode ? (
-            <>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleSaveChanges}
-                disabled={!hasChanges() || saveChangesMutation.isPending}
-              >
-                <Save className="h-4 w-4" />
-                {saveChangesMutation.isPending ? "Saving..." : "Save Changes"}
-                {changeCount > 0 && !saveChangesMutation.isPending && (
-                  <Badge variant="secondary" className="ml-2 bg-emerald-500/20 text-emerald-200 border-emerald-400/30">
-                    {changeCount}
-                  </Badge>
-                )}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Hotspots</h2>
+          <p className="text-slate-600 mt-1">Found {total || hotspots.length} hotspots</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <Input
+            type="text"
+            placeholder="Search hotspots..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="w-full sm:w-80"
+          />
+          <div className="flex gap-2">
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleSaveChanges}
+                  disabled={!hasChanges() || saveChangesMutation.isPending}
+                >
+                  <Save className="h-4 w-4" />
+                  {saveChangesMutation.isPending ? "Saving..." : "Save Changes"}
+                  {changeCount > 0 && !saveChangesMutation.isPending && (
+                    <Badge variant="secondary" className="ml-2 bg-emerald-100 text-emerald-800 border-emerald-200">
+                      {changeCount}
+                    </Badge>
+                  )}
+                </Button>
+                <Button variant="outline" size="lg" onClick={handleCancelEdit}>
+                  <CancelIcon className="h-4 w-4" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" size="lg" onClick={handleEditClick}>
+                <Edit className="h-4 w-4" />
+                Edit Hotspots
               </Button>
-              <Button variant="outline" size="lg" onClick={handleCancelEdit}>
-                <CancelIcon className="h-4 w-4" />
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button variant="primary" size="lg" onClick={handleEditClick}>
-              <Edit className="h-4 w-4" />
-              Edit Hotspots
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <table className="w-full" style={{ counterReset: "row-counter" }}>
-          <thead className="sticky top-0 bg-gray-300/10 backdrop-blur-sm z-10">
+          <thead className="sticky top-0 bg-slate-50 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-white/20">
+              <tr key={headerGroup.id} className="border-b border-slate-200">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
                     className={cn(
-                      "text-left p-4 text-sm font-medium text-gray-100",
+                      "text-left p-4 text-sm font-medium text-slate-700",
                       ["open", "species", "distance", "location"].includes(header.column.id) && "w-0 whitespace-nowrap",
                       header.column.id === "notes" && "sm:w-xs"
                     )}
@@ -245,30 +250,30 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
             {isLoading ? (
               <>
                 {[...Array(8)].map((_, i) => (
-                  <tr key={i} className="border-b border-white/10">
+                  <tr key={i} className="border-b border-slate-100">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 bg-slate-700 rounded animate-pulse"></div>
-                        <div className="h-4 bg-slate-700 rounded w-40 animate-pulse"></div>
+                        <div className="h-5 w-5 bg-slate-200 rounded animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 rounded w-40 animate-pulse"></div>
                       </div>
                     </td>
                     <td className="p-4 w-0 whitespace-nowrap">
-                      <div className="h-4 bg-slate-700 rounded w-8 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-8 animate-pulse"></div>
                     </td>
                     <td className="p-4">
-                      <div className="h-4 bg-slate-700 rounded w-32 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
                     </td>
                     <td className="p-4 w-0 whitespace-nowrap">
-                      <div className="h-4 bg-slate-700 rounded w-12 animate-pulse"></div>
+                      <div className="h-4 bg-slate-200 rounded w-12 animate-pulse"></div>
                     </td>
                     {showDistance && (
                       <td className="p-4 w-0 whitespace-nowrap">
-                        <div className="h-4 bg-slate-700 rounded w-16 animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
                       </td>
                     )}
                     {!isEditMode && (
                       <td className="p-4 w-0 whitespace-nowrap">
-                        <div className="h-4 bg-slate-700 rounded w-20 animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
                       </td>
                     )}
                   </tr>

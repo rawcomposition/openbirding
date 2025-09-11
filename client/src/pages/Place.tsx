@@ -26,9 +26,9 @@ const Place = () => {
   if (error) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <Card className="bg-red-900/20 border-red-500/30">
+        <Card className="bg-red-50 border-red-200">
           <CardContent className="space-y-2">
-            <p className="text-red-300">Error loading place: {error.message}</p>
+            <p className="text-red-700">Error loading place: {error.message}</p>
             <Button variant="outline" onClick={() => refetch()}>
               Try Again
             </Button>
@@ -41,9 +41,9 @@ const Place = () => {
   if (!hotspots?.length && !isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <Card className="bg-slate-800/50 border-slate-700">
+        <Card className="bg-slate-50 border-slate-200">
           <CardContent>
-            <p className="text-slate-300">No hotspots found</p>
+            <p className="text-slate-700">No hotspots found</p>
           </CardContent>
         </Card>
       </div>
@@ -54,9 +54,9 @@ const Place = () => {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <MapPin className="h-6 w-6 text-emerald-400" />
-          <h1 className="text-3xl font-bold text-white">{placeName}</h1>
-          <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-500/30">
+          <MapPin className="h-6 w-6 text-emerald-600" />
+          <h1 className="text-3xl font-bold text-slate-900">{placeName}</h1>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
             Place
           </Badge>
           {isEditMode ? (
@@ -73,7 +73,7 @@ const Place = () => {
             </Button>
           )}
         </div>
-        <p className="text-slate-400 mb-4">Showing the closest 200 hotspots</p>
+        <p className="text-slate-600 mb-4">Showing the closest 200 hotspots</p>
       </div>
 
       {hotspots && hotspots.length > 0 ? (
@@ -85,9 +85,9 @@ const Place = () => {
           isLoading={isLoading}
         />
       ) : !isLoading ? (
-        <Card className="bg-slate-800/50 border-slate-700">
+        <Card className="bg-slate-50 border-slate-200">
           <CardContent>
-            <p className="text-slate-300 text-center">No hotspots found near this location</p>
+            <p className="text-slate-700 text-center">No hotspots found near this location</p>
           </CardContent>
         </Card>
       ) : (

@@ -166,7 +166,7 @@ const HotspotDetails = () => {
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Open Access</label>
-                        <InputOpenAccess value={localOpen} onChange={handleOpenChange} size="md" theme="light" />
+                        <InputOpenAccess value={localOpen} onChange={handleOpenChange} size="md" />
                       </div>
 
                       <div>
