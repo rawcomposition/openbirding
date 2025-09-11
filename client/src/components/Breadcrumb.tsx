@@ -12,7 +12,7 @@ interface BreadcrumbProps {
 
 const Breadcrumb = ({ items }: BreadcrumbProps) => {
   return (
-    <nav className="flex items-center space-x-2 text-sm text-slate-400 mb-4">
+    <nav className="flex items-center space-x-2 text-sm text-slate-500 mb-4">
       <Link to="/region/world" className="flex items-center hover:text-emerald-600 transition-colors">
         World
       </Link>

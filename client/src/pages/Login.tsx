@@ -51,8 +51,8 @@ const Login = () => {
   return (
     <AuthWrapper title="Welcome Back" description="Sign in to your OpenBirding account">
       {successMessage && (
-        <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-md">
-          <p className="text-emerald-200 text-sm">{successMessage}</p>
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+          <p className="text-emerald-700 text-sm">{successMessage}</p>
         </div>
       )}
       <Form form={form} onSubmit={onSubmit} className="space-y-4">
@@ -61,7 +61,7 @@ const Login = () => {
           type="email"
           placeholder="Enter your email"
           icon={<Mail className="h-4 w-4" />}
-          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
           required
           autoFocus
         />
@@ -71,7 +71,7 @@ const Login = () => {
           type="password"
           placeholder="Enter your password"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
           required
           autoFocus={!!(location.state as { email?: string })?.email}
         />
@@ -86,16 +86,16 @@ const Login = () => {
       </Form>
 
       <div className="mt-6 text-center">
-        <p className="text-slate-400">
+        <p className="text-slate-600">
           Don't have an account?{" "}
-          <Link to="/signup" className="text-emerald-400 hover:text-emerald-300 font-medium">
+          <Link to="/signup" className="text-emerald-600 hover:text-emerald-700 font-medium">
             Sign up
           </Link>
         </p>
       </div>
 
       <div className="mt-4 text-center">
-        <Link to="/forgot-password" className="text-slate-400 hover:text-slate-300 text-sm">
+        <Link to="/forgot-password" className="text-slate-600 hover:text-slate-700 text-sm">
           Forgot your password?
         </Link>
       </div>

@@ -54,8 +54,8 @@ const VerifyEmail = () => {
             <CheckCircle className="h-16 w-16 text-emerald-500" />
           </div>
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">Email Verified!</h2>
-            <p className="text-slate-300">
+            <h2 className="text-xl font-semibold text-slate-900">Email Verified!</h2>
+            <p className="text-slate-700">
               {typeof verifyEmailMutation.data.message === "string"
                 ? verifyEmailMutation.data.message
                 : "You can now log in to your account."}
@@ -77,8 +77,8 @@ const VerifyEmail = () => {
             <Mail className="h-16 w-16 text-red-500" />
           </div>
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">Verification Failed</h2>
-            <p className="text-slate-300">
+            <h2 className="text-xl font-semibold text-slate-900">Verification Failed</h2>
+            <p className="text-slate-700">
               {verifyEmailMutation.error instanceof Error ? verifyEmailMutation.error.message : "Verification failed"}
             </p>
             <div className="space-y-2">
