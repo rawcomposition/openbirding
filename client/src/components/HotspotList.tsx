@@ -1,5 +1,6 @@
 import { ChevronUp, ChevronDown, Edit, Save, X as CancelIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import type { Hotspot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -172,12 +173,12 @@ const HotspotList = ({ hotspots, queryKey, total, defaultSort, showDistance, isL
           <p className="text-slate-600 mt-1">Found {total || hotspots.length} hotspots</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <input
+          <Input
             type="text"
             placeholder="Search hotspots..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-full sm:w-80 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+            className="w-full sm:w-80"
           />
           <div className="flex gap-2">
             {isEditMode ? (

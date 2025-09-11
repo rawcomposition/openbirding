@@ -1,6 +1,7 @@
 import { ChevronUp, ChevronDown } from "lucide-react";
 import type { Subregion } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   useReactTable,
   getCoreRowModel,
@@ -148,12 +149,12 @@ const RegionList = ({ regionCode, defaultSort }: Props) => {
           <h2 className="text-2xl font-bold text-slate-900">Subregions</h2>
           <p className="text-slate-600 mt-1">Found {regions.length} subregions</p>
         </div>
-        <input
+        <Input
           type="text"
           placeholder="Search subregions..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-full sm:w-80 px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+          className="w-full sm:w-80"
         />
       </div>
 

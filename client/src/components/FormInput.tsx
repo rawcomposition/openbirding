@@ -9,9 +9,10 @@ type FormInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   required?: boolean;
   icon?: React.ReactNode;
+  large?: boolean;
 };
 
-const FormInput = ({ name, label, required, icon, className, ...props }: FormInputProps) => {
+const FormInput = ({ name, label, required, icon, large, className, ...props }: FormInputProps) => {
   const {
     register,
     formState: { errors },
@@ -31,6 +32,7 @@ const FormInput = ({ name, label, required, icon, className, ...props }: FormInp
           {...register(name, { required: required ? "This field is required" : false })}
           {...props}
           id={name}
+          large={large}
           className={cn(
             icon && "pl-10",
             className,

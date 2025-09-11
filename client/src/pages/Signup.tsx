@@ -112,7 +112,7 @@ const Signup = () => {
           type="text"
           placeholder="Enter your name"
           icon={<User className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
         />
 
@@ -121,7 +121,7 @@ const Signup = () => {
           type="email"
           placeholder="Enter your email"
           icon={<Mail className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
           autoFocus
         />
@@ -131,7 +131,7 @@ const Signup = () => {
           type="password"
           placeholder="Create a password (min 8 characters)"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
         />
 
@@ -140,7 +140,7 @@ const Signup = () => {
           type="password"
           placeholder="Confirm your password"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
         />
 

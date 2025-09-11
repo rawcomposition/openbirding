@@ -77,7 +77,7 @@ const ForgotPassword = () => {
           type="email"
           placeholder="Enter your email"
           icon={<Mail className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
           autoFocus
         />

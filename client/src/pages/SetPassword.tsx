@@ -96,7 +96,7 @@ const SetPassword = () => {
           type="password"
           placeholder="Enter new password"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
           autoFocus
         />
@@ -106,7 +106,7 @@ const SetPassword = () => {
           type="password"
           placeholder="Confirm new password"
           icon={<Lock className="h-4 w-4" />}
-          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-500"
+          large
           required
         />
 
