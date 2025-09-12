@@ -296,19 +296,6 @@ export async function isRateLimited(email: string, ipAddress: string): Promise<b
   return attempts.length >= MAX_LOGIN_ATTEMPS;
 }
 
-export async function verifyRequestOrigin(method: string, originHeader: string | null): Promise<boolean> {
-  if (method === "GET" || method === "HEAD") {
-    return true;
-  }
-
-  if (!originHeader) {
-    return false;
-  }
-
-  const allowedOrigins = ["http://localhost:5173", "http://localhost:4173", "https://openbirding.com"];
-  return allowedOrigins.includes(originHeader);
-}
-
 export function encodeSessionPublicJSON(session: Session): string {
   return JSON.stringify({
     id: session.id,

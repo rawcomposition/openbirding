@@ -9,7 +9,6 @@ import {
   deleteSession,
   recordLoginAttempt,
   isRateLimited,
-  verifyRequestOrigin,
   sendVerificationEmail,
   verifyEmailToken,
   markEmailAsVerified,
@@ -45,13 +44,6 @@ type AuthResponse = {
 };
 
 auth.post("/signup", async (c) => {
-  const origin = c.req.header("Origin") || null;
-  const method = c.req.method;
-
-  if (!(await verifyRequestOrigin(method, origin))) {
-    return c.json({ error: "Invalid origin" }, 403);
-  }
-
   try {
     const { email, name, password }: SignupRequest = await c.req.json();
 
@@ -84,13 +76,7 @@ auth.post("/signup", async (c) => {
 });
 
 auth.post("/login", async (c) => {
-  const origin = c.req.header("Origin") || null;
-  const method = c.req.method;
   const ipAddress = c.req.header("X-Forwarded-For") || c.req.header("X-Real-IP") || "unknown";
-
-  if (!(await verifyRequestOrigin(method, origin))) {
-    return c.json({ error: "Invalid origin" }, 403);
-  }
 
   try {
     const { email, password }: LoginRequest = await c.req.json();
@@ -173,13 +159,6 @@ auth.post("/logout", async (c) => {
 });
 
 auth.post("/verify-email", async (c) => {
-  const origin = c.req.header("Origin") || null;
-  const method = c.req.method;
-
-  if (!(await verifyRequestOrigin(method, origin))) {
-    return c.json({ error: "Invalid origin" }, 403);
-  }
-
   const { token } = await c.req.json();
 
   if (!token) {
@@ -211,13 +190,6 @@ auth.post("/verify-email", async (c) => {
 });
 
 auth.post("/resend-verification", async (c) => {
-  const origin = c.req.header("Origin") || null;
-  const method = c.req.method;
-
-  if (!(await verifyRequestOrigin(method, origin))) {
-    return c.json({ error: "Invalid origin" }, 403);
-  }
-
   try {
     const { email } = await c.req.json();
 
@@ -247,13 +219,6 @@ auth.post("/resend-verification", async (c) => {
 });
 
 auth.post("/forgot-password", async (c) => {
-  const origin = c.req.header("Origin") || null;
-  const method = c.req.method;
-
-  if (!(await verifyRequestOrigin(method, origin))) {
-    return c.json({ error: "Invalid origin" }, 403);
-  }
-
   try {
     const { email } = await c.req.json();
 
@@ -278,13 +243,6 @@ auth.post("/forgot-password", async (c) => {
 });
 
 auth.post("/reset-password", async (c) => {
-  const origin = c.req.header("Origin") || null;
-  const method = c.req.method;
-
-  if (!(await verifyRequestOrigin(method, origin))) {
-    return c.json({ error: "Invalid origin" }, 403);
-  }
-
   try {
     const { token, password } = await c.req.json();
 
