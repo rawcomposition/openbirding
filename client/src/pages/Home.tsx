@@ -21,10 +21,20 @@ const Home = () => {
 
   return (
     <div className="min-h-screen">
-      <section className="py-20 px-4 text-center">
-        <div className="max-w-4xl mx-auto">
+      <section className="relative py-20 px-4 text-center overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100"></div>
+        <div className="absolute inset-0 bg-gradient-to-tl from-blue-50/40 via-transparent to-teal-50/40"></div>
+        <div className="absolute top-1/3 left-0 w-72 h-72 bg-gradient-to-r from-emerald-300/25 to-transparent rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-gradient-to-l from-blue-300/20 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-1/3 w-64 h-64 bg-gradient-to-br from-teal-200/30 to-transparent rounded-full blur-xl"></div>
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-gradient-to-tr from-emerald-200/20 to-blue-200/20 rounded-full blur-2xl"></div>
+
+        <div className="relative max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
-            <Bird className="h-16 w-16 text-emerald-600" />
+            <div className="relative">
+              <div className="absolute inset-0 -inset-8 bg-gradient-to-r from-emerald-300/15 to-teal-300/15 rounded-full blur-3xl"></div>
+              <Bird className="relative h-16 w-16 text-emerald-600 drop-shadow-lg" />
+            </div>
           </div>
           <h1 className="text-5xl font-bold text-slate-900 mb-6">OpenBirding</h1>
           <p className="text-xl text-slate-700 mb-8 max-w-2xl mx-auto">
