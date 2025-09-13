@@ -17,14 +17,14 @@ packsRoute.get("/", async (c) => {
     const packs = await db
       .selectFrom("packs")
       .innerJoin("regions", "packs.region", "regions.id")
-      .select(["packs.id", "packs.region", "packs.hotspots", "regions.longName"])
+      .select(["packs.id", "packs.hotspots", "regions.longName"])
       .orderBy("regions.longName", "asc")
       .execute();
 
     return c.json({
-      data: packs.map((pack) => ({
+      data: packs.map(({ longName, ...pack }) => ({
         ...pack,
-        name: pack.longName,
+        name: longName,
       })),
       count: packs.length,
     });
