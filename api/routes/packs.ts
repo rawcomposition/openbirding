@@ -2,6 +2,10 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { syncPack, getPacksNeedingSync } from "../lib/ebird.js";
 import db from "../lib/sqlite.js";
+import { gzip } from "zlib";
+import { promisify } from "util";
+
+const gzipAsync = promisify(gzip);
 
 const DELAY = 5000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -138,6 +142,66 @@ packsRoute.post("/sync/:packId", async (c) => {
       throw error;
     }
     console.error("Sync error:", error);
+    throw new HTTPException(500, { message: error instanceof Error ? error.message : "Internal Server Error" });
+  }
+});
+
+packsRoute.get("/:id", async (c) => {
+  try {
+    const packId = c.req.param("id");
+
+    if (!packId) {
+      throw new HTTPException(400, { message: "Pack ID parameter is required" });
+    }
+
+    const packIdNum = parseInt(packId);
+    if (isNaN(packIdNum)) {
+      throw new HTTPException(400, { message: "Pack ID must be a valid number" });
+    }
+
+    const pack = await db.selectFrom("packs").select(["id", "region"]).where("id", "=", packIdNum).executeTakeFirst();
+
+    if (!pack) {
+      throw new HTTPException(404, { message: "Pack not found" });
+    }
+
+    const hotspots = await db
+      .selectFrom("hotspots")
+      .select(["id", "name", "region", "species", "lat", "lng", "open", "notes"])
+      .where("region", "like", `${pack.region}%`)
+      .orderBy("species", "desc")
+      .execute();
+
+    const transformedHotspots = hotspots.map((hotspot) => ({
+      id: hotspot.id,
+      name: hotspot.name,
+      species: hotspot.species,
+      lat: hotspot.lat,
+      lng: hotspot.lng,
+      open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
+      notes: hotspot.notes,
+    }));
+
+    const jsonString = JSON.stringify(transformedHotspots);
+    const gzippedData = await gzipAsync(jsonString);
+
+    c.header("Content-Type", "application/json");
+    c.header("Content-Encoding", "gzip");
+    c.header("Content-Length", gzippedData.length.toString());
+
+    return new Response(gzippedData, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Encoding": "gzip",
+        "Content-Length": gzippedData.length.toString(),
+      },
+    });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Download pack error:", error);
     throw new HTTPException(500, { message: error instanceof Error ? error.message : "Internal Server Error" });
   }
 });
