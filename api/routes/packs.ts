@@ -21,13 +21,12 @@ packsRoute.get("/", async (c) => {
       .orderBy("regions.longName", "asc")
       .execute();
 
-    return c.json({
-      data: packs.map(({ longName, ...pack }) => ({
+    return c.json(
+      packs.map(({ longName, ...pack }) => ({
         ...pack,
         name: longName,
-      })),
-      count: packs.length,
-    });
+      }))
+    );
   } catch (error) {
     console.error("Get packs error:", error);
     throw new HTTPException(500, { message: error instanceof Error ? error.message : "Failed to get packs" });
