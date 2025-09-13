@@ -17,12 +17,15 @@ packsRoute.get("/", async (c) => {
     const packs = await db
       .selectFrom("packs")
       .innerJoin("regions", "packs.region", "regions.id")
-      .select(["packs.id", "packs.region", "packs.hotspots", "regions.name"])
-      .orderBy("regions.name", "asc")
+      .select(["packs.id", "packs.region", "packs.hotspots", "regions.longName"])
+      .orderBy("regions.longName", "asc")
       .execute();
 
     return c.json({
-      data: packs,
+      data: packs.map((pack) => ({
+        ...pack,
+        name: pack.longName,
+      })),
       count: packs.length,
     });
   } catch (error) {
@@ -168,7 +171,7 @@ packsRoute.get("/:id", async (c) => {
     const hotspots = await db
       .selectFrom("hotspots")
       .select(["id", "name", "region", "species", "lat", "lng", "open", "notes"])
-      .where("region", "like", `${pack.region}%`)
+      .where("region", "=", pack.region)
       .orderBy("species", "desc")
       .execute();
 
