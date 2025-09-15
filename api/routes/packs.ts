@@ -169,7 +169,7 @@ packsRoute.get("/:id", async (c) => {
 
     const hotspots = await db
       .selectFrom("hotspots")
-      .select(["id", "name", "region", "species", "lat", "lng", "open", "notes"])
+      .select(["id", "name", "region", "species", "lat", "lng", "open", "notes", "updatedAt", "lastUpdatedBy"])
       .where("region", "=", pack.region)
       .orderBy("species", "desc")
       .execute();
