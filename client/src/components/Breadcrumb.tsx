@@ -1,14 +1,14 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
-interface BreadcrumbItem {
+type BreadcrumbItem = {
   name: string;
   id: string;
-}
+};
 
-interface BreadcrumbProps {
+type BreadcrumbProps = {
   items: BreadcrumbItem[];
-}
+};
 
 const Breadcrumb = ({ items }: BreadcrumbProps) => {
   return (

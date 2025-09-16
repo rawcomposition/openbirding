@@ -2,16 +2,16 @@ import React from "react";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
 
-interface ErrorBoundaryState {
+type ErrorBoundaryState = {
   hasError: boolean;
   error?: Error;
   errorInfo?: React.ErrorInfo;
-}
+};
 
-interface ErrorBoundaryProps {
+type ErrorBoundaryProps = {
   children: React.ReactNode;
   fallback?: React.ComponentType<{ error: Error; resetError: () => void }>;
-}
+};
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {

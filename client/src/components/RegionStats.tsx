@@ -2,15 +2,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { MapPin, CheckCircle, Eye } from "lucide-react";
 
-interface RegionStatsProps {
+type RegionStatsProps = {
   regionCode: string;
-}
+};
 
-interface RegionStatsData {
+type RegionStatsData = {
   hotspotCount: number;
   openHotspotCount: number;
   reviewedHotspotCount: number;
-}
+};
 
 const RegionStats = ({ regionCode }: RegionStatsProps) => {
   const { data: stats, isLoading } = useQuery<RegionStatsData>({

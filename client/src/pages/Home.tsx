@@ -5,11 +5,11 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import PlaceSearch from "@/components/PlaceSearch";
 
-interface WorldStats {
+type WorldStats = {
   hotspotCount: number;
   openHotspotCount: number;
   reviewedHotspotCount: number;
-}
+};
 
 const Home = () => {
   const { data: worldStats } = useQuery<WorldStats>({
