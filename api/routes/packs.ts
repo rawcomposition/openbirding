@@ -2,10 +2,6 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { syncPack, getPacksNeedingSync } from "../lib/ebird.js";
 import db from "../lib/sqlite.js";
-import { gzip } from "zlib";
-import { promisify } from "util";
-
-const gzipAsync = promisify(gzip);
 
 const DELAY = 5000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -170,7 +166,7 @@ packsRoute.get("/:id", async (c) => {
     const hotspots = await db
       .selectFrom("hotspots")
       .select(["id", "name", "region", "species", "lat", "lng", "open", "notes", "updatedAt", "lastUpdatedBy"])
-      .where("region", "=", pack.region)
+      .where("region", "like", `${pack.region}%`)
       .orderBy("species", "desc")
       .execute();
 
@@ -184,21 +180,7 @@ packsRoute.get("/:id", async (c) => {
       notes: hotspot.notes,
     }));
 
-    const jsonString = JSON.stringify(transformedHotspots);
-    const gzippedData = await gzipAsync(jsonString);
-
-    c.header("Content-Type", "application/json");
-    c.header("Content-Encoding", "gzip");
-    c.header("Content-Length", gzippedData.length.toString());
-
-    return new Response(gzippedData, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Encoding": "gzip",
-        "Content-Length": gzippedData.length.toString(),
-      },
-    });
+    return c.json(transformedHotspots);
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;
