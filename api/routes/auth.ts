@@ -20,6 +20,7 @@ import {
 } from "../lib/auth.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
 import type { User } from "../lib/types.js";
+import { ENABLE_SIGNUP } from "../lib/config.js";
 
 const auth = new Hono();
 
@@ -45,6 +46,10 @@ type AuthResponse = {
 
 auth.post("/signup", async (c) => {
   try {
+    if (!ENABLE_SIGNUP) {
+      return c.json({ error: "Account registration is currently disabled" }, 403);
+    }
+
     const { email, name, password }: SignupRequest = await c.req.json();
 
     if (!email || !name || !password) {

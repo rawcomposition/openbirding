@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/Form";
 import { FormInput } from "@/components/FormInput";
@@ -10,6 +10,7 @@ import { mutate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { SignupData } from "@/lib/types";
 import { useState } from "react";
+import { ENABLE_SIGNUP } from "@/lib/config";
 
 type SignupFormData = {
   email: string;
@@ -106,6 +107,15 @@ const Signup = () => {
 
   return (
     <AuthWrapper title="Create Account" description="Join OpenBirding to track your birding adventures">
+      {!ENABLE_SIGNUP && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center space-x-2 text-amber-800">
+            <Info className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm font-medium">Account registration is currently disabled</p>
+          </div>
+        </div>
+      )}
+
       <Form form={form} onSubmit={onSubmit} className="space-y-4">
         <FormInput
           name="name"
@@ -114,6 +124,7 @@ const Signup = () => {
           icon={<User className="h-4 w-4" />}
           large
           required
+          disabled={!ENABLE_SIGNUP}
         />
 
         <FormInput
@@ -124,6 +135,7 @@ const Signup = () => {
           large
           required
           autoFocus
+          disabled={!ENABLE_SIGNUP}
         />
 
         <FormInput
@@ -133,6 +145,7 @@ const Signup = () => {
           icon={<Lock className="h-4 w-4" />}
           large
           required
+          disabled={!ENABLE_SIGNUP}
         />
 
         <FormInput
@@ -142,12 +155,13 @@ const Signup = () => {
           icon={<Lock className="h-4 w-4" />}
           large
           required
+          disabled={!ENABLE_SIGNUP}
         />
 
         <Button
           type="submit"
-          disabled={signupMutation.isPending}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          disabled={!ENABLE_SIGNUP || signupMutation.isPending}
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-300 disabled:cursor-not-allowed"
         >
           {signupMutation.isPending ? "Creating account..." : "Create Account"}
         </Button>

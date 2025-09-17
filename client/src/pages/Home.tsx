@@ -21,6 +21,19 @@ const Home = () => {
 
   return (
     <div className="min-h-screen">
+      <div className="bg-amber-50 border-b border-amber-200">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-center">
+            <div className="flex items-center space-x-2 text-amber-800">
+              <Info className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+              <p className="font-medium">
+                OpenBirding is in early development and not yet designed for general use. Features and data are
+                experimental.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
       <section className="relative py-20 px-4 text-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100"></div>
         <div className="absolute inset-0 bg-gradient-to-tl from-blue-50/40 via-transparent to-teal-50/40"></div>

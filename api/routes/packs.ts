@@ -13,7 +13,7 @@ packsRoute.get("/", async (c) => {
     const packs = await db
       .selectFrom("packs")
       .innerJoin("regions", "packs.region", "regions.id")
-      .select(["packs.id", "packs.hotspots", "regions.longName"])
+      .select(["packs.id", "packs.hotspots", "regions.longName", "packs.region"])
       .orderBy("regions.longName", "asc")
       .execute();
 
