@@ -9,6 +9,7 @@ type EBirdHotspot = {
   lat: number;
   lng: number;
   numSpeciesAllTime?: number;
+  countryCode: string;
   subnational1Code: string;
   subnational2Code: string;
 };
@@ -19,11 +20,12 @@ type ProcessedHotspot = {
   lat: number;
   lng: number;
   total: number;
+  countryCode: string;
   subnational1Code: string;
   subnational2Code: string;
 };
 
-const getHotspotsForRegion = async (region: string): Promise<ProcessedHotspot[]> => {
+export const getHotspotsForRegion = async (region: string): Promise<ProcessedHotspot[]> => {
   const apiKey = process.env.EBIRD_API_KEY;
   if (!apiKey) {
     throw new Error("EBIRD_API_KEY environment variable is required");
@@ -48,6 +50,7 @@ const getHotspotsForRegion = async (region: string): Promise<ProcessedHotspot[]>
       lat: hotspot.lat,
       lng: hotspot.lng,
       total: hotspot.numSpeciesAllTime || 0,
+      countryCode: hotspot.countryCode,
       subnational1Code: hotspot.subnational1Code,
       subnational2Code: hotspot.subnational2Code,
     }))
@@ -142,7 +145,7 @@ export const syncPack = async (packId?: number) => {
       const hasValidStateCode = (ebird.subnational1Code?.split("-")?.filter(Boolean)?.length || 0) > 1;
       const state = hasValidStateCode ? ebird.subnational1Code : null;
       const county = ebird.subnational2Code;
-      const country = ebird.subnational1Code?.split("-")?.[0] || "";
+      const country = ebird.countryCode;
 
       if (existingIds.has(ebird.locationId)) {
         updateCount++;

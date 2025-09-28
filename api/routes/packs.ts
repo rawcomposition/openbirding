@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { syncPack, getPacksNeedingSync } from "../lib/ebird.js";
+import { syncPack, getPacksNeedingSync, getHotspotsForRegion } from "../lib/ebird.js";
 import db from "../lib/sqlite.js";
 
 const DELAY = 5000;
@@ -163,24 +163,20 @@ packsRoute.get("/:id", async (c) => {
       throw new HTTPException(404, { message: "Pack not found" });
     }
 
-    const hotspots = await db
-      .selectFrom("hotspots")
-      .select(["id", "name", "region", "species", "lat", "lng", "open", "notes", "updatedAt", "lastUpdatedBy"])
-      .where("region", "like", `${pack.region}%`)
-      .orderBy("species", "desc")
-      .execute();
+    const hotspots = await getHotspotsForRegion(pack.region);
 
     const transformedHotspots = hotspots.map((hotspot) => ({
-      id: hotspot.id,
+      id: hotspot.locationId,
       name: hotspot.name,
-      species: hotspot.species,
+      species: hotspot.total,
       lat: hotspot.lat,
       lng: hotspot.lng,
-      open: hotspot.open === 1 ? true : hotspot.open === 0 ? false : null,
-      notes: hotspot.notes,
+      country: hotspot.countryCode,
+      state: hotspot.subnational1Code,
+      county: hotspot.subnational2Code,
     }));
 
-    return c.json(transformedHotspots);
+    return c.json({ hotspots: transformedHotspots });
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;
