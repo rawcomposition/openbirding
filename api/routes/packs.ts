@@ -172,9 +172,6 @@ packsRoute.get("/:id", async (c) => {
       lat: hotspot.lat,
       lng: hotspot.lng,
       region: [hotspot.countryCode, hotspot.subnational1Code, hotspot.subnational2Code].filter(Boolean).join("-"),
-      country: hotspot.countryCode,
-      state: hotspot.subnational1Code,
-      county: hotspot.subnational2Code,
     }));
 
     return c.json({ hotspots: transformedHotspots });
