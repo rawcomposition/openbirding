@@ -68,6 +68,12 @@ export async function setupDatabase() {
     .addColumn("region", "text", (c) => c.notNull().unique())
     .addColumn("hotspots", "integer")
     .addColumn("last_synced", "text")
+    .addColumn("min_x", "real")
+    .addColumn("min_y", "real")
+    .addColumn("max_x", "real")
+    .addColumn("max_y", "real")
+    .addColumn("center_lat", "real")
+    .addColumn("center_lng", "real")
     .addForeignKeyConstraint("fk_packs_region", ["region"], "regions", ["id"], (cb) => cb.onDelete("cascade"))
     .execute();
 

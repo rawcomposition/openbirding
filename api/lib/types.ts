@@ -39,6 +39,12 @@ export type Pack = {
   region: string;
   hotspots: number | null;
   lastSynced: string | null;
+  minX: number | null;
+  minY: number | null;
+  maxX: number | null;
+  maxY: number | null;
+  centerLat: number | null;
+  centerLng: number | null;
 };
 
 export type User = {
