@@ -173,6 +173,9 @@ packsRoute.get("/:id", async (c) => {
       species: hotspot.total,
       lat: hotspot.lat,
       lng: hotspot.lng,
+      country: hotspot.countryCode,
+      state: hotspot.subnational1Code,
+      county: hotspot.subnational2Code,
     }));
 
     return c.json({ hotspots: transformedHotspots });
