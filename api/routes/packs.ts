@@ -165,7 +165,26 @@ packsRoute.get("/:id", async (c) => {
       throw new HTTPException(404, { message: "Pack not found" });
     }
 
-    const hotspots = await getHotspotsForRegion(pack.region);
+    const [hotspots] = await Promise.all([getHotspotsForRegion(pack.region)]);
+
+    const regionCodes = new Set<string>();
+    hotspots.forEach((hotspot) => {
+      if (hotspot.countryCode) regionCodes.add(hotspot.countryCode);
+      if (hotspot.subnational1Code) regionCodes.add(hotspot.subnational1Code);
+      if (hotspot.subnational2Code) regionCodes.add(hotspot.subnational2Code);
+    });
+
+    const regions = await db
+      .selectFrom("regions")
+      .select(["id", "name"])
+      .where("id", "in", Array.from(regionCodes))
+      .execute();
+
+    const regionMap = new Map<string, string>();
+    regions.forEach((region) => {
+      if (!region.name) return;
+      regionMap.set(region.id, region.name);
+    });
 
     const transformedHotspots = hotspots.map((hotspot) => ({
       id: hotspot.locationId,
@@ -173,9 +192,12 @@ packsRoute.get("/:id", async (c) => {
       species: hotspot.total,
       lat: hotspot.lat,
       lng: hotspot.lng,
-      country: hotspot.countryCode,
-      state: hotspot.subnational1Code,
-      county: hotspot.subnational2Code,
+      country: hotspot.countryCode || null,
+      state: hotspot.subnational1Code || null,
+      county: hotspot.subnational2Code || null,
+      countryName: regionMap.get(hotspot.countryCode) || hotspot.countryCode || null,
+      stateName: regionMap.get(hotspot.subnational1Code) || hotspot.subnational1Code || null,
+      countyName: regionMap.get(hotspot.subnational2Code) || hotspot.subnational2Code || null,
     }));
 
     return c.json({ hotspots: transformedHotspots });
