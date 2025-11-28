@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import Header from "./components/Header";
-import Home from "./pages/Home";
+//import Header from "./components/Header";
+import Header2 from "./components/Header2";
+//import Home from "./pages/Home";
+import Home2 from "./pages/Home2";
 import Map from "./pages/Map";
 import Region from "./pages/Region";
 import Place from "./pages/Place";
@@ -11,6 +13,7 @@ import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import SetPassword from "./pages/SetPassword";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import HotspotDetails from "./components/HotspotDetails";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -44,11 +47,13 @@ function AppContent() {
       className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900"
       onClick={clickOutside}
     >
-      {!isAuthPage && <Header />}
+      {!isAuthPage && <Header2 />}
+      {/* {!isAuthPage && <Header />} */}
       <main>
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<Home />} />
+            {/* <Route path="/" element={<Home />} /> */}
+            <Route path="/" element={<Home2 />} />
             <Route path="/map" element={<Map />} />
             <Route path="/region/:regionCode" element={<Region />} />
             <Route path="/place/:placeName/:coordinates" element={<Place />} />
@@ -57,6 +62,7 @@ function AppContent() {
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/set-password" element={<SetPassword />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </ErrorBoundary>
