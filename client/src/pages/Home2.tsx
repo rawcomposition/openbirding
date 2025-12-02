@@ -33,7 +33,11 @@ const Home2 = () => {
                 Whether traveling or birding close to home, OpenBirding makes it easy to find new birding locations.
               </p>
               <div className="flex justify-center lg:justify-start">
-                <a href="/" target="_blank" rel="noopener noreferrer">
+                <a
+                  href="https://apps.apple.com/us/app/openbirding/id6755897167"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <AppStore className="w-[170px] h-auto" />
                 </a>
               </div>

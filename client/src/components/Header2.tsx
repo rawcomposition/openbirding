@@ -13,12 +13,8 @@ const Header2 = () => {
           </Link>
 
           <div className="flex items-center">
-            <Button
-              asChild
-              variant="ghost"
-              className="text-slate-100 hover:text-white hover:bg-slate-800/50"
-            >
-              <a href="#">Download App</a>
+            <Button asChild variant="ghost" className="text-slate-100 hover:text-white hover:bg-slate-800/50">
+              <a href="https://apps.apple.com/us/app/openbirding/id6755897167">Download App</a>
             </Button>
           </div>
         </div>
@@ -28,4 +24,3 @@ const Header2 = () => {
 };
 
 export default Header2;
-
