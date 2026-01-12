@@ -164,6 +164,14 @@ const Home2 = () => {
           <Link to="/privacy-policy" className="text-slate-600 hover:text-slate-900 text-sm transition-colors">
             Privacy Policy
           </Link>
+          <span className="text-slate-600 mx-2">•</span>
+          <Link
+            to="https://github.com/rawcomposition/openbirding-rn"
+            className="text-slate-600 hover:text-slate-900 text-sm transition-colors"
+            target="_blank"
+          >
+            Github
+          </Link>
         </div>
       </footer>
     </div>
