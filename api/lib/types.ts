@@ -45,6 +45,7 @@ export type Pack = {
   maxY: number | null;
   centerLat: number | null;
   centerLng: number | null;
+  hasCustomCenter: boolean | null;
 };
 
 export type User = {

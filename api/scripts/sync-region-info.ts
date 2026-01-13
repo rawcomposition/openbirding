@@ -44,7 +44,7 @@ const fetchRegionInfo = async (regionCode: string): Promise<EBirdRegionInfo> => 
 const getPacksMissingCoordinates = async () => {
   return await db
     .selectFrom("packs")
-    .select(["id", "region"])
+    .select(["id", "region", "hasCustomCenter"])
     .where((eb) =>
       eb.or([
         eb("minX", "is", null),
@@ -58,19 +58,27 @@ const getPacksMissingCoordinates = async () => {
     .execute();
 };
 
-const updatePackCoordinates = async (packId: number, regionInfo: EBirdRegionInfo) => {
-  await db
-    .updateTable("packs")
-    .set({
-      minX: Math.round(regionInfo.bounds.minX * 1000000) / 1000000,
-      minY: Math.round(regionInfo.bounds.minY * 1000000) / 1000000,
-      maxX: Math.round(regionInfo.bounds.maxX * 1000000) / 1000000,
-      maxY: Math.round(regionInfo.bounds.maxY * 1000000) / 1000000,
-      centerLat: Math.round(regionInfo.latitude * 1000000) / 1000000,
-      centerLng: Math.round(regionInfo.longitude * 1000000) / 1000000,
-    })
-    .where("id", "=", packId)
-    .execute();
+const updatePackCoordinates = async (packId: number, regionInfo: EBirdRegionInfo, hasCustomCenter: boolean) => {
+  const updateData: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    centerLat?: number;
+    centerLng?: number;
+  } = {
+    minX: Math.round(regionInfo.bounds.minX * 1000000) / 1000000,
+    minY: Math.round(regionInfo.bounds.minY * 1000000) / 1000000,
+    maxX: Math.round(regionInfo.bounds.maxX * 1000000) / 1000000,
+    maxY: Math.round(regionInfo.bounds.maxY * 1000000) / 1000000,
+  };
+
+  if (!hasCustomCenter) {
+    updateData.centerLat = Math.round(regionInfo.latitude * 1000000) / 1000000;
+    updateData.centerLng = Math.round(regionInfo.longitude * 1000000) / 1000000;
+  }
+
+  await db.updateTable("packs").set(updateData).where("id", "=", packId).execute();
 };
 
 const main = async () => {
@@ -92,7 +100,7 @@ const main = async () => {
     for (const pack of packsToUpdate) {
       try {
         const regionInfo = await fetchRegionInfo(pack.region);
-        await updatePackCoordinates(pack.id, regionInfo);
+        await updatePackCoordinates(pack.id, regionInfo, !!pack.hasCustomCenter);
 
         successCount++;
         console.log(`[${successCount}/${packsToUpdate.length}] Synced region: ${pack.region}`);

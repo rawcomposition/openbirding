@@ -74,6 +74,7 @@ export async function setupDatabase() {
     .addColumn("max_y", "real")
     .addColumn("center_lat", "real")
     .addColumn("center_lng", "real")
+    .addColumn("has_custom_center", "integer")
     .addForeignKeyConstraint("fk_packs_region", ["region"], "regions", ["id"], (cb) => cb.onDelete("cascade"))
     .execute();
 
