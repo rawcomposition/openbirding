@@ -48,6 +48,13 @@ export type Pack = {
   hasCustomCenter: boolean | null;
 };
 
+export type Cluster = {
+  packId: number;
+  lat: number;
+  lng: number;
+  count: number;
+};
+
 export type User = {
   id: string;
   email: string;

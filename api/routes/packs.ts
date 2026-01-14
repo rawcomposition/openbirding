@@ -17,12 +17,15 @@ packsRoute.get("/", async (c) => {
       .orderBy("regions.longName", "asc")
       .execute();
 
+    const clusters = await db.selectFrom("clusters").select(["packId", "lat", "lng"]).execute();
+
     return c.json(
       packs.map(({ longName, centerLat, centerLng, ...pack }) => ({
         ...pack,
         name: longName,
         lat: centerLat,
         lng: centerLng,
+        clusters: clusters.filter((cluster) => cluster.packId === pack.id).map((cluster) => [cluster.lat, cluster.lng]),
       }))
     );
   } catch (error) {
