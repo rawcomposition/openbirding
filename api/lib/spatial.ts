@@ -25,9 +25,10 @@ export function makeBounds(lat0: number, lng0: number, radiusKm = 200) {
 }
 
 export function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371;
+  const R = 6371; // km
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
+  // Handle longitude wrapping around the date line
   let dLngDeg = lng2 - lng1;
   if (dLngDeg > 180) dLngDeg -= 360;
   if (dLngDeg < -180) dLngDeg += 360;
