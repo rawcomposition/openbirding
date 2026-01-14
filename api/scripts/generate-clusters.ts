@@ -4,7 +4,7 @@ import { getHotspotsForRegion } from "../lib/ebird.js";
 import { getDistanceKm } from "../lib/spatial.js";
 import { desiredClusters, kCenterClustering } from "../lib/spatial.js";
 
-const DELAY = 10000;
+const DELAY = 5000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const processPack = async (packId: number) => {
@@ -45,14 +45,20 @@ const processPack = async (packId: number) => {
     counts[nearestCenterIndex]++;
   }
 
+  await db.deleteFrom("clusters").where("packId", "=", packId).execute();
+
   const clusters = centers.map((center, centerIndex) => ({
+    packId: packId,
     lat: Math.round(center.lat * 1000) / 1000,
     lng: Math.round(center.lng * 1000) / 1000,
     count: counts[centerIndex],
   }));
 
+  if (clusters.length > 0) {
+    await db.insertInto("clusters").values(clusters).execute();
+  }
+
   console.log(`Pack ${packId} (${pack.region}): ${clusters.length} clusters from ${hotspots.length} hotspots`);
-  console.log(clusters.map((cluster) => `${cluster.lat},${cluster.lng}`).join("\n"));
 };
 
 const main = async () => {
@@ -83,7 +89,6 @@ const main = async () => {
           await processPack(pack.id);
 
           if (i < packs.length - 1) {
-            console.log(`\nWaiting ${DELAY / 1000} seconds before next pack...\n`);
             await delay(DELAY);
           }
         } catch (error) {

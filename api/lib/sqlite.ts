@@ -10,12 +10,14 @@ import type {
   LoginAttempt,
   EmailVerificationToken,
   PasswordResetToken,
+  Cluster,
 } from "./types.js";
 
 type DatabaseSchema = {
   hotspots: Hotspot;
   hotspot_revisions: HotspotRevision;
   packs: Pack;
+  clusters: Cluster;
   regions: Region;
   hotspots_rtree: { rowId: number; minLat: number; maxLat: number; minLng: number; maxLng: number };
   user: User;
