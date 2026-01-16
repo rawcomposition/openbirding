@@ -1,10 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-//import Header from "./components/Header";
-import Header2 from "./components/Header2";
-//import Home from "./pages/Home";
-import Home2 from "./pages/Home2";
+import Header from "./components/Header";
+import Home from "./pages/Home";
 import Map from "./pages/Map";
 import Region from "./pages/Region";
 import Place from "./pages/Place";
@@ -47,13 +45,11 @@ function AppContent() {
       className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900"
       onClick={clickOutside}
     >
-      {!isAuthPage && <Header2 />}
-      {/* {!isAuthPage && <Header />} */}
+      {!isAuthPage && <Header />}
       <main>
         <ErrorBoundary>
           <Routes>
-            {/* <Route path="/" element={<Home />} /> */}
-            <Route path="/" element={<Home2 />} />
+            <Route path="/" element={<Home />} />
             <Route path="/map" element={<Map />} />
             <Route path="/region/:regionCode" element={<Region />} />
             <Route path="/place/:placeName/:coordinates" element={<Place />} />
