@@ -1,160 +1,181 @@
-import { Bird, MapPin, Users, Info } from "lucide-react";
+import { Bird, MapPin, Download, Bookmark, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import PhoneScreenshot from "@/components/PhoneScreenshot";
+import AppStore from "@/components/AppStore";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import PlaceSearch from "@/components/PlaceSearch";
 
-type WorldStats = {
-  hotspotCount: number;
-  openHotspotCount: number;
-  reviewedHotspotCount: number;
-};
-
-const Home = () => {
-  const { data: worldStats } = useQuery<WorldStats>({
-    queryKey: [`/regions/world/stats`],
-    refetchOnWindowFocus: false,
-  });
-
-  const openHotspots = worldStats?.openHotspotCount || 0;
-
+const Home2 = () => {
   return (
-    <div className="min-h-screen">
-      <div className="bg-amber-50 border-b border-amber-200">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-center">
-            <div className="flex items-center space-x-2 text-amber-800">
-              <Info className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
-              <p className="font-medium">
-                OpenBirding is in early development and not yet designed for general use. Features and data are
-                experimental.
+    <div className="min-h-screen bg-white">
+      <section className="relative py-12 md:py-20 md:px-20 px-4 overflow-hidden bg-gradient-to-b from-white via-emerald-50/20 to-white">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100 opacity-50"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-l from-blue-300/10 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-r from-emerald-300/10 to-transparent rounded-full blur-3xl"></div>
+
+        <div className="relative max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <div className="flex justify-center lg:justify-start mb-6">
+                <div className="relative">
+                  <div className="absolute -inset-8 bg-gradient-to-r from-emerald-300/15 to-teal-300/15 rounded-full blur-3xl"></div>
+                  <Bird className="relative h-16 w-16 text-emerald-600 drop-shadow-lg" />
+                </div>
+              </div>
+              <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+                OpenBirding
+                <br />
+                <span className="text-emerald-600">Mobile App</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-slate-700 mb-6 max-w-xl mx-auto lg:mx-0">
+                An intuitive way to explore birding hotspots on your mobile device.
               </p>
+              <p className="text-lg text-slate-600 mb-8 max-w-xl mx-auto lg:mx-0">
+                Whether traveling or birding close to home, OpenBirding makes it easy to find new birding locations.
+              </p>
+              <div className="flex justify-center lg:justify-start">
+                <a
+                  href="https://apps.apple.com/us/app/openbirding/id6755897167"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <AppStore className="w-[170px] h-auto" />
+                </a>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
-      <section className="relative py-20 px-4 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100"></div>
-        <div className="absolute inset-0 bg-gradient-to-tl from-blue-50/40 via-transparent to-teal-50/40"></div>
-        <div className="absolute top-1/3 left-0 w-72 h-72 bg-gradient-to-r from-emerald-300/25 to-transparent rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-gradient-to-l from-blue-300/20 to-transparent rounded-full blur-3xl"></div>
-        <div className="absolute top-0 right-1/3 w-64 h-64 bg-gradient-to-br from-teal-200/30 to-transparent rounded-full blur-xl"></div>
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-gradient-to-tr from-emerald-200/20 to-blue-200/20 rounded-full blur-2xl"></div>
 
-        <div className="relative max-w-4xl mx-auto">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 -inset-8 bg-gradient-to-r from-emerald-300/15 to-teal-300/15 rounded-full blur-3xl"></div>
-              <Bird className="relative h-16 w-16 text-emerald-600 drop-shadow-lg" />
+            <div className="relative justify-center lg:justify-end hidden lg:flex">
+              <PhoneScreenshot
+                src="/screenshot1.jpg"
+                alt="Screenshot of the OpenBirding app showing a color-coded hotspots on a map"
+              />
             </div>
-          </div>
-          <h1 className="text-5xl font-bold text-slate-900 mb-6">OpenBirding</h1>
-          <p className="text-xl text-slate-700 mb-8 max-w-2xl mx-auto">
-            Discover <span className="text-emerald-600 font-semibold">open access</span> birding hotspots you can visit
-            freely — without fees, permits, guides, or other restrictions — contributed and verified by the birding
-            community.
-          </p>
-
-          <div className="max-w-md mx-auto mb-8">
-            <PlaceSearch pill />
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/region/world">
-              <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                Explore Regions
-              </Button>
-            </Link>
-            <Link to="/map">
-              <Button size="lg" variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
-                View Map
-              </Button>
-            </Link>
           </div>
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-gradient-to-br from-slate-100/60 via-slate-50/40 to-slate-100/60">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-slate-900 mb-4">Community Driven</h2>
-            <p className="text-xl text-slate-700 max-w-3xl mx-auto">
-              Join thousands of birders who have contributed to our worldwide database of freely accessible locations.
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">See It In Action</h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Browse maps, download hotspot packs, save your favorite locations, and more.
             </p>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-8">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-              <div className="flex-1 text-center lg:text-left">
-                <h3 className="text-2xl font-semibold text-slate-900 mb-4">Open Access Birding</h3>
-                <p className="text-lg text-slate-700 mb-4">
-                  No fees, no permits, no restrictions — just pure birding freedom.
-                </p>
-                <p className="text-slate-600">Every location verified by the community for true open access.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+            {[
+              {
+                src: "/screenshot1.jpg",
+                alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map",
+              },
+              { src: "/screenshot2.jpg", alt: "Screenshot of the OpenBirding app showing the hotspot details dialog" },
+              { src: "/screenshot3.jpg", alt: "Screenshot of the OpenBirding app showing the pack download page" },
+            ].map((screenshot, index) => (
+              <div key={index} className="relative flex justify-center">
+                <PhoneScreenshot src={screenshot.src} alt={screenshot.alt} phoneClassName="drop-shadow-2xl" />
               </div>
-              <div className="text-center">
-                <div className="text-7xl font-bold text-emerald-600 mb-4">{openHotspots.toLocaleString()}</div>
-                <div className="text-2xl font-semibold text-slate-900">Open Hotspots</div>
-                <div className="text-lg text-emerald-700 mt-1">Worldwide</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="py-16 px-4">
+      <section className="py-20 px-4 bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">What is OpenBirding?</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Features</h2>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+              Everything you need to discover and explore birding hotspots.
+              <br /> More features coming soon!
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-white border border-slate-200">
+            <Card className="bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-6 w-6 text-emerald-600" />
-                  <CardTitle className="text-slate-900">Explore Without Barriers</CardTitle>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <MapPin className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-slate-900 text-xl">OpenStreetMap Base Map</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-slate-700 text-md">
-                  Birding should be free and open to all. Our global map highlights places you can step into nature
-                  without restrictions standing in the way.
+                <CardDescription className="text-slate-700 text-base leading-relaxed">
+                  Browse birding hotspots on OpenStreetMap base map that offers better outdoor map coverage of trails,
+                  dirt roads, and more.
                 </CardDescription>
               </CardContent>
             </Card>
 
-            <Card className="bg-white border border-slate-200">
+            <Card className="bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <Info className="h-6 w-6 text-emerald-600" />
-                  <CardTitle className="text-slate-900">What "Open Access" Means</CardTitle>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Download className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-slate-900 text-xl">Offline Hotspot Packs</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-slate-700 text-md">
-                  Open access hotspots allow anyone to visit freely — no entrance fees, no permits, no required guides,
-                  and no "guests only" restrictions. Just show up and bird.
+                <CardDescription className="text-slate-700 text-base leading-relaxed">
+                  Download hotspots in packs so they can be accessed offline. Note that base maps still require an
+                  internet connection unless previously loaded for that area.
                 </CardDescription>
               </CardContent>
             </Card>
 
-            <Card className="bg-white border border-slate-200">
+            <Card className="bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <Users className="h-6 w-6 text-emerald-600" />
-                  <CardTitle className="text-slate-900">Built by Birders</CardTitle>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Bookmark className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-slate-900 text-xl">Save Your Favorites</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-slate-700 text-md">
-                  OpenBirding is powered by volunteers who share local knowledge so everyone can enjoy accessible
-                  birding. It's a community effort to keep birding open and welcoming worldwide.
+                <CardDescription className="text-slate-700 text-base leading-relaxed">
+                  Save hotspots that you want to quickly find later for easy access to your favorite birding locations.
                 </CardDescription>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
+
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center justify-center p-3 bg-emerald-100 rounded-full mb-6">
+            <Mail className="h-6 w-6 text-emerald-600" />
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Questions or Feedback?</h2>
+          <p className="text-lg text-slate-600 mb-4">
+            Have questions about the app or want to share feedback? We'd love to hear from you.
+          </p>
+          <a
+            href="mailto:adam@openbirding.org"
+            className="text-emerald-600 hover:text-emerald-700 font-semibold text-lg"
+          >
+            adam@openbirding.org
+          </a>
+        </div>
+      </section>
+
+      <footer className="py-8 px-4 bg-slate-50 border-t border-slate-200">
+        <div className="max-w-7xl mx-auto text-center">
+          <Link to="/privacy-policy" className="text-slate-600 hover:text-slate-900 text-sm transition-colors">
+            Privacy Policy
+          </Link>
+          <span className="text-slate-600 mx-2">•</span>
+          <Link
+            to="https://github.com/rawcomposition/openbirding-rn"
+            className="text-slate-600 hover:text-slate-900 text-sm transition-colors"
+            target="_blank"
+          >
+            Github
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 };
 
-export default Home;
+export default Home2;
