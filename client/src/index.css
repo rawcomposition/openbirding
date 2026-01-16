@@ -123,31 +123,4 @@
   [role="button"]:not([disabled]) {
     cursor: pointer;
   }
-
-  .mapboxgl-ctrl-bottom-left {
-    right: 34px !important;
-    left: unset !important;
-    bottom: 5px !important;
-  }
-
-  .mapboxgl-ctrl-attrib {
-    font-size: 10px !important;
-    line-height: 16px !important;
-  }
-
-  .mapboxgl-ctrl-bottom-left {
-    z-index: 1 !important;
-  }
-
-  .mapboxgl-ctrl-attrib-button {
-    opacity: 0.7;
-  }
-
-  .mapboxgl-ctrl.mapboxgl-ctrl-attrib.mapboxgl-compact:not(.mapboxgl-compact-show) {
-    background-color: transparent !important;
-  }
-
-  .mapboxgl-ctrl-attrib-button {
-    background-color: transparent !important;
-  }
 }

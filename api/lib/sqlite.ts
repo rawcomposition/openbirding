@@ -1,30 +1,11 @@
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin } from "kysely";
-import type {
-  Hotspot,
-  HotspotRevision,
-  Pack,
-  Region,
-  User,
-  Session,
-  LoginAttempt,
-  EmailVerificationToken,
-  PasswordResetToken,
-  Cluster,
-} from "./types.js";
+import type { Pack, Region, Cluster } from "./types.js";
 
 type DatabaseSchema = {
-  hotspots: Hotspot;
-  hotspot_revisions: HotspotRevision;
   packs: Pack;
   clusters: Cluster;
   regions: Region;
-  hotspots_rtree: { rowId: number; minLat: number; maxLat: number; minLng: number; maxLng: number };
-  user: User;
-  session: Session;
-  login_attempt: LoginAttempt;
-  email_verification_token: EmailVerificationToken;
-  password_reset_token: PasswordResetToken;
 };
 
 const sqliteDb = new (Database as any)(process.env.SQLITE_PATH);
