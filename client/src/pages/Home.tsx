@@ -172,6 +172,14 @@ const Home2 = () => {
           >
             Github
           </Link>
+          <span className="text-slate-600 mx-2">•</span>
+          <Link
+            to="https://ko-fi.com/rawcomposition"
+            className="text-slate-600 hover:text-slate-900 text-sm transition-colors"
+            target="_blank"
+          >
+            Support
+          </Link>
         </div>
       </footer>
     </div>
