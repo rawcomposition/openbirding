@@ -27,3 +27,18 @@ export type Cluster = {
   lng: number;
   count: number;
 };
+
+import type { Generated } from "kysely";
+
+export type PackDownload = {
+  id: Generated<number>;
+  packId: number;
+  packRegion: string;
+  method: string | null;
+  appVersion: string | null;
+  appBuild: string | null;
+  appPlatform: string | null;
+  appEnvironment: string | null;
+  userAgent: string | null;
+  createdAt: Generated<string>;
+};

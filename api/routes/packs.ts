@@ -49,6 +49,27 @@ packsRoute.get("/:id", async (c) => {
       throw new HTTPException(404, { message: "Pack not found" });
     }
 
+    const appVersion = c.req.header("App-Version") || null;
+    const appBuild = c.req.header("App-Build") || null;
+    const appPlatform = c.req.header("App-Platform") || null;
+    const appEnvironment = c.req.header("App-Environment") || null;
+    const method = c.req.header("Download-Method") || null;
+    const userAgent = c.req.header("User-Agent") || null;
+
+    await db
+      .insertInto("packDownloads")
+      .values({
+        packId: pack.id,
+        packRegion: pack.region,
+        method,
+        appVersion,
+        appBuild,
+        appPlatform,
+        appEnvironment,
+        userAgent,
+      })
+      .execute();
+
     const [hotspots] = await Promise.all([getHotspotsForRegion(pack.region)]);
 
     const regionCodes = new Set<string>();
