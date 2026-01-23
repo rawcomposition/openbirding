@@ -1,6 +1,14 @@
 import { Hono } from "hono";
 import { basicAuth } from "hono/basic-auth";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+import relativeTime from "dayjs/plugin/relativeTime.js";
 import db from "../lib/sqlite.js";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(relativeTime);
 
 const reportsRoute = new Hono();
 
@@ -70,7 +78,7 @@ reportsRoute.get("/downloads", async (c) => {
       <td>${d.appPlatform || "-"}</td>
       <td>${d.appEnvironment || "-"}</td>
       <td>${d.userAgent || "-"}</td>
-      <td>${d.createdAt}</td>
+      <td>${dayjs(d.createdAt).tz("America/Los_Angeles").fromNow()}</td>
     </tr>`
       )
       .join("")}
