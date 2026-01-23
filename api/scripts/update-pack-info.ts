@@ -59,7 +59,7 @@ const processPack = async (packId: number) => {
     await db.insertInto("clusters").values(clusters).execute();
   }
 
-  if (hotspotsCount && hotspotsCount !== pack.hotspots) {
+  if (hotspotsCount !== pack.hotspots) {
     await db.updateTable("packs").set({ hotspots: hotspotsCount }).where("id", "=", packId).execute();
   }
 
