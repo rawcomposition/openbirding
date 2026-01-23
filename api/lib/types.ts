@@ -36,7 +36,6 @@ export type PackDownload = {
   packRegion: string;
   method: string | null;
   appVersion: string | null;
-  appBuild: string | null;
   appPlatform: string | null;
   appEnvironment: string | null;
   userAgent: string | null;

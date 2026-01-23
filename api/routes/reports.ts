@@ -14,7 +14,6 @@ reportsRoute.use(
 );
 
 reportsRoute.get("/downloads", async (c) => {
-
   const downloads = await db
     .selectFrom("packDownloads")
     .leftJoin("regions", "packDownloads.packRegion", "regions.id")
@@ -25,7 +24,6 @@ reportsRoute.get("/downloads", async (c) => {
       "regions.longName as packName",
       "packDownloads.method",
       "packDownloads.appVersion",
-      "packDownloads.appBuild",
       "packDownloads.appPlatform",
       "packDownloads.appEnvironment",
       "packDownloads.userAgent",
@@ -49,14 +47,13 @@ reportsRoute.get("/downloads", async (c) => {
 </head>
 <body>
   <h1>Pack Downloads</h1>
-  <p>Showing ${downloads.length} most recent downloads</p>
+  <p>Found ${downloads.length} results</p>
   <table>
     <tr>
       <th>ID</th>
       <th>Pack</th>
       <th>Method</th>
       <th>Version</th>
-      <th>Build</th>
       <th>Platform</th>
       <th>Environment</th>
       <th>User Agent</th>
@@ -70,7 +67,6 @@ reportsRoute.get("/downloads", async (c) => {
       <td>${d.packName || d.packRegion}</td>
       <td>${d.method || "-"}</td>
       <td>${d.appVersion || "-"}</td>
-      <td>${d.appBuild || "-"}</td>
       <td>${d.appPlatform || "-"}</td>
       <td>${d.appEnvironment || "-"}</td>
       <td>${d.userAgent || "-"}</td>

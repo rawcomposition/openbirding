@@ -73,7 +73,6 @@ export async function setupDatabase() {
     .addColumn("pack_region", "text", (c) => c.notNull())
     .addColumn("method", "text")
     .addColumn("app_version", "text")
-    .addColumn("app_build", "text")
     .addColumn("app_platform", "text")
     .addColumn("app_environment", "text")
     .addColumn("user_agent", "text")

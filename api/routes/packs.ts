@@ -50,7 +50,6 @@ packsRoute.get("/:id", async (c) => {
     }
 
     const appVersion = c.req.header("App-Version") || null;
-    const appBuild = c.req.header("App-Build") || null;
     const appPlatform = c.req.header("App-Platform") || null;
     const appEnvironment = c.req.header("App-Environment") || null;
     const method = c.req.header("Download-Method") || null;
@@ -63,7 +62,6 @@ packsRoute.get("/:id", async (c) => {
         packRegion: pack.region,
         method,
         appVersion,
-        appBuild,
         appPlatform,
         appEnvironment,
         userAgent,
