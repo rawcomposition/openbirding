@@ -4,13 +4,13 @@ import { getHotspotsForRegion } from "../lib/ebird.js";
 import { getDistanceKm } from "../lib/spatial.js";
 import { desiredClusters, kCenterClustering } from "../lib/spatial.js";
 
-const DELAY = 5000;
+const DELAY = 2000;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const processPack = async (packId: number) => {
   const pack = await db
     .selectFrom("packs")
-    .select(["id", "region", "centerLat", "centerLng"])
+    .select(["id", "region", "centerLat", "centerLng", "hotspots"])
     .where("id", "=", packId)
     .executeTakeFirst();
 
@@ -19,8 +19,9 @@ const processPack = async (packId: number) => {
   }
 
   const hotspots = await getHotspotsForRegion(pack.region);
+  const hotspotsCount = hotspots.length;
 
-  if (hotspots.length === 0) {
+  if (hotspotsCount === 0) {
     console.log(`Pack ${packId} (${pack.region}): No hotspots found`);
     return;
   }
@@ -56,6 +57,10 @@ const processPack = async (packId: number) => {
 
   if (clusters.length > 0) {
     await db.insertInto("clusters").values(clusters).execute();
+  }
+
+  if (hotspotsCount && hotspotsCount !== pack.hotspots) {
+    await db.updateTable("packs").set({ hotspots: hotspotsCount }).where("id", "=", packId).execute();
   }
 
   console.log(`Pack ${packId} (${pack.region}): ${clusters.length} clusters from ${hotspots.length} hotspots`);

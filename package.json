@@ -20,7 +20,7 @@
     "sync-region-info": "cd api && npx tsx scripts/sync-region-info.ts",
     "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts",
     "init-db": "cd api && npx tsx scripts/init-db.ts",
-    "generate-clusters": "cd api && npx tsx scripts/generate-clusters.ts"
+    "update-packs": "cd api && npx tsx scripts/update-pack-info.ts"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
