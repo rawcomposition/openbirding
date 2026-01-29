@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { sql } from "kysely";
 import { targetsDb } from "../db/index.js";
 
 const LIMIT_DEFAULT = 200;
@@ -48,14 +47,9 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       .select([
         "hotspots.id",
         "hotspots.name",
+        "yearObs.obs",
         "yearObs.samples",
-        // Wilson Score Lower Bound (95% CI) - accounts for sample size uncertainty
-        // Formula: (p + z²/2n - z√(p(1-p)/n + z²/4n²)) / (1 + z²/n) where z=1.96
-        sql<number>`ROUND(100.0 * (
-          year_obs.obs + 1.9208
-          - 1.96 * SQRT(year_obs.obs * (year_obs.samples - year_obs.obs) / year_obs.samples + 0.9604)
-        ) / (year_obs.samples + 3.8416), 1)`.as("score"),
-        sql<number>`ROUND(100.0 * year_obs.obs / year_obs.samples, 1)`.as("frequency"),
+        "yearObs.score", // Wilson Score Lower Bound (95% CI), pre-computed
       ])
       .orderBy("score", "desc")
       .limit(limit);
@@ -78,8 +72,8 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
     const hotspots = rows.map((row) => ({
       id: row.id,
       name: row.name,
-      score: row.score,
-      frequency: row.frequency,
+      score: Math.round(row.score * 1000) / 10, // Convert to percentage with 1 decimal
+      frequency: Math.round((row.obs / row.samples) * 1000) / 10,
       samples: row.samples,
     }));
 

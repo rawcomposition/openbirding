@@ -48,6 +48,7 @@ export type MonthTarget = {
   month: number;
   obs: number;
   samples: number;
+  score: number;
 };
 
 export type YearTarget = {
@@ -55,6 +56,7 @@ export type YearTarget = {
   speciesId: number;
   obs: number;
   samples: number;
+  score: number;
 };
 
 export type TargetSpecies = {
