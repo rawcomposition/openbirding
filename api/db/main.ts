@@ -1,25 +1,23 @@
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin, sql } from "kysely";
-import type { Pack, Region, Cluster, PackDownload } from "./types.js";
+import type { Pack, Region, Cluster, PackDownload } from "../lib/types.js";
 
-type DatabaseSchema = {
+export type DatabaseSchema = {
   packs: Pack;
   clusters: Cluster;
   regions: Region;
   packDownloads: PackDownload;
 };
 
-const sqliteDb = new (Database as any)(process.env.SQLITE_PATH);
-
-if (!sqliteDb) {
-  throw new Error("Failed to connect to SQLite database");
+const mainSqlite = new (Database as any)(process.env.SQLITE_PATH);
+if (!mainSqlite) {
+  throw new Error("Failed to connect to main SQLite database");
 }
+mainSqlite.pragma("foreign_keys = ON");
 
-sqliteDb.pragma("foreign_keys = ON");
-
-const db = new Kysely<DatabaseSchema>({
+export const db = new Kysely<DatabaseSchema>({
   dialect: new SqliteDialect({
-    database: sqliteDb,
+    database: mainSqlite,
   }),
   plugins: [new CamelCasePlugin()],
 });

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import db from "../lib/sqlite.js";
+import db from "../db/index.js";
 import { getHotspotsForRegion } from "../lib/ebird.js";
 import { getDistanceKm } from "../lib/spatial.js";
 import { desiredClusters, kCenterClustering } from "../lib/spatial.js";

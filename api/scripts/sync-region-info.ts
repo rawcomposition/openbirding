@@ -1,5 +1,5 @@
 import "dotenv/config";
-import db from "../lib/sqlite.js";
+import db from "../db/index.js";
 
 type EBirdRegionInfo = {
   bounds: {
