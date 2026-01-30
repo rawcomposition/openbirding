@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { CamelCasePlugin, Kysely, sql, SqliteDialect } from "kysely";
-import { TARGETS_DB_PATH } from "../lib/config.js";
+import { TARGETS_DB_FILENAME } from "../lib/config.js";
 import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies } from "../lib/types.js";
 
 export type TargetsDatabaseSchema = {
@@ -10,7 +10,7 @@ export type TargetsDatabaseSchema = {
   species: TargetSpecies;
 };
 
-const targetsSqlite = new (Database as any)(TARGETS_DB_PATH);
+const targetsSqlite = new (Database as any)(`../${TARGETS_DB_FILENAME}`);
 if (!targetsSqlite) {
   throw new Error("Failed to connect to targets SQLite database");
 }

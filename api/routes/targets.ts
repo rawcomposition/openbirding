@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
 import { targetsDb, db } from "../db/index.js";
+import { getEbdCitation } from "lib/ebird.js";
 
 const LIMIT_DEFAULT = 200;
 
@@ -94,7 +95,7 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       query = query.where("monthObs.month", "=", month);
     }
 
-    // Filter by minObservations if provided and > 2 (2 is the default minimum in the dataset)
+    // 2 is the default minimum for sightings in the dataset
     if (minObservations != null && minObservations > 2) {
       query = query.where(`${obsTable}.obs`, ">=", minObservations);
     }
@@ -118,7 +119,7 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       samples: row.samples,
     }));
 
-    return c.json({ hotspots });
+    return c.json({ hotspots, citation: getEbdCitation() });
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;

@@ -28,7 +28,7 @@ const BirdFinder = () => {
     return `/targets/hotspots/${species?.code}${queryString ? `?${queryString}` : ""}`;
   };
 
-  const { data, isLoading: isLoadingHotspots } = useQuery<{ hotspots: TargetHotspot[] }>({
+  const { data, isLoading: isLoadingHotspots } = useQuery<{ hotspots: TargetHotspot[]; citation?: string }>({
     queryKey: [buildQueryUrl()],
     enabled: !!species?.code,
     refetchOnWindowFocus: false,
@@ -63,7 +63,12 @@ const BirdFinder = () => {
           </CardContent>
         </Card>
       ) : data?.hotspots && data.hotspots.length > 0 ? (
-        <HotspotList hotspots={data.hotspots} total={data.hotspots.length} isLoading={isLoadingHotspots} />
+        <>
+          <HotspotList hotspots={data.hotspots} total={data.hotspots.length} isLoading={isLoadingHotspots} />
+          {data.citation && (
+            <p className="mt-6 text-xs text-slate-500 max-w-2xl">{data.citation}</p>
+          )}
+        </>
       ) : isLoadingHotspots ? (
         <HotspotList hotspots={[]} isLoading={isLoadingHotspots} />
       ) : (
