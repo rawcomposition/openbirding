@@ -6,7 +6,7 @@ type HotspotRowProps = TargetHotspot & {
   showDistance?: boolean;
 };
 
-const HotspotRow = memo(({ id, name, frequency, score, samples, distance, showDistance }: HotspotRowProps) => {
+const HotspotRow = memo(({ id, name, region, frequency, score, samples, distance, showDistance }: HotspotRowProps) => {
   return (
     <tr className="border-b border-slate-100">
       <td className="p-4">
@@ -21,6 +21,7 @@ const HotspotRow = memo(({ id, name, frequency, score, samples, distance, showDi
             >
               {name}
             </a>
+            {region && <div className="text-sm text-slate-500">{region}</div>}
           </div>
         </div>
       </td>

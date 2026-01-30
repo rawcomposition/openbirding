@@ -1,6 +1,7 @@
 export type TargetHotspot = {
   id: string;
   name: string;
+  region: string | null;
   lat: number;
   lng: number;
   frequency: number;

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
-import { targetsDb } from "../db/index.js";
+import { targetsDb, db } from "../db/index.js";
 
 const LIMIT_DEFAULT = 200;
 
@@ -59,27 +59,25 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       });
     }
 
-    console.time("species lookup");
     const species = await targetsDb
       .selectFrom("species")
       .select("id")
       .where("code", "=", speciesCode.toLowerCase())
       .executeTakeFirst();
-    console.timeEnd("species lookup");
 
     if (!species) {
       throw new HTTPException(404, { message: "Species not found" });
     }
 
-    console.time("hotspots query");
     let query = targetsDb
       .selectFrom("yearObs")
       .innerJoin("hotspots", "yearObs.locationId", "hotspots.id")
       .where("yearObs.speciesId", "=", species.id)
-      .where("yearObs.samples", ">=", 5)
       .select([
         "hotspots.id",
         "hotspots.name",
+        "hotspots.countryCode",
+        "hotspots.subnational1Code",
         "yearObs.obs",
         "yearObs.samples",
         "yearObs.score", // Wilson Score Lower Bound (95% CI), pre-computed
@@ -100,11 +98,15 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
     }
 
     const rows = await query.execute();
-    console.timeEnd("hotspots query");
+
+    const regionCodes = [...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code]))];
+    const regions = await db.selectFrom("regions").select(["id", "longName"]).where("id", "in", regionCodes).execute();
+    const regionMap = new Map(regions.map((r) => [r.id, r.longName]));
 
     const hotspots = rows.map((row) => ({
       id: row.id,
       name: row.name,
+      region: regionMap.get(row.subnational1Code) || regionMap.get(row.countryCode) || null,
       score: Math.round(row.score * 1000) / 10, // Convert to percentage with 1 decimal
       frequency: Math.round((row.obs / row.samples) * 1000) / 10,
       samples: row.samples,
