@@ -26,7 +26,7 @@ const BirdFinder = () => {
             Experimental
           </Badge>
         </div>
-        <div className="max-w-md">
+        <div className="max-w-md mt-8">
           <SpeciesSearch onChange={setSpeciesCode} />
         </div>
       </div>

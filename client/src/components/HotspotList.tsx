@@ -1,7 +1,5 @@
-import { Input } from "@/components/ui/input";
 import type { TargetHotspot } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useState, useMemo } from "react";
 import HotspotRow from "./HotspotRow";
 
 type Props = {
@@ -12,14 +10,6 @@ type Props = {
 };
 
 const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
-  const [filter, setFilter] = useState("");
-
-  const filteredHotspots = useMemo(() => {
-    if (!filter) return hotspots;
-    const lowerFilter = filter.toLowerCase();
-    return hotspots.filter((hotspot) => hotspot.name.toLowerCase().includes(lowerFilter));
-  }, [hotspots, filter]);
-
   return (
     <div className="space-y-6">
       <style>
@@ -32,17 +22,8 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
       </style>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Hotspots</h2>
-          <p className="text-slate-600 mt-1">Found {total || hotspots.length} hotspots</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <Input
-            type="text"
-            placeholder="Search hotspots..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full sm:w-80"
-          />
+          <h2 className="text-2xl font-bold text-slate-900">Best Hotspots</h2>
+          <p className="text-slate-600 mt-1">Showing {total || hotspots.length} results</p>
         </div>
       </div>
 
@@ -92,9 +73,7 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
                 ))}
               </>
             ) : (
-              filteredHotspots.map((hotspot) => (
-                <HotspotRow key={hotspot.id} showDistance={showDistance} {...hotspot} />
-              ))
+              hotspots.map((hotspot) => <HotspotRow key={hotspot.id} showDistance={showDistance} {...hotspot} />)
             )}
           </tbody>
         </table>
