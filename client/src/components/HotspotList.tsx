@@ -1,5 +1,6 @@
 import type { TargetHotspot } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { AdjustedFrequencyInfo } from "./AdjustedFrequencyInfo";
 import HotspotCard from "./HotspotCard";
 import HotspotRow from "./HotspotRow";
 
@@ -70,7 +71,10 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
               <th className="text-left p-4 text-sm font-medium text-slate-700">Hotspot</th>
               <th className={cn("text-left p-4 text-sm font-medium text-slate-700", "sm:w-xs")}>Frequency</th>
               <th className="text-left p-4 text-sm font-medium text-slate-700 w-0 whitespace-nowrap">
-                Adjusted Frequency
+                <span className="flex items-center gap-1">
+                  Adjusted Frequency
+                  <AdjustedFrequencyInfo />
+                </span>
               </th>
               {showDistance && (
                 <th className="text-left p-4 text-sm font-medium text-slate-700 w-0 whitespace-nowrap">Distance</th>
