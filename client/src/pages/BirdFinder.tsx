@@ -11,10 +11,25 @@ import { useBirdFinderStore } from "@/stores/birdFinderStore";
 import type { TargetHotspot } from "@/lib/types";
 
 const BirdFinder = () => {
-  const { species } = useBirdFinderStore();
+  const { species, month, minObservations, region } = useBirdFinderStore();
+
+  const buildQueryUrl = () => {
+    const params = new URLSearchParams();
+    if (month != null) {
+      params.set("month", String(month));
+    }
+    if (minObservations != null && minObservations > 2) {
+      params.set("minObservations", String(minObservations));
+    }
+    if (region?.regionCode) {
+      params.set("region", region.regionCode);
+    }
+    const queryString = params.toString();
+    return `/targets/hotspots/${species?.code}${queryString ? `?${queryString}` : ""}`;
+  };
 
   const { data, isLoading: isLoadingHotspots } = useQuery<{ hotspots: TargetHotspot[] }>({
-    queryKey: [`/targets/hotspots/${species?.code}`],
+    queryKey: [buildQueryUrl()],
     enabled: !!species?.code,
     refetchOnWindowFocus: false,
   });

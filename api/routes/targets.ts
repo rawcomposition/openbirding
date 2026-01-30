@@ -56,6 +56,18 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       });
     }
 
+    const monthParam = c.req.query("month");
+    const month = monthParam != null ? parseInt(monthParam) : null;
+    if (month != null && (isNaN(month) || month < 1 || month > 12)) {
+      throw new HTTPException(400, { message: "month must be between 1 and 12" });
+    }
+
+    const minObsParam = c.req.query("minObservations");
+    const minObservations = minObsParam != null ? parseInt(minObsParam) : null;
+    if (minObservations != null && (isNaN(minObservations) || minObservations < 1)) {
+      throw new HTTPException(400, { message: "minObservations must be a positive number" });
+    }
+
     const species = await targetsDb
       .selectFrom("species")
       .select("id")
@@ -66,21 +78,32 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       throw new HTTPException(404, { message: "Species not found" });
     }
 
+    const obsTable = month != null ? "monthObs" : "yearObs";
+
     let query = targetsDb
-      .selectFrom("yearObs")
-      .innerJoin("hotspots", "yearObs.locationId", "hotspots.id")
-      .where("yearObs.speciesId", "=", species.id)
+      .selectFrom(obsTable)
+      .innerJoin("hotspots", `${obsTable}.locationId`, "hotspots.id")
+      .where(`${obsTable}.speciesId`, "=", species.id)
       .select([
         "hotspots.id",
         "hotspots.name",
         "hotspots.countryCode",
         "hotspots.subnational1Code",
-        "yearObs.obs",
-        "yearObs.samples",
-        "yearObs.score", // Wilson Score Lower Bound (95% CI), pre-computed
+        `${obsTable}.obs`,
+        `${obsTable}.samples`,
+        `${obsTable}.score`,
       ])
       .orderBy("score", "desc")
       .limit(limit);
+
+    if (month != null) {
+      query = query.where("monthObs.month", "=", month);
+    }
+
+    // Filter by minObservations if provided and > 2 (2 is the default minimum in the dataset)
+    if (minObservations != null && minObservations > 2) {
+      query = query.where(`${obsTable}.obs`, ">=", minObservations);
+    }
 
     if (locationId) {
       query = query.where("hotspots.id", "=", locationId);

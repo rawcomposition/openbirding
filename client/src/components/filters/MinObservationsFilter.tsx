@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { FilterButton } from "@/components/FilterButton";
 import { useBirdFinderStore } from "@/stores/birdFinderStore";
+import { cn } from "@/lib/utils";
 
-const MIN_VALUE = 2;
-const MAX_VALUE = 100;
+const PRESET_VALUES = [2, 5, 10, 25, 50, 100];
 
 export function MinObservationsFilter() {
   const { minObservations, setMinObservations } = useBirdFinderStore();
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(minObservations || MIN_VALUE);
+  const [selected, setSelected] = useState<number | null>(minObservations);
 
   const getDisplayValue = () => {
     if (minObservations == null) return null;
@@ -19,7 +18,13 @@ export function MinObservationsFilter() {
   };
 
   const handleApply = () => {
-    setMinObservations(value);
+    setMinObservations(selected);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setMinObservations(null);
+    setSelected(null);
     setOpen(false);
   };
 
@@ -27,48 +32,39 @@ export function MinObservationsFilter() {
     <FilterButton
       label="Min Sightings"
       value={getDisplayValue()}
-      onClear={() => {
-        setMinObservations(null);
-        setValue(MIN_VALUE);
-      }}
+      onClear={() => setMinObservations(null)}
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
         if (o) {
-          setValue(minObservations || MIN_VALUE);
+          setSelected(minObservations);
         }
       }}
     >
-      <div className="p-4 space-y-4 w-[280px]">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <Label>Minimum Sightings</Label>
-            <span className="text-lg font-semibold text-emerald-600">{value}+</span>
-          </div>
-          <Slider
-            value={[value]}
-            onValueChange={([v]) => setValue(v)}
-            min={MIN_VALUE}
-            max={MAX_VALUE}
-            step={1}
-            className="[&_[data-slot=slider-range]]:bg-emerald-600 [&_[data-slot=slider-thumb]]:border-emerald-600"
-          />
-          <div className="flex justify-between text-xs text-slate-500">
-            <span>{MIN_VALUE}</span>
-            <span>{MAX_VALUE}</span>
+      <div className="p-4 space-y-4">
+        <div className="space-y-2">
+          <Label>Minimum Sightings</Label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {PRESET_VALUES.map((value) => (
+              <Button
+                key={value}
+                variant="outline"
+                size="sm"
+                onClick={() => setSelected(selected === value ? null : value)}
+                className={cn(
+                  "h-9",
+                  selected === value &&
+                    "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
+                )}
+              >
+                {value}
+              </Button>
+            ))}
           </div>
         </div>
 
         <div className="flex gap-2">
-          <Button
-            onClick={() => {
-              setMinObservations(null);
-              setValue(MIN_VALUE);
-              setOpen(false);
-            }}
-            variant="outline"
-            className="flex-1"
-          >
+          <Button onClick={handleClear} variant="outline" className="flex-1">
             Clear
           </Button>
           <Button onClick={handleApply} variant="primary" className="flex-1">
