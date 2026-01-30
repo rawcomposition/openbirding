@@ -5,7 +5,7 @@ import { MapPin } from "lucide-react";
 import HotspotList from "@/components/HotspotList";
 import SpeciesSearch from "@/components/SpeciesSearch";
 import { RegionFilter } from "@/components/filters/RegionFilter";
-import { MonthsFilter } from "@/components/filters/MonthsFilter";
+import { MonthFilter } from "@/components/filters/MonthFilter";
 import { MinObservationsFilter } from "@/components/filters/MinObservationsFilter";
 import { useBirdFinderStore } from "@/stores/birdFinderStore";
 import type { TargetHotspot } from "@/lib/types";
@@ -36,7 +36,7 @@ const BirdFinder = () => {
 
         <div className="flex flex-wrap gap-2">
           <RegionFilter />
-          <MonthsFilter />
+          <MonthFilter />
           <MinObservationsFilter />
         </div>
       </div>

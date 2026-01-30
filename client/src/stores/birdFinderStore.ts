@@ -1,26 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type RegionType = "region" | "radius" | "custom";
-
 export type RegionFilter = {
-  type: RegionType;
   regionCode?: string;
   regionName?: string;
-  radius?: {
-    lat: number;
-    lng: number;
-    km: number;
-    locationName?: string;
-  };
-  customArea?: {
-    // For future map implementation
-    bounds?: [number, number, number, number];
-  };
 };
 
-// Array of selected months (1-12), null means all months
-export type MonthsFilter = number[];
+// Selected month (1-12), null means all months
+export type MonthFilter = number;
 
 export type SpeciesSelection = {
   code: string;
@@ -31,12 +18,12 @@ export type SpeciesSelection = {
 type BirdFinderState = {
   species: SpeciesSelection | null;
   region: RegionFilter | null;
-  months: MonthsFilter | null;
+  month: MonthFilter | null;
   minObservations: number | null;
 
   setSpecies: (species: SpeciesSelection | null) => void;
   setRegion: (region: RegionFilter | null) => void;
-  setMonths: (months: MonthsFilter | null) => void;
+  setMonth: (month: MonthFilter | null) => void;
   setMinObservations: (min: number | null) => void;
   clearAll: () => void;
 };
@@ -46,18 +33,18 @@ export const useBirdFinderStore = create<BirdFinderState>()(
     (set) => ({
       species: null,
       region: null,
-      months: null,
+      month: null,
       minObservations: null,
 
       setSpecies: (species) => set({ species }),
       setRegion: (region) => set({ region }),
-      setMonths: (months) => set({ months }),
+      setMonth: (month) => set({ month }),
       setMinObservations: (minObservations) => set({ minObservations }),
       clearAll: () =>
         set({
           species: null,
           region: null,
-          months: null,
+          month: null,
           minObservations: null,
         }),
     }),

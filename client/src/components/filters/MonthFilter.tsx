@@ -7,88 +7,64 @@ import { cn } from "@/lib/utils";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function MonthsFilter() {
-  const { months, setMonths } = useBirdFinderStore();
+export function MonthFilter() {
+  const { month, setMonth } = useBirdFinderStore();
   const [open, setOpen] = useState(false);
-  const [selectedMonths, setSelectedMonths] = useState<Set<number>>(new Set(months || []));
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(month);
 
   const getDisplayValue = () => {
-    if (!months || months.length === 0) return null;
-    if (months.length === 12) return "All months";
-    if (months.length === 1) return MONTHS[months[0] - 1];
-
-    // Check if consecutive
-    const sorted = [...months].sort((a, b) => a - b);
-    const isConsecutive = sorted.every((m, i) => i === 0 || m === sorted[i - 1] + 1);
-
-    if (isConsecutive) {
-      return `${MONTHS[sorted[0] - 1]} - ${MONTHS[sorted[sorted.length - 1] - 1]}`;
-    }
-
-    if (months.length <= 3) {
-      return sorted.map((m) => MONTHS[m - 1]).join(", ");
-    }
-
-    return `${months.length} months`;
+    if (!month) return null;
+    return MONTHS[month - 1];
   };
 
-  const handleMonthToggle = (month: number) => {
-    const newSelected = new Set(selectedMonths);
-    if (newSelected.has(month)) {
-      newSelected.delete(month);
-    } else {
-      newSelected.add(month);
-    }
-    setSelectedMonths(newSelected);
+  const handleMonthSelect = (monthNum: number) => {
+    setSelectedMonth(selectedMonth === monthNum ? null : monthNum);
   };
 
   const handleApply = () => {
-    if (selectedMonths.size === 0) {
-      setMonths(null);
-    } else {
-      setMonths([...selectedMonths].sort((a, b) => a - b));
-    }
+    setMonth(selectedMonth);
     setOpen(false);
   };
 
   const handleClear = () => {
-    setMonths(null);
+    setMonth(null);
+    setSelectedMonth(null);
     setOpen(false);
   };
 
   return (
     <FilterButton
-      label="Months"
+      label="Month"
       value={getDisplayValue()}
-      onClear={() => setMonths(null)}
+      onClear={() => setMonth(null)}
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
         if (o) {
-          setSelectedMonths(new Set(months || []));
+          setSelectedMonth(month);
         }
       }}
     >
       <div className="p-4 space-y-4">
         <div className="space-y-2">
-          <Label>Select Months</Label>
+          <Label>Select Month</Label>
           <div className="grid grid-cols-4 gap-1.5">
-            {MONTHS.map((month, index) => {
+            {MONTHS.map((monthName, index) => {
               const monthNum = index + 1;
-              const isSelected = selectedMonths.has(monthNum);
+              const isSelected = selectedMonth === monthNum;
 
               return (
                 <Button
-                  key={month}
+                  key={monthName}
                   variant="outline"
                   size="sm"
-                  onClick={() => handleMonthToggle(monthNum)}
+                  onClick={() => handleMonthSelect(monthNum)}
                   className={cn(
                     "h-9",
                     isSelected && "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 hover:text-white"
                   )}
                 >
-                  {month}
+                  {monthName}
                 </Button>
               );
             })}
