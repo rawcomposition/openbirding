@@ -78,7 +78,7 @@ export async function setupDatabase() {
     .addForeignKeyConstraint("fk_pack_downloads_pack", ["pack_id"], "packs", ["id"], (cb) => cb.onDelete("cascade"))
     .execute();
 
-  console.log("Database setup complete");
+  console.log("Main database setup complete");
 }
 
 export default db;

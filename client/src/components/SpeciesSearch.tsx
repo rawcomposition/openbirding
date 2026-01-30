@@ -12,6 +12,7 @@ import Highlighter from "react-highlight-words";
 import debounce from "lodash/debounce";
 import { get } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { useBirdFinderStore } from "@/stores/birdFinderStore";
 
 type Species = {
   code: string;
@@ -27,7 +28,6 @@ type Option = {
 
 type SearchProps = {
   pill?: boolean;
-  onChange?: (code: string | null) => void;
   [key: string]: unknown;
 };
 
@@ -50,20 +50,29 @@ const ClearIndicator = (props: ClearIndicatorProps<Option>) => (
 
 const LoadingIndicator = () => null;
 
+// Normalize text for matching: treat hyphens as spaces and lowercase
+const sanitize = (text: string) => text.replace(/-/g, " ").toLowerCase();
+
 function formatOptionLabel(option: Option, { inputValue }: FormatOptionLabelContext) {
+  const searchWords = inputValue.split(/\s+/).filter(Boolean);
   return (
     <div>
-      <Highlighter searchWords={[inputValue]} textToHighlight={option.label} highlightTag="b" />
+      <Highlighter searchWords={searchWords} sanitize={sanitize} textToHighlight={option.label} highlightTag="b" />
       <span className="text-slate-500 text-sm ml-2">
-        <Highlighter searchWords={[inputValue]} textToHighlight={option.sciName} highlightTag="b" />
+        <Highlighter searchWords={searchWords} sanitize={sanitize} textToHighlight={option.sciName} highlightTag="b" />
       </span>
     </div>
   );
 }
 
-export default function SpeciesSearch({ onChange, pill, ...props }: SearchProps) {
-  const [value, setValue] = React.useState<Option | null>(null);
+export default function SpeciesSearch({ pill, ...props }: SearchProps) {
+  const { species, setSpecies } = useBirdFinderStore();
   const [inputValue, setInputValue] = React.useState("");
+
+  // Convert store value to Option format
+  const value: Option | null = species
+    ? { value: species.code, label: species.name, sciName: species.sciName }
+    : null;
 
   const searchSpecies = async (searchTerm: string): Promise<Option[]> => {
     try {
@@ -100,11 +109,10 @@ export default function SpeciesSearch({ onChange, pill, ...props }: SearchProps)
 
   const onSelectChange = (newValue: SingleValue<Option> | MultiValue<Option>) => {
     if (!newValue) {
-      setValue(null);
-      onChange?.(null);
+      setSpecies(null);
     } else if (!Array.isArray(newValue)) {
-      setValue(newValue as Option);
-      onChange?.((newValue as Option).value);
+      const opt = newValue as Option;
+      setSpecies({ code: opt.value, name: opt.label, sciName: opt.sciName });
     }
   };
 

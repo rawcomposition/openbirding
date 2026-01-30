@@ -14,23 +14,20 @@ targetsRoute.get("/species/search", async (c) => {
       return c.json({ species: [] });
     }
 
-    const searchTerm = `%${query.toLowerCase()}%`;
+    // Escape FTS5 special characters and create prefix search term
+    const escaped = query.replace(/['"*()]/g, "").trim();
+    const ftsQuery = `"${escaped}"*`;
 
-    const species = await targetsDb
-      .selectFrom("species")
-      .select(["code", "name", "sciName"])
-      .where((eb) =>
-        eb.or([
-          eb(sql`lower(name)`, "like", searchTerm),
-          eb(sql`lower(sci_name)`, "like", searchTerm),
-          eb(sql`lower(code)`, "like", searchTerm),
-        ])
-      )
-      .orderBy("taxonOrder", "asc")
-      .limit(20)
-      .execute();
+    const species = await sql<{ code: string; name: string; sciName: string }[]>`
+      SELECT s.code, s.name, s.sci_name as "sciName"
+      FROM species_fts fts
+      JOIN species s ON s.id = fts.rowid
+      WHERE species_fts MATCH ${ftsQuery}
+      ORDER BY s.taxon_order ASC
+      LIMIT 20
+    `.execute(targetsDb);
 
-    return c.json({ species });
+    return c.json({ species: species.rows });
   } catch (error) {
     console.error("Species search error:", error);
     throw new HTTPException(500, {

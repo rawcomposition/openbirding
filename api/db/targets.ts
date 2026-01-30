@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { CamelCasePlugin, Kysely, SqliteDialect } from "kysely";
+import { CamelCasePlugin, Kysely, sql, SqliteDialect } from "kysely";
 import { TARGETS_DB_PATH } from "../lib/config.js";
 import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies } from "../lib/types.js";
 
@@ -22,3 +22,23 @@ export const targetsDb = new Kysely<TargetsDatabaseSchema>({
   }),
   plugins: [new CamelCasePlugin()],
 });
+
+export async function setupTargetsDatabase() {
+  await sql`
+  CREATE VIRTUAL TABLE IF NOT EXISTS species_fts USING fts5(
+    name,
+    sci_name,
+    search_codes,
+    content='species',
+    content_rowid='id',
+    tokenize='unicode61 remove_diacritics 2',
+    prefix='2 3 4'
+  );
+`.execute(targetsDb);
+
+  // Rebuild FTS index to ensure it's in sync with content table, then optimize for query performance
+  await sql`INSERT INTO species_fts(species_fts) VALUES('rebuild')`.execute(targetsDb);
+  await sql`INSERT INTO species_fts(species_fts) VALUES('optimize')`.execute(targetsDb);
+
+  console.log("Targets database setup complete");
+}

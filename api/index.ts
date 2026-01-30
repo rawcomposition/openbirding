@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { setupDatabase } from "./db/index.js";
+import { setupDatabase, setupTargetsDatabase } from "./db/index.js";
 import packs from "./routes/packs.js";
 import backups from "./routes/backups.js";
 import reports from "./routes/reports.js";
@@ -39,7 +39,7 @@ app.onError((err, c) => {
   return c.json({ message }, 500);
 });
 
-setupDatabase()
+Promise.all([setupDatabase(), setupTargetsDatabase()])
   .then(() => {
     serve(
       {

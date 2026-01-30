@@ -1,3 +1,3 @@
 export { db, setupDatabase, type DatabaseSchema } from "./main.js";
 export { default } from "./main.js";
-export { targetsDb } from "./targets.js";
+export { targetsDb, setupTargetsDatabase } from "./targets.js";
