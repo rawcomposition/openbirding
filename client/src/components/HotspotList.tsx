@@ -29,7 +29,7 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <table className="w-full" style={{ counterReset: "row-counter" }}>
-          <thead className="sticky top-0 bg-slate-50 z-10">
+          <thead className="sticky top-0 bg-slate-50">
             <tr className="border-b border-slate-200">
               <th className="text-left p-4 text-sm font-medium text-slate-700">Hotspot</th>
               <th className={cn("text-left p-4 text-sm font-medium text-slate-700", "sm:w-xs")}>Frequency</th>
