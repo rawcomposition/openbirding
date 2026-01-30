@@ -1,10 +1,43 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { sql } from "kysely";
 import { targetsDb } from "../db/index.js";
 
 const LIMIT_DEFAULT = 200;
 
 const targetsRoute = new Hono();
+
+targetsRoute.get("/species/search", async (c) => {
+  try {
+    const query = c.req.query("q");
+    if (!query || query.length < 2) {
+      return c.json({ species: [] });
+    }
+
+    const searchTerm = `%${query.toLowerCase()}%`;
+
+    const species = await targetsDb
+      .selectFrom("species")
+      .select(["code", "name", "sciName"])
+      .where((eb) =>
+        eb.or([
+          eb(sql`lower(name)`, "like", searchTerm),
+          eb(sql`lower(sci_name)`, "like", searchTerm),
+          eb(sql`lower(code)`, "like", searchTerm),
+        ])
+      )
+      .orderBy("taxonOrder", "asc")
+      .limit(20)
+      .execute();
+
+    return c.json({ species });
+  } catch (error) {
+    console.error("Species search error:", error);
+    throw new HTTPException(500, {
+      message: error instanceof Error ? error.message : "Internal Server Error",
+    });
+  }
+});
 
 targetsRoute.get("/hotspots/:speciesCode", async (c) => {
   try {

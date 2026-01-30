@@ -61,7 +61,10 @@ export type YearTarget = {
 
 export type TargetSpecies = {
   id: number;
+  sciName: string;
+  name: string;
   code: string;
+  taxonOrder: number;
 };
 
 export type TargetHotspot = {
