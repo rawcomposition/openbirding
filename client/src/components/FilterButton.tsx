@@ -40,13 +40,14 @@ export function FilterButton({
               <span className="font-medium">{value}</span>
               <span
                 role="button"
-                className="ml-0.5 -mr-1 p-0.5 rounded hover:bg-emerald-200 transition-colors"
+                className="ml-0.5 -mr-1.5 p-1 rounded-full hover:bg-emerald-200 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClear?.();
+                  onOpenChange?.(false);
                 }}
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" />
               </span>
             </>
           ) : (

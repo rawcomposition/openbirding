@@ -10,7 +10,6 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export function MonthFilter() {
   const { month, setMonth } = useBirdFinderStore();
   const [open, setOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(month);
 
   const getDisplayValue = () => {
     if (!month) return null;
@@ -18,17 +17,7 @@ export function MonthFilter() {
   };
 
   const handleMonthSelect = (monthNum: number) => {
-    setSelectedMonth(selectedMonth === monthNum ? null : monthNum);
-  };
-
-  const handleApply = () => {
-    setMonth(selectedMonth);
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    setMonth(null);
-    setSelectedMonth(null);
+    setMonth(monthNum);
     setOpen(false);
   };
 
@@ -38,20 +27,15 @@ export function MonthFilter() {
       value={getDisplayValue()}
       onClear={() => setMonth(null)}
       open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (o) {
-          setSelectedMonth(month);
-        }
-      }}
+      onOpenChange={setOpen}
     >
-      <div className="p-4 space-y-4">
+      <div className="p-4">
         <div className="space-y-2">
           <Label>Select Month</Label>
           <div className="grid grid-cols-4 gap-1.5">
             {MONTHS.map((monthName, index) => {
               const monthNum = index + 1;
-              const isSelected = selectedMonth === monthNum;
+              const isSelected = month === monthNum;
 
               return (
                 <Button
@@ -69,15 +53,6 @@ export function MonthFilter() {
               );
             })}
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button onClick={handleClear} variant="outline" className="flex-1">
-            Clear
-          </Button>
-          <Button onClick={handleApply} variant="primary" className="flex-1">
-            Apply
-          </Button>
         </div>
       </div>
     </FilterButton>
