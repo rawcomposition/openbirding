@@ -106,9 +106,12 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
 
     const rows = await query.execute();
 
-    const regionCodes = [...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code]))];
-    const regions = await db.selectFrom("regions").select(["id", "longName"]).where("id", "in", regionCodes).execute();
-    const regionMap = new Map(regions.map((r) => [r.id, r.longName]));
+    let regionMap = new Map<string, string | null>();
+    if (!region) {
+      const regionCodes = [...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code]))];
+      const regions = await db.selectFrom("regions").select(["id", "longName"]).where("id", "in", regionCodes).execute();
+      regionMap = new Map(regions.map((r) => [r.id, r.longName]));
+    }
 
     const hotspots = rows.map((row) => ({
       id: row.id,
