@@ -70,6 +70,7 @@ export type TargetSpecies = {
 export type TargetHotspot = {
   id: string;
   name: string;
+  regionCode: string;
   countryCode: string;
   subnational1Code: string;
   subnational2Code: string;

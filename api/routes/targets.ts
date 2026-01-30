@@ -43,17 +43,11 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       throw new HTTPException(400, { message: "Species code is required" });
     }
 
-    const locationId = c.req.query("locationId");
     const region = c.req.query("region");
     const limitParam = c.req.query("limit");
     const limit = limitParam != null ? parseInt(limitParam) : LIMIT_DEFAULT;
     if (isNaN(limit) || limit < 1) {
       throw new HTTPException(400, { message: "limit must be a positive number" });
-    }
-    if (locationId && region) {
-      throw new HTTPException(400, {
-        message: "Provide only one of locationId or region",
-      });
     }
 
     const monthParam = c.req.query("month");
@@ -105,16 +99,8 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       query = query.where(`${obsTable}.obs`, ">=", minObservations);
     }
 
-    if (locationId) {
-      query = query.where("hotspots.id", "=", locationId);
-    } else if (region) {
-      query = query.where((eb) =>
-        eb.or([
-          eb("hotspots.countryCode", "=", region),
-          eb("hotspots.subnational1Code", "=", region),
-          eb("hotspots.subnational2Code", "=", region),
-        ])
-      );
+    if (region) {
+      query = query.where("hotspots.regionCode", "like", `${region}%`);
     }
 
     const rows = await query.execute();

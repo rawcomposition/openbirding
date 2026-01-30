@@ -78,7 +78,28 @@ export async function setupDatabase() {
     .addForeignKeyConstraint("fk_pack_downloads_pack", ["pack_id"], "packs", ["id"], (cb) => cb.onDelete("cascade"))
     .execute();
 
+  // Setup FTS5 for regions search
+  await setupRegionsFts();
+
   console.log("Main database setup complete");
+}
+
+export async function setupRegionsFts() {
+  await sql`
+    CREATE VIRTUAL TABLE IF NOT EXISTS regions_fts USING fts5(
+      name,
+      long_name,
+      id,
+      content='regions',
+      content_rowid='rowid',
+      tokenize='unicode61 remove_diacritics 2',
+      prefix='2 3 4'
+    )
+  `.execute(db);
+
+  // Rebuild FTS index to ensure it's in sync with content table, then optimize
+  await sql`INSERT INTO regions_fts(regions_fts) VALUES('rebuild')`.execute(db);
+  await sql`INSERT INTO regions_fts(regions_fts) VALUES('optimize')`.execute(db);
 }
 
 export default db;
