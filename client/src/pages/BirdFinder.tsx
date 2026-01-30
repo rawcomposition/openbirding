@@ -30,7 +30,7 @@ const BirdFinder = () => {
           </Badge>
         </div>
 
-        <div className="max-w-md mb-3">
+        <div className="max-w-xl mb-3 mt-12">
           <SpeciesSearch />
         </div>
 

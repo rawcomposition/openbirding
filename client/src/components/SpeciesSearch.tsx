@@ -11,7 +11,6 @@ import { Bird as BirdIcon, X as XIcon } from "lucide-react";
 import Highlighter from "react-highlight-words";
 import debounce from "lodash/debounce";
 import { get } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
 import { useBirdFinderStore } from "@/stores/birdFinderStore";
 
 type Species = {
@@ -70,9 +69,7 @@ export default function SpeciesSearch({ pill, ...props }: SearchProps) {
   const [inputValue, setInputValue] = React.useState("");
 
   // Convert store value to Option format
-  const value: Option | null = species
-    ? { value: species.code, label: species.name, sciName: species.sciName }
-    : null;
+  const value: Option | null = species ? { value: species.code, label: species.name, sciName: species.sciName } : null;
 
   const searchSpecies = async (searchTerm: string): Promise<Option[]> => {
     try {
@@ -117,97 +114,94 @@ export default function SpeciesSearch({ pill, ...props }: SearchProps) {
   };
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor="species-search">Species</Label>
-      <AsyncSelect
-        styles={{
-          input: (base) => ({
-            ...base,
-            outline: "none",
-            "input:focus": { boxShadow: "none" },
-          }),
-          singleValue: (base) => ({
-            ...base,
-            color: "#1e293b",
-            fontWeight: "normal",
-          }),
-          control: (base) => ({
-            ...base,
-            borderRadius: pill ? "50px" : "8px",
-            fontSize: "18px",
-            fontWeight: "normal",
-            padding: "0.5rem",
-            paddingLeft: pill ? "1rem" : "0.5rem",
-            border: "solid 1px #cbd5e1",
-            borderColor: "#cbd5e1 !important",
-            outline: "none",
-            boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-            backgroundColor: "#ffffff",
-          }),
-          valueContainer: (base) => ({
-            ...base,
-            paddingLeft: "2rem",
-          }),
-          indicatorSeparator: () => ({
-            display: "none",
-          }),
-          menu: (base) => ({
-            ...base,
-            backgroundColor: "#ffffff",
-            border: "1px solid #cbd5e1",
-            borderRadius: "8px",
-            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-          }),
-          menuList: (base) => ({
-            ...base,
-            padding: "4px",
-          }),
-          option: (base, state) => ({
-            ...base,
-            backgroundColor: state.isFocused ? "#f1f5f9" : "transparent",
-            color: "#1e293b",
-            textAlign: "left",
-            padding: "8px 12px",
-            borderRadius: "4px",
-            cursor: "pointer",
-            "&:hover": {
-              backgroundColor: "#f1f5f9",
-            },
-          }),
-          placeholder: (base) => ({
-            ...base,
-            color: "#64748b",
-            textAlign: "left",
-          }),
-          noOptionsMessage: (base) => ({
-            ...base,
-            color: "#64748b",
-            textAlign: "left",
-          }),
-          loadingMessage: (base) => ({
-            ...base,
-            color: "#64748b",
-            textAlign: "left",
-          }),
-        }}
-        inputId="species-search"
-        instanceId="species-search"
-        value={value}
-        inputValue={inputValue}
-        onInputChange={(val) => setInputValue(val)}
-        loadOptions={loadOptions}
-        cacheOptions
-        isClearable
-        components={{ ValueContainer, ClearIndicator, LoadingIndicator, DropdownIndicator: () => null }}
-        formatOptionLabel={formatOptionLabel}
-        noOptionsMessage={() => (inputValue.length >= 2 ? "No species found" : null)}
-        loadingMessage={() => "Searching..."}
-        placeholder="Search for a species..."
-        onChange={onSelectChange}
-        menuIsOpen={inputValue.length >= 2 ? undefined : false}
-        escapeClearsValue
-        {...props}
-      />
-    </div>
+    <AsyncSelect
+      styles={{
+        input: (base) => ({
+          ...base,
+          outline: "none",
+          "input:focus": { boxShadow: "none" },
+        }),
+        singleValue: (base) => ({
+          ...base,
+          color: "#1e293b",
+          fontWeight: "normal",
+        }),
+        control: (base) => ({
+          ...base,
+          borderRadius: pill ? "50px" : "8px",
+          fontSize: "18px",
+          fontWeight: "normal",
+          padding: "0.5rem",
+          paddingLeft: pill ? "1rem" : "0.5rem",
+          border: "solid 1px #cbd5e1",
+          borderColor: "#cbd5e1 !important",
+          outline: "none",
+          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+          backgroundColor: "#ffffff",
+        }),
+        valueContainer: (base) => ({
+          ...base,
+          paddingLeft: "2rem",
+        }),
+        indicatorSeparator: () => ({
+          display: "none",
+        }),
+        menu: (base) => ({
+          ...base,
+          backgroundColor: "#ffffff",
+          border: "1px solid #cbd5e1",
+          borderRadius: "8px",
+          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+        }),
+        menuList: (base) => ({
+          ...base,
+          padding: "4px",
+        }),
+        option: (base, state) => ({
+          ...base,
+          backgroundColor: state.isFocused ? "#f1f5f9" : "transparent",
+          color: "#1e293b",
+          textAlign: "left",
+          padding: "8px 12px",
+          borderRadius: "4px",
+          cursor: "pointer",
+          "&:hover": {
+            backgroundColor: "#f1f5f9",
+          },
+        }),
+        placeholder: (base) => ({
+          ...base,
+          color: "#64748b",
+          textAlign: "left",
+        }),
+        noOptionsMessage: (base) => ({
+          ...base,
+          color: "#64748b",
+          textAlign: "left",
+        }),
+        loadingMessage: (base) => ({
+          ...base,
+          color: "#64748b",
+          textAlign: "left",
+        }),
+      }}
+      inputId="species-search"
+      instanceId="species-search"
+      value={value}
+      inputValue={inputValue}
+      onInputChange={(val) => setInputValue(val)}
+      loadOptions={loadOptions}
+      cacheOptions
+      isClearable
+      components={{ ValueContainer, ClearIndicator, LoadingIndicator, DropdownIndicator: () => null }}
+      formatOptionLabel={formatOptionLabel}
+      noOptionsMessage={() => (inputValue.length >= 2 ? "No species found" : null)}
+      loadingMessage={() => "Searching..."}
+      placeholder="Search for a species..."
+      onChange={onSelectChange}
+      menuIsOpen={inputValue.length >= 2 ? undefined : false}
+      escapeClearsValue
+      {...props}
+    />
   );
 }
