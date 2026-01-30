@@ -1,6 +1,26 @@
 import type { TargetHotspot } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import HotspotCard from "./HotspotCard";
 import HotspotRow from "./HotspotRow";
+
+const CardSkeleton = () => (
+  <div className="bg-white border border-slate-200 rounded-lg p-4">
+    <div className="flex gap-3">
+      <div className="h-6 w-6 bg-slate-200 rounded animate-pulse" />
+      <div className="flex-1 space-y-3">
+        <div className="h-5 bg-slate-200 rounded w-3/4 animate-pulse" />
+        <div className="h-4 bg-slate-200 rounded w-1/2 animate-pulse" />
+        <div className="space-y-2 mt-3">
+          <div className="h-2 bg-slate-200 rounded-full w-full animate-pulse" />
+          <div className="flex justify-between">
+            <div className="h-4 bg-slate-200 rounded w-20 animate-pulse" />
+            <div className="h-4 bg-slate-200 rounded w-24 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 type Props = {
   hotspots: TargetHotspot[];
@@ -27,7 +47,23 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      {/* Mobile: Cards */}
+      <div className="grid gap-3 md:hidden overflow-hidden">
+        {isLoading ? (
+          <>
+            {[...Array(6)].map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </>
+        ) : (
+          hotspots.map((hotspot, index) => (
+            <HotspotCard key={hotspot.id} rank={index + 1} showDistance={showDistance} {...hotspot} />
+          ))
+        )}
+      </div>
+
+      {/* Desktop: Table */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-lg overflow-hidden">
         <table className="w-full" style={{ counterReset: "row-counter" }}>
           <thead className="sticky top-0 bg-slate-50">
             <tr className="border-b border-slate-200">
