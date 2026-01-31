@@ -22,14 +22,17 @@ backupsRoute.post("/create", async (c) => {
   }
 
   const backupDir = process.env.SQLITE_BACKUP_DIR;
-  const dbPath = process.env.SQLITE_PATH;
+  const dbPath = `${process.env.SQLITE_DIR}/${process.env.SQLITE_FILENAME}`;
 
   try {
     if (!backupDir) {
       throw new Error("SQLITE_BACKUP_DIR is not set");
     }
-    if (!dbPath) {
-      throw new Error("SQLITE_PATH is not set");
+    if (!process.env.SQLITE_DIR) {
+      throw new Error("SQLITE_DIR is not set");
+    }
+    if (!process.env.SQLITE_FILENAME) {
+      throw new Error("SQLITE_FILENAME is not set");
     }
 
     await fs.mkdir(backupDir, { recursive: true });

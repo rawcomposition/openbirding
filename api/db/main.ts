@@ -9,7 +9,7 @@ export type DatabaseSchema = {
   packDownloads: PackDownload;
 };
 
-const mainSqlite = new (Database as any)(process.env.SQLITE_PATH);
+const mainSqlite = new (Database as any)(`${process.env.SQLITE_DIR}/${process.env.SQLITE_FILENAME}`);
 if (!mainSqlite) {
   throw new Error("Failed to connect to main SQLite database");
 }
