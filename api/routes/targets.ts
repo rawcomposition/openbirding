@@ -38,6 +38,7 @@ targetsRoute.get("/species/search", async (c) => {
 });
 
 targetsRoute.get("/hotspots/:speciesCode", async (c) => {
+  const startTime = performance.now();
   try {
     const speciesCode = c.req.param("speciesCode");
     if (!speciesCode) {
@@ -109,7 +110,11 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
     let regionMap = new Map<string, string | null>();
     if (!region) {
       const regionCodes = [...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code]))];
-      const regions = await db.selectFrom("regions").select(["id", "longName"]).where("id", "in", regionCodes).execute();
+      const regions = await db
+        .selectFrom("regions")
+        .select(["id", "longName"])
+        .where("id", "in", regionCodes)
+        .execute();
       regionMap = new Map(regions.map((r) => [r.id, r.longName]));
     }
 
@@ -122,7 +127,8 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       samples: row.samples,
     }));
 
-    return c.json({ hotspots, citation: getEbdCitation() });
+    const queryTime = Math.round(performance.now() - startTime);
+    return c.json({ hotspots, citation: getEbdCitation(), queryTime: `${queryTime} ms` });
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;
