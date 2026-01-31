@@ -1,66 +1,11 @@
-export type Hotspot = {
+export type TargetHotspot = {
   id: string;
   name: string;
-  region: string;
-  country: string | null;
-  state: string | null;
-  county: string | null;
-  species: number;
+  region: string | null;
   lat: number;
   lng: number;
-  open: boolean | null;
-  notes: string | null;
-  lastUpdatedBy: string | null;
-  lastUpdatedByName: string | null;
-  createdAt: string;
-  updatedAt: string | null;
-  distance?: number; // only for nearby hotspots
-};
-
-export type Region = {
-  id: string;
-  name: string;
-  longName: string;
-  parents: {
-    name: string;
-    id: string;
-  }[];
-  level: number;
-  hasChildren: boolean;
-};
-
-export type Subregion = Region & {
-  hotspotCount: number;
-  openHotspotCount: number;
-  reviewedHotspotCount: number;
-};
-
-export type User = {
-  id: string;
-  email: string;
-  name: string | null;
-  emailVerified: number;
-  isAdmin: number;
-  createdAt: string;
-  updatedAt: string | null;
-};
-
-export type AuthResponse = {
-  user: User;
-  session: {
-    id: string;
-    userId: string;
-    createdAt: string;
-  };
-};
-
-export type LoginData = {
-  email: string;
-  password: string;
-};
-
-export type SignupData = {
-  email: string;
-  name: string;
-  password: string;
+  frequency: number;
+  score: number;
+  samples: number;
+  distance?: number;
 };

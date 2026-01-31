@@ -77,3 +77,14 @@ export const mutate = async (method: "POST" | "PUT" | "DELETE" | "PATCH", url: s
 
   return json;
 };
+
+export const formatPercentage = (value: number) => {
+  if (value >= 10) {
+    return `${Math.round(value)}%`;
+  }
+  const oneDecimal = Math.round(value * 10) / 10;
+  if (oneDecimal >= 10) {
+    return "10%";
+  }
+  return `${oneDecimal}%`;
+};

@@ -1,3 +1,5 @@
+import { TARGETS_DB_FILENAME } from "./config.js";
+
 type EBirdHotspot = {
   locId: string;
   locName: string;
@@ -50,4 +52,42 @@ export const getHotspotsForRegion = async (region: string): Promise<ProcessedHot
       subnational2Code: hotspot.subnational2Code,
     }))
     .filter((hotspot: ProcessedHotspot) => !hotspot.name.toLowerCase().startsWith("stakeout"));
+};
+
+type EBirdTaxon = {
+  speciesCode?: string;
+  code?: string;
+  taxonOrder?: number;
+  taxon_order?: number;
+};
+
+export const getSpeciesIdFromCode = async (speciesCode: string): Promise<number> => {
+  const apiKey = process.env.EBIRD_API_KEY;
+  if (!apiKey) {
+    throw new Error("EBIRD_API_KEY environment variable is required");
+  }
+  const response = await fetch(`https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json&key=${apiKey}`);
+  if (!response.ok) {
+    throw new Error(`eBird taxonomy request failed: ${response.statusText}`);
+  }
+  const taxa = (await response.json()) as EBirdTaxon[];
+  const normalized = speciesCode.toLowerCase();
+  const taxon = taxa.find((t) => (t.speciesCode ?? t.code ?? "").toLowerCase() === normalized);
+  if (!taxon) {
+    throw new Error(`Species not found: ${speciesCode}`);
+  }
+  const order = taxon.taxonOrder ?? taxon.taxon_order;
+  if (order == null) {
+    throw new Error(`Species has no taxon order: ${speciesCode}`);
+  }
+  return order;
+};
+
+export const getEbdCitation = () => {
+  const targetsDbMatch = TARGETS_DB_FILENAME.match(/^targets-(.+)-(\d{4})\.db$/);
+  const rawMonth = targetsDbMatch?.[1] ?? "mar";
+  const rawYear = targetsDbMatch?.[2] ?? "2025";
+  const ebdMonth = `${rawMonth.charAt(0).toUpperCase()}${rawMonth.slice(1).toLowerCase()}`;
+  const ebdYear = rawYear;
+  return `eBird Basic Dataset. Version: EBD_rel${ebdMonth}-${ebdYear}. Cornell Lab of Ornithology, Ithaca, New York. ${ebdMonth} ${ebdYear}.`;
 };

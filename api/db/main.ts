@@ -1,25 +1,23 @@
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin, sql } from "kysely";
-import type { Pack, Region, Cluster, PackDownload } from "./types.js";
+import type { Pack, Region, Cluster, PackDownload } from "../lib/types.js";
 
-type DatabaseSchema = {
+export type DatabaseSchema = {
   packs: Pack;
   clusters: Cluster;
   regions: Region;
   packDownloads: PackDownload;
 };
 
-const sqliteDb = new (Database as any)(process.env.SQLITE_PATH);
-
-if (!sqliteDb) {
-  throw new Error("Failed to connect to SQLite database");
+const mainSqlite = new (Database as any)(process.env.SQLITE_PATH);
+if (!mainSqlite) {
+  throw new Error("Failed to connect to main SQLite database");
 }
+mainSqlite.pragma("foreign_keys = ON");
 
-sqliteDb.pragma("foreign_keys = ON");
-
-const db = new Kysely<DatabaseSchema>({
+export const db = new Kysely<DatabaseSchema>({
   dialect: new SqliteDialect({
-    database: sqliteDb,
+    database: mainSqlite,
   }),
   plugins: [new CamelCasePlugin()],
 });
@@ -80,7 +78,28 @@ export async function setupDatabase() {
     .addForeignKeyConstraint("fk_pack_downloads_pack", ["pack_id"], "packs", ["id"], (cb) => cb.onDelete("cascade"))
     .execute();
 
-  console.log("Database setup complete");
+  // Setup FTS5 for regions search
+  await setupRegionsFts();
+
+  console.log("Main database setup complete");
+}
+
+export async function setupRegionsFts() {
+  await sql`
+    CREATE VIRTUAL TABLE IF NOT EXISTS regions_fts USING fts5(
+      name,
+      long_name,
+      id,
+      content='regions',
+      content_rowid='rowid',
+      tokenize='unicode61 remove_diacritics 2',
+      prefix='2 3 4'
+    )
+  `.execute(db);
+
+  // Rebuild FTS index to ensure it's in sync with content table, then optimize
+  await sql`INSERT INTO regions_fts(regions_fts) VALUES('rebuild')`.execute(db);
+  await sql`INSERT INTO regions_fts(regions_fts) VALUES('optimize')`.execute(db);
 }
 
 export default db;

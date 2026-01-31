@@ -6,6 +6,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { get } from "./lib/utils";
+import BirdFinder from "@/pages/BirdFinder";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/bird-finder" element={<BirdFinder />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </ErrorBoundary>

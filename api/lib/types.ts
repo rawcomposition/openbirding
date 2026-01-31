@@ -41,3 +41,42 @@ export type PackDownload = {
   userAgent: string | null;
   createdAt: Generated<string>;
 };
+
+export type MonthTarget = {
+  locationId: string;
+  speciesId: number;
+  month: number;
+  obs: number;
+  samples: number;
+  score: number;
+};
+
+export type YearTarget = {
+  locationId: string;
+  speciesId: number;
+  obs: number;
+  samples: number;
+  score: number;
+};
+
+export type TargetSpecies = {
+  id: number;
+  sciName: string;
+  name: string;
+  code: string;
+  taxonOrder: number;
+};
+
+export type TargetHotspot = {
+  id: string;
+  name: string;
+  regionCode: string;
+  countryCode: string;
+  subnational1Code: string;
+  subnational2Code: string;
+  lat: number;
+  lng: number;
+  total: number;
+  numSpecies: number;
+  numChecklists: number;
+};

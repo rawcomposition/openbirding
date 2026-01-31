@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { getHotspotsForRegion } from "../lib/ebird.js";
-import db from "../lib/sqlite.js";
+import db from "../db/index.js";
 const packsRoute = new Hono();
 
 packsRoute.get("/", async (c) => {

@@ -2,10 +2,12 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { setupDatabase } from "./lib/sqlite.js";
+import { setupDatabase, setupTargetsDatabase } from "./db/index.js";
 import packs from "./routes/packs.js";
 import backups from "./routes/backups.js";
 import reports from "./routes/reports.js";
+import targets from "./routes/targets.js";
+import regions from "./routes/regions.js";
 
 const app = new Hono();
 
@@ -20,6 +22,8 @@ app.use(
 app.route("/api/v1/packs", packs);
 app.route("/api/v1/backups", backups);
 app.route("/api/v1/reports", reports);
+app.route("/api/v1/targets", targets);
+app.route("/api/v1/regions", regions);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);
@@ -37,7 +41,7 @@ app.onError((err, c) => {
   return c.json({ message }, 500);
 });
 
-setupDatabase()
+Promise.all([setupDatabase(), setupTargetsDatabase()])
   .then(() => {
     serve(
       {

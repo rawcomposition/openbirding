@@ -1,5 +1,5 @@
 import "dotenv/config";
-import db from "../lib/sqlite.js";
+import db, { setupRegionsFts } from "../db/index.js";
 
 type ParentInfo = {
   name: string;
@@ -119,6 +119,11 @@ const main = async () => {
     console.log("\nRegion parent generation completed!");
     console.log(`Total regions processed: ${processed}`);
     console.log(`Total regions updated: ${updated}`);
+
+    // Rebuild FTS index for region search
+    console.log("\nRebuilding regions FTS index...");
+    await setupRegionsFts();
+    console.log("Regions FTS index rebuilt successfully");
   } catch (error) {
     console.error("Error during region parent generation:", error);
     process.exit(1);
