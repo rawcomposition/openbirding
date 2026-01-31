@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
 import { targetsDb, db } from "../db/index.js";
-import { getEbdCitation } from "lib/ebird.js";
+import { getEbdCitation } from "../lib/ebird.js";
 
 const LIMIT_DEFAULT = 200;
 
