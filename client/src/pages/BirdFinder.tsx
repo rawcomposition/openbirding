@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,9 @@ import { useBirdFinderStore } from "@/stores/birdFinderStore";
 import type { TargetHotspot } from "@/lib/types";
 
 const BirdFinder = () => {
+  useEffect(() => {
+    document.title = "Bird Finder | OpenBirding";
+  }, []);
   const { species, month, minObservations, region } = useBirdFinderStore();
 
   const buildQueryUrl = () => {
