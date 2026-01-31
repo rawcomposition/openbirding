@@ -10,7 +10,7 @@ export type TargetsDatabaseSchema = {
   species: TargetSpecies;
 };
 
-const targetsSqlite = new (Database as any)(`${process.env.SQLITE_DIR}/${TARGETS_DB_FILENAME}`);
+const targetsSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${TARGETS_DB_FILENAME}`);
 if (!targetsSqlite) {
   throw new Error("Failed to connect to targets SQLite database");
 }
