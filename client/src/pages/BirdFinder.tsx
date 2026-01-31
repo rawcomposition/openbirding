@@ -37,7 +37,7 @@ const BirdFinder = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
           <MapPin className="h-6 w-6 text-emerald-600" />
           <h1 className="text-3xl font-bold text-slate-900">Bird Finder</h1>
           <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
@@ -65,9 +65,7 @@ const BirdFinder = () => {
       ) : data?.hotspots && data.hotspots.length > 0 ? (
         <>
           <HotspotList hotspots={data.hotspots} total={data.hotspots.length} isLoading={isLoadingHotspots} />
-          {data.citation && (
-            <p className="mt-6 text-xs text-slate-500 max-w-2xl">{data.citation}</p>
-          )}
+          {data.citation && <p className="mt-6 text-xs text-slate-500 max-w-2xl">{data.citation}</p>}
         </>
       ) : isLoadingHotspots ? (
         <HotspotList hotspots={[]} isLoading={isLoadingHotspots} />

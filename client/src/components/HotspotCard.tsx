@@ -1,7 +1,6 @@
 import { memo } from "react";
 import type { TargetHotspot } from "@/lib/types";
 import { formatPercentage } from "@/lib/utils";
-import { AdjustedFrequencyInfo } from "./AdjustedFrequencyInfo";
 
 type HotspotCardProps = TargetHotspot & {
   rank: number;
@@ -28,10 +27,7 @@ const HotspotCard = memo(
             <div className="mt-3 space-y-2">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-slate-500 flex items-center gap-1">
-                    Adjusted Frequency
-                    <AdjustedFrequencyInfo />
-                  </span>
+                  <span className="text-sm text-slate-500 flex items-center gap-1">Adjusted Frequency</span>
                   <span className="text-base font-semibold text-emerald-700">{formatPercentage(score)}</span>
                 </div>
                 <div className="bg-gray-100 rounded-full h-2 w-full overflow-hidden">

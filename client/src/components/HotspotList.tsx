@@ -1,6 +1,6 @@
 import type { TargetHotspot } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AdjustedFrequencyInfo } from "./AdjustedFrequencyInfo";
+import { ADJUSTED_FREQUENCY_INFO, AdjustedFrequencyInfo } from "./AdjustedFrequencyInfo";
 import HotspotCard from "./HotspotCard";
 import HotspotRow from "./HotspotRow";
 
@@ -61,6 +61,9 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
             <HotspotCard key={hotspot.id} rank={index + 1} showDistance={showDistance} {...hotspot} />
           ))
         )}
+      </div>
+      <div className="md:hidden">
+        <p className="text-xs text-slate-500">{ADJUSTED_FREQUENCY_INFO}</p>
       </div>
 
       {/* Desktop: Table */}
