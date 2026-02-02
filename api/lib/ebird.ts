@@ -59,28 +59,31 @@ type EBirdTaxon = {
   code?: string;
   taxonOrder?: number;
   taxon_order?: number;
+  comName?: string;
+  sciName?: string;
 };
 
-export const getSpeciesIdFromCode = async (speciesCode: string): Promise<number> => {
+export type TaxonomyEntry = {
+  name: string;
+  sciName: string;
+  code: string;
+};
+
+export const getTaxonomy = async (): Promise<TaxonomyEntry[]> => {
   const apiKey = process.env.EBIRD_API_KEY;
   if (!apiKey) {
     throw new Error("EBIRD_API_KEY environment variable is required");
   }
-  const response = await fetch(`https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json&key=${apiKey}`);
+  const response = await fetch(`https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json&cat=species&key=${apiKey}`);
   if (!response.ok) {
     throw new Error(`eBird taxonomy request failed: ${response.statusText}`);
   }
   const taxa = (await response.json()) as EBirdTaxon[];
-  const normalized = speciesCode.toLowerCase();
-  const taxon = taxa.find((t) => (t.speciesCode ?? t.code ?? "").toLowerCase() === normalized);
-  if (!taxon) {
-    throw new Error(`Species not found: ${speciesCode}`);
-  }
-  const order = taxon.taxonOrder ?? taxon.taxon_order;
-  if (order == null) {
-    throw new Error(`Species has no taxon order: ${speciesCode}`);
-  }
-  return order;
+  return taxa.map((t) => ({
+    name: t.comName!,
+    sciName: t.sciName!,
+    code: t.speciesCode!,
+  }));
 };
 
 export const getEbdCitation = () => {

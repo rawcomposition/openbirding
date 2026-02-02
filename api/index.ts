@@ -8,6 +8,7 @@ import backups from "./routes/backups.js";
 import reports from "./routes/reports.js";
 import targets from "./routes/targets.js";
 import regions from "./routes/regions.js";
+import taxonomy from "./routes/taxonomy.js";
 
 const app = new Hono();
 
@@ -24,6 +25,7 @@ app.route("/api/v1/backups", backups);
 app.route("/api/v1/reports", reports);
 app.route("/api/v1/targets", targets);
 app.route("/api/v1/regions", regions);
+app.route("/api/v1/taxonomy", taxonomy);
 
 app.notFound((c) => {
   return c.json({ message: "Not Found" }, 404);
