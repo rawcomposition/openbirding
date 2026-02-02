@@ -140,4 +140,54 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
   }
 });
 
+targetsRoute.get("/hotspot-species/:locationId", async (c) => {
+  try {
+    const locationId = c.req.param("locationId");
+    if (!locationId) {
+      throw new HTTPException(400, { message: "locationId is required" });
+    }
+
+    const hotspot = await targetsDb.selectFrom("hotspots").select("id").where("id", "=", locationId).executeTakeFirst();
+
+    if (!hotspot) {
+      throw new HTTPException(404, { message: "Hotspot not found" });
+    }
+
+    const rows = await targetsDb
+      .selectFrom("monthObs")
+      .innerJoin("species", "species.id", "monthObs.speciesId")
+      .where("monthObs.locationId", "=", locationId)
+      .select(["species.code", "monthObs.month", "monthObs.obs", "monthObs.samples"])
+      .execute();
+
+    const samples: (number | null)[] = Array(12).fill(null);
+    const speciesByCode = new Map<string, number[]>();
+
+    for (const row of rows) {
+      const monthIdx = row.month - 1;
+      if (samples[monthIdx] === null) {
+        samples[monthIdx] = row.samples;
+      }
+      let monthObs = speciesByCode.get(row.code);
+      if (!monthObs) {
+        monthObs = Array(12).fill(0);
+        speciesByCode.set(row.code, monthObs);
+      }
+      monthObs[monthIdx] = row.obs;
+    }
+
+    const species = [...speciesByCode.entries()].map(([code, monthObs]) => [code, ...monthObs]);
+
+    return c.json({ v: 1, samples, species });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Hotspot species error:", error);
+    throw new HTTPException(500, {
+      message: error instanceof Error ? error.message : "Internal Server Error",
+    });
+  }
+});
+
 export default targetsRoute;
