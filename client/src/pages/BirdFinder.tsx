@@ -22,7 +22,7 @@ const BirdFinder = () => {
     if (month != null) {
       params.set("month", String(month));
     }
-    if (minObservations != null && minObservations > 2) {
+    if (minObservations != null) {
       params.set("minObservations", String(minObservations));
     }
     if (region?.regionCode) {

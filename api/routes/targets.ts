@@ -96,8 +96,7 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       query = query.where("monthObs.month", "=", month);
     }
 
-    // 2 is the default minimum for sightings in the dataset
-    if (minObservations != null && minObservations > 2) {
+    if (minObservations != null) {
       query = query.where(`${obsTable}.obs`, ">=", minObservations);
     }
 
