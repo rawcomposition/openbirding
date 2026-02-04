@@ -5,6 +5,24 @@ import { db } from "../db/index.js";
 
 const regionsRoute = new Hono();
 
+regionsRoute.get("/", async (c) => {
+  try {
+    const rows = await db
+      .selectFrom("regions")
+      .select(["id", "name"])
+      .execute();
+
+    const regions = Object.fromEntries(rows.map((r) => [r.id, r.name]));
+
+    return c.json(regions);
+  } catch (error) {
+    console.error("Get all regions error:", error);
+    throw new HTTPException(500, {
+      message: error instanceof Error ? error.message : "Internal Server Error",
+    });
+  }
+});
+
 regionsRoute.get("/search", async (c) => {
   try {
     const query = c.req.query("q");
