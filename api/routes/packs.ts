@@ -113,4 +113,52 @@ packsRoute.get("/:id", async (c) => {
   }
 });
 
+packsRoute.post("/:id/log-download", async (c) => {
+  try {
+    const packId = c.req.param("id");
+
+    if (!packId) {
+      throw new HTTPException(400, { message: "Pack ID parameter is required" });
+    }
+
+    const packIdNum = parseInt(packId);
+    if (isNaN(packIdNum)) {
+      throw new HTTPException(400, { message: "Pack ID must be a valid number" });
+    }
+
+    const pack = await db.selectFrom("packs").select(["id", "region"]).where("id", "=", packIdNum).executeTakeFirst();
+
+    if (!pack) {
+      throw new HTTPException(404, { message: "Pack not found" });
+    }
+
+    const appVersion = c.req.header("App-Version") || null;
+    const appPlatform = c.req.header("App-Platform") || null;
+    const appEnvironment = c.req.header("App-Environment") || null;
+    const method = c.req.header("Download-Method") || null;
+    const userAgent = c.req.header("User-Agent") || null;
+
+    await db
+      .insertInto("packDownloads")
+      .values({
+        packId: pack.id,
+        packRegion: pack.region,
+        method,
+        appVersion,
+        appPlatform,
+        appEnvironment,
+        userAgent,
+      })
+      .execute();
+
+    return c.json({ success: true });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Log pack download error:", error);
+    throw new HTTPException(500, { message: error instanceof Error ? error.message : "Internal Server Error" });
+  }
+});
+
 export default packsRoute;
