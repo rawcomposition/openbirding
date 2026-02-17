@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { execSync } from "child_process";
 
-const DISK_USAGE_THRESHOLD = 10;
+const DISK_USAGE_THRESHOLD = 70;
 
 type DiskUsage = { percent: number; usedGb: number; totalGb: number };
 
