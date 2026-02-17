@@ -20,7 +20,8 @@
     "sync-pack-bounds": "cd api && npx tsx scripts/sync-pack-bounds.ts",
     "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts",
     "init-db": "cd api && npx tsx scripts/init-db.ts",
-    "update-packs": "cd api && npx tsx scripts/update-pack-info.ts"
+    "update-packs": "cd api && npx tsx scripts/update-pack-info.ts",
+    "system-health": "cd api && npx tsx scripts/system-health-check.ts"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
