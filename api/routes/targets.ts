@@ -64,6 +64,16 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       throw new HTTPException(400, { message: "minObservations must be a positive number" });
     }
 
+    const bboxParam = c.req.query("bbox");
+    let bbox: { minLng: number; minLat: number; maxLng: number; maxLat: number } | null = null;
+    if (bboxParam) {
+      const parts = bboxParam.split(",").map(Number);
+      if (parts.length !== 4 || parts.some(isNaN)) {
+        throw new HTTPException(400, { message: "bbox must be minLng,minLat,maxLng,maxLat" });
+      }
+      bbox = { minLng: parts[0], minLat: parts[1], maxLng: parts[2], maxLat: parts[3] };
+    }
+
     const species = await targetsDb
       .selectFrom("species")
       .select("id")
@@ -85,6 +95,8 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
         "hotspots.name",
         "hotspots.countryCode",
         "hotspots.subnational1Code",
+        "hotspots.lat",
+        "hotspots.lng",
         `${obsTable}.obs`,
         `${obsTable}.samples`,
         `${obsTable}.score`,
@@ -104,6 +116,14 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       query = query.where("hotspots.regionCode", "like", `${region}%`);
     }
 
+    if (bbox) {
+      query = query
+        .where("hotspots.lat", ">=", bbox.minLat)
+        .where("hotspots.lat", "<=", bbox.maxLat)
+        .where("hotspots.lng", ">=", bbox.minLng)
+        .where("hotspots.lng", "<=", bbox.maxLng);
+    }
+
     const rows = await query.execute();
 
     let regionMap = new Map<string, string | null>();
@@ -121,6 +141,8 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       id: row.id,
       name: row.name,
       region: regionMap.get(row.subnational1Code) || regionMap.get(row.countryCode) || null,
+      lat: row.lat,
+      lng: row.lng,
       score: Math.round(row.score * 1000) / 10, // Convert to percentage with 1 decimal
       frequency: Math.round((row.obs / row.samples) * 1000) / 10,
       samples: row.samples,
