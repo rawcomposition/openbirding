@@ -45,7 +45,7 @@ const Home2 = () => {
 
             <div className="relative justify-center lg:justify-end hidden lg:flex">
               <PhoneScreenshot
-                src="/screenshot1.jpg"
+                src="/screenshot1-2.jpg"
                 alt="Screenshot of the OpenBirding app showing a color-coded hotspots on a map"
               />
             </div>
@@ -64,11 +64,14 @@ const Home2 = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {[
               {
-                src: "/screenshot1.jpg",
-                alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map",
+                src: "/screenshot2-2.jpg",
+                alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map with a hotspot detail dialog open",
               },
-              { src: "/screenshot2.jpg", alt: "Screenshot of the OpenBirding app showing the hotspot details dialog" },
-              { src: "/screenshot3.jpg", alt: "Screenshot of the OpenBirding app showing the pack download page" },
+              {
+                src: "/screenshot3-2.jpg",
+                alt: "Screenshot of the OpenBirding app showing a hotspot detail dialog open with the list of target bird species for the hotspot",
+              },
+              { src: "/screenshot4-2.jpg", alt: "Screenshot of the OpenBirding app showing a list of nearby hotspots" },
             ].map((screenshot, index) => (
               <div key={index} className="relative flex justify-center">
                 <PhoneScreenshot src={screenshot.src} alt={screenshot.alt} phoneClassName="drop-shadow-2xl" />
@@ -84,7 +87,6 @@ const Home2 = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Features</h2>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               Everything you need to discover and explore birding hotspots.
-              <br /> More features coming soon!
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -116,8 +118,10 @@ const Home2 = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-slate-700 text-base leading-relaxed">
-                  Download hotspots in packs so they can be accessed offline. Note that base maps still require an
-                  internet connection unless previously loaded for that area.
+                  Download hotspots in packs so they can be accessed offline.
+                  <p className="text-slate-700 text-xs leading-relaxed mt-2 italic">
+                    Base maps still require an internet connection unless previously loaded for that area.
+                  </p>
                 </CardDescription>
               </CardContent>
             </Card>
@@ -128,12 +132,13 @@ const Home2 = () => {
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <Bookmark className="h-6 w-6 text-emerald-600" />
                   </div>
-                  <CardTitle className="text-slate-900 text-xl">Save Your Favorites</CardTitle>
+                  <CardTitle className="text-slate-900 text-xl">Target Bird Species</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-slate-700 text-base leading-relaxed">
-                  Save hotspots that you want to quickly find later for easy access to your favorite birding locations.
+                  Import your eBird life list to see target bird species for each hotspot, no internet connection
+                  required.
                 </CardDescription>
               </CardContent>
             </Card>
