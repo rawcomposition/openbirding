@@ -32,7 +32,7 @@ const Home2 = () => {
               <p className="text-lg text-slate-600 mb-8 max-w-xl mx-auto lg:mx-0">
                 Whether traveling or birding close to home, OpenBirding makes it easy to find new birding locations.
               </p>
-              <div className="flex justify-center lg:justify-start">
+              <div className="flex flex-col items-center lg:items-start gap-3">
                 <a
                   href="https://apps.apple.com/us/app/openbirding/id6755897167"
                   target="_blank"
@@ -40,6 +40,12 @@ const Home2 = () => {
                 >
                   <AppStore className="w-[170px] h-auto" />
                 </a>
+                <p className="text-sm text-slate-500">
+                  Android user?{" "}
+                  <Link to="/android" className="text-emerald-600 hover:text-emerald-700 font-medium underline underline-offset-2">
+                    Get notified when it's available
+                  </Link>
+                </p>
               </div>
             </div>
 

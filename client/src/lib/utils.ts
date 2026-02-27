@@ -53,6 +53,7 @@ export const mutate = async (method: "POST" | "PUT" | "DELETE" | "PATCH", url: s
   const fullUrl = `${import.meta.env.VITE_API_URL}${url}`;
   const res = await fetch(fullUrl, {
     method,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
     credentials: "include",
   });
