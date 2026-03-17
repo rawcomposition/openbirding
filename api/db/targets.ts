@@ -11,7 +11,14 @@ export type TargetsDatabaseSchema = {
   metadata: TargetMetadata;
 };
 
-let targetsDb: Kysely<TargetsDatabaseSchema> | null = null;
+const unavailableTargetsDb = new Proxy({} as Kysely<TargetsDatabaseSchema>, {
+  get() {
+    throw new Error("Targets database not available");
+  },
+});
+
+let hasTargetsDb = false;
+let targetsDb: Kysely<TargetsDatabaseSchema> = unavailableTargetsDb;
 
 try {
   const targetsSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${TARGETS_DB_FILENAME}`);
@@ -22,15 +29,14 @@ try {
     }),
     plugins: [new CamelCasePlugin()],
   });
+  hasTargetsDb = true;
 } catch (error) {
   console.warn("Targets database not available:", error instanceof Error ? error.message : error);
 }
 
-export { targetsDb };
+export { targetsDb, hasTargetsDb };
 
 export async function getTargetsMetadata(): Promise<TargetMetadata> {
-  if (!targetsDb) throw new Error("Targets database not available");
   const row = await targetsDb.selectFrom("metadata").selectAll().executeTakeFirstOrThrow();
   return row;
 }
-
