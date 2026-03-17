@@ -127,7 +127,7 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
     }));
 
     const queryTime = Math.round(performance.now() - startTime);
-    return c.json({ hotspots, citation: getEbdCitation(), queryTime: `${queryTime} ms` });
+    return c.json({ hotspots, citation: await getEbdCitation(), queryTime: `${queryTime} ms` });
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;

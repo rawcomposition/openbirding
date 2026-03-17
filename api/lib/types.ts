@@ -73,6 +73,12 @@ export type AndroidNotifySignup = {
   createdAt: Generated<string>;
 };
 
+export type TargetMetadata = {
+  version: string;
+  versionMonth: string;
+  versionYear: string;
+};
+
 export type TargetHotspot = {
   id: string;
   name: string;
