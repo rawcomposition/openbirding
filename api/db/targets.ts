@@ -21,7 +21,10 @@ let hasTargetsDb = false;
 let targetsDb: Kysely<TargetsDatabaseSchema> = unavailableTargetsDb;
 
 try {
-  const targetsSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${TARGETS_DB_FILENAME}`);
+  const targetsSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${TARGETS_DB_FILENAME}`, {
+    readonly: true,
+    fileMustExist: true,
+  });
   targetsSqlite.pragma("foreign_keys = ON");
   targetsDb = new Kysely<TargetsDatabaseSchema>({
     dialect: new SqliteDialect({
