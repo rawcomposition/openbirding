@@ -1,0 +1,4 @@
+/* Hide attribution until map has loaded and we've collapsed it */
+.maplibregl-ctrl-attrib.maplibregl-compact:not(.attrib-ready) {
+  visibility: hidden;
+}

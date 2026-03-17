@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import "./AreaMap.css";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 
@@ -82,15 +83,22 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: OPENFREEMAP_STYLE,
-      center: [0, 20],
-      zoom: 1.5,
+      center: [-85, 14],
+      zoom: 1,
       doubleClickZoom: false,
+      attributionControl: false,
     });
 
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
 
     map.on("load", () => {
+      const attrib = containerRef.current?.querySelector('.maplibregl-ctrl-attrib');
+      if (attrib) {
+        attrib.classList.remove('maplibregl-compact-show');
+        attrib.classList.add('attrib-ready');
+      }
       map.addSource("draw-polygon", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
