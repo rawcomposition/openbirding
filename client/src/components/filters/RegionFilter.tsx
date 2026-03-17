@@ -61,6 +61,7 @@ export function RegionFilter() {
           <div className="p-4">
             <AreaMap
               onComplete={handlePolygonComplete}
+              onClear={() => setCustomArea(null)}
               initialPolygon={customArea?.polygon ?? null}
             />
           </div>

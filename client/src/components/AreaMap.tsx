@@ -7,6 +7,7 @@ import { Trash2 } from "lucide-react";
 
 type AreaMapProps = {
   onComplete: (polygon: [number, number][]) => void;
+  onClear?: () => void;
   initialPolygon?: [number, number][] | null;
 };
 
@@ -59,7 +60,7 @@ function fitMapToPolygon(map: maplibregl.Map, polygon: [number, number][]) {
   map.fitBounds(bounds, { padding: 40 });
 }
 
-export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
+export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const verticesRef = useRef<[number, number][]>([]);
@@ -94,10 +95,10 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
     mapRef.current = map;
 
     map.on("load", () => {
-      const attrib = containerRef.current?.querySelector('.maplibregl-ctrl-attrib');
+      const attrib = containerRef.current?.querySelector(".maplibregl-ctrl-attrib");
       if (attrib) {
-        attrib.classList.remove('maplibregl-compact-show');
-        attrib.classList.add('attrib-ready');
+        attrib.classList.remove("maplibregl-compact-show");
+        attrib.classList.add("attrib-ready");
       }
       map.addSource("draw-polygon", {
         type: "geojson",
@@ -138,6 +139,54 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
         },
       });
 
+      map.addSource("snap-line", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      map.addLayer({
+        id: "snap-line",
+        type: "line",
+        source: "snap-line",
+        paint: {
+          "line-color": "#10b981",
+          "line-width": 2,
+          "line-dasharray": [2, 2],
+        },
+      });
+
+      map.addSource("preview-fill", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      map.addLayer({
+        id: "preview-fill",
+        type: "fill",
+        source: "preview-fill",
+        paint: {
+          "fill-color": "#10b981",
+          "fill-opacity": 0.1,
+        },
+      });
+
+      map.addSource("cursor-dot", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      map.addLayer({
+        id: "cursor-dot",
+        type: "circle",
+        source: "cursor-dot",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#10b981",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+
       if (hasInitial) {
         updateMapSource(map, initialPolygon, true);
         fitMapToPolygon(map, initialPolygon);
@@ -149,6 +198,26 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
     map.on("click", (e: maplibregl.MapMouseEvent) => {
       if (!isDrawingRef.current) return;
       const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+
+      // Close polygon by clicking near the first vertex
+      if (verticesRef.current.length >= 3) {
+        const first = map.project(verticesRef.current[0] as maplibregl.LngLatLike);
+        const click = e.point;
+        const dist = Math.sqrt((first.x - click.x) ** 2 + (first.y - click.y) ** 2);
+        if (dist < 15) {
+          isDrawingRef.current = false;
+          setIsDrawing(false);
+          map.getCanvas().style.cursor = "";
+          const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+          updateMapSource(map, verticesRef.current, true);
+          (map.getSource("snap-line") as maplibregl.GeoJSONSource)?.setData(empty);
+          (map.getSource("cursor-dot") as maplibregl.GeoJSONSource)?.setData(empty);
+          (map.getSource("preview-fill") as maplibregl.GeoJSONSource)?.setData(empty);
+          onCompleteRef.current(verticesRef.current);
+          return;
+        }
+      }
+
       verticesRef.current.push(lngLat);
       setVertexCount(verticesRef.current.length);
       updateMapSource(map, verticesRef.current, false);
@@ -161,8 +230,84 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
       isDrawingRef.current = false;
       setIsDrawing(false);
       map.getCanvas().style.cursor = "";
+      const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
       updateMapSource(map, verticesRef.current, true);
+      (map.getSource("snap-line") as maplibregl.GeoJSONSource)?.setData(empty);
+      (map.getSource("cursor-dot") as maplibregl.GeoJSONSource)?.setData(empty);
+      (map.getSource("preview-fill") as maplibregl.GeoJSONSource)?.setData(empty);
       onCompleteRef.current(verticesRef.current);
+    });
+
+    map.on("mousemove", (e: maplibregl.MapMouseEvent) => {
+      if (!isDrawingRef.current) return;
+      const cursor: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      const verts = verticesRef.current;
+      const cursorDotSource = map.getSource("cursor-dot") as maplibregl.GeoJSONSource;
+      const snapLineSource = map.getSource("snap-line") as maplibregl.GeoJSONSource;
+      const previewFillSource = map.getSource("preview-fill") as maplibregl.GeoJSONSource;
+      const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+      // Check if snapping to first vertex
+      let snapping = false;
+      if (verts.length >= 3) {
+        const first = map.project(verts[0] as maplibregl.LngLatLike);
+        const dist = Math.sqrt((first.x - e.point.x) ** 2 + (first.y - e.point.y) ** 2);
+        snapping = dist < 15;
+      }
+
+      // Cursor dot: only show after first vertex is placed, hide when snapping
+      if (verts.length === 0 || snapping) {
+        cursorDotSource?.setData(empty);
+      } else {
+        cursorDotSource?.setData({
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: { type: "Point", coordinates: cursor },
+              properties: {},
+            },
+          ],
+        });
+      }
+
+      // Snap line from last vertex to cursor (or to first vertex when snapping)
+      if (verts.length === 0) {
+        snapLineSource?.setData(empty);
+      } else {
+        const last = verts[verts.length - 1];
+        const target = snapping ? verts[0] : cursor;
+        snapLineSource?.setData({
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: [last, target] },
+              properties: {},
+            },
+          ],
+        });
+      }
+
+      // Preview fill: show shaded polygon when 2+ vertices placed
+      if (verts.length >= 2) {
+        const target = snapping ? verts[0] : cursor;
+        previewFillSource?.setData({
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "Polygon",
+                coordinates: [[...verts, target, verts[0]]],
+              },
+              properties: {},
+            },
+          ],
+        });
+      } else {
+        previewFillSource?.setData(empty);
+      }
     });
 
     return () => {
@@ -176,8 +321,13 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
     setVertexCount(0);
     isDrawingRef.current = true;
     setIsDrawing(true);
+    onClear?.();
     if (mapRef.current) {
+      const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
       updateMapSource(mapRef.current, [], false);
+      (mapRef.current.getSource("snap-line") as maplibregl.GeoJSONSource)?.setData(empty);
+      (mapRef.current.getSource("cursor-dot") as maplibregl.GeoJSONSource)?.setData(empty);
+      (mapRef.current.getSource("preview-fill") as maplibregl.GeoJSONSource)?.setData(empty);
       mapRef.current.getCanvas().style.cursor = "crosshair";
     }
   }, []);
@@ -195,9 +345,9 @@ export default function AreaMap({ onComplete, initialPolygon }: AreaMapProps) {
             ? vertexCount === 0
               ? "Click map to start drawing"
               : vertexCount < 3
-                ? "Click to add more points"
-                : "Double-click to close polygon"
-            : "Polygon complete"}
+              ? "Click to add more points"
+              : "Click first point or double-click to close"
+            : "Area complete"}
         </p>
         {vertexCount > 0 && (
           <Button
