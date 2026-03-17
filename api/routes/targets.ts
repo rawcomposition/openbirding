@@ -1,12 +1,19 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
-import { targetsDb, db } from "../db/index.js";
+import { targetsDb, hasTargetsDb, db } from "../db/index.js";
 import { getEbdCitation } from "../lib/ebird.js";
 
 const LIMIT_DEFAULT = 200;
 
 const targetsRoute = new Hono();
+
+targetsRoute.use(async (c, next) => {
+  if (!hasTargetsDb) {
+    throw new HTTPException(503, { message: "Targets database not available" });
+  }
+  await next();
+});
 
 targetsRoute.get("/species/search", async (c) => {
   try {
@@ -149,7 +156,7 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
     }));
 
     const queryTime = Math.round(performance.now() - startTime);
-    return c.json({ hotspots, citation: getEbdCitation(), queryTime: `${queryTime} ms` });
+    return c.json({ hotspots, citation: await getEbdCitation(), queryTime: `${queryTime} ms` });
   } catch (error) {
     if (error instanceof HTTPException) {
       throw error;

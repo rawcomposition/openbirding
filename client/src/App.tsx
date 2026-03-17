@@ -7,6 +7,7 @@ import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { get } from "./lib/utils";
 import BirdFinder from "@/pages/BirdFinder";
+import Android from "@/pages/Android";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +33,7 @@ function AppContent() {
             <Route path="/" element={<Home />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/bird-finder" element={<BirdFinder />} />
+            <Route path="/android" element={<Android />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </ErrorBoundary>

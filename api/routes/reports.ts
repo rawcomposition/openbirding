@@ -78,7 +78,52 @@ reportsRoute.get("/downloads", async (c) => {
       <td>${d.appPlatform || "-"}</td>
       <td>${d.appEnvironment || "-"}</td>
       <td>${d.userAgent || "-"}</td>
-      <td>${dayjs(d.createdAt).tz("America/Los_Angeles").fromNow()}</td>
+      <td>${dayjs.utc(d.createdAt).fromNow()}</td>
+    </tr>`
+      )
+      .join("")}
+  </table>
+</body>
+</html>`;
+
+  return c.html(html);
+});
+
+reportsRoute.get("/android", async (c) => {
+  const signups = await db
+    .selectFrom("android")
+    .select(["id", "email", "createdAt"])
+    .orderBy("createdAt", "desc")
+    .execute();
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Android Signups</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f5f5f5; }
+    tr:hover { background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h1>Android Signups</h1>
+  <p>Found ${signups.length} signups</p>
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Email</th>
+      <th>Signed Up</th>
+    </tr>
+    ${signups
+      .map(
+        (s) => `
+    <tr>
+      <td>${s.id}</td>
+      <td>${s.email}</td>
+      <td>${dayjs.utc(s.createdAt).fromNow()}</td>
     </tr>`
       )
       .join("")}

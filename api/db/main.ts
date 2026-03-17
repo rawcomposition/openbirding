@@ -1,12 +1,13 @@
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin, sql } from "kysely";
-import type { Pack, Region, Cluster, PackDownload } from "../lib/types.js";
+import type { Pack, Region, Cluster, PackDownload, AndroidNotifySignup } from "../lib/types.js";
 
 export type DatabaseSchema = {
   packs: Pack;
   clusters: Cluster;
   regions: Region;
   packDownloads: PackDownload;
+  android: AndroidNotifySignup;
 };
 
 const mainSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${process.env.SQLITE_FILENAME}`);
@@ -76,6 +77,14 @@ export async function setupDatabase() {
     .addColumn("user_agent", "text")
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .addForeignKeyConstraint("fk_pack_downloads_pack", ["pack_id"], "packs", ["id"], (cb) => cb.onDelete("cascade"))
+    .execute();
+
+  await db.schema
+    .createTable("android")
+    .ifNotExists()
+    .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
+    .addColumn("email", "text", (c) => c.notNull().unique())
+    .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
   // Setup FTS5 for regions search

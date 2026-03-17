@@ -4,6 +4,7 @@ import { getHotspotsForRegion } from "../lib/ebird.js";
 import db from "../db/index.js";
 const packsRoute = new Hono();
 
+// Legacy route
 packsRoute.get("/", async (c) => {
   try {
     const packs = await db
@@ -30,6 +31,7 @@ packsRoute.get("/", async (c) => {
   }
 });
 
+// Legacy route
 packsRoute.get("/:id", async (c) => {
   try {
     const packId = c.req.param("id");

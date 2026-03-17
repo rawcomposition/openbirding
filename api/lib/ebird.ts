@@ -1,4 +1,4 @@
-import { TARGETS_DB_FILENAME } from "./config.js";
+import { getTargetsMetadata } from "../db/targets.js";
 
 type EBirdHotspot = {
   locId: string;
@@ -86,11 +86,7 @@ export const getTaxonomy = async (): Promise<TaxonomyEntry[]> => {
   }));
 };
 
-export const getEbdCitation = () => {
-  const targetsDbMatch = TARGETS_DB_FILENAME.match(/^targets-(.+)-(\d{4})\.db$/);
-  const rawMonth = targetsDbMatch?.[1] ?? "mar";
-  const rawYear = targetsDbMatch?.[2] ?? "2025";
-  const ebdMonth = `${rawMonth.charAt(0).toUpperCase()}${rawMonth.slice(1).toLowerCase()}`;
-  const ebdYear = rawYear;
-  return `eBird Basic Dataset. Version: EBD_rel${ebdMonth}-${ebdYear}. Cornell Lab of Ornithology, Ithaca, New York. ${ebdMonth} ${ebdYear}.`;
+export const getEbdCitation = async () => {
+  const { versionMonth, versionYear } = await getTargetsMetadata();
+  return `eBird Basic Dataset. Version: EBD_rel${versionMonth}-${versionYear}. Cornell Lab of Ornithology, Ithaca, New York. ${versionMonth} ${versionYear}.`;
 };

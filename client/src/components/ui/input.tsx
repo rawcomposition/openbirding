@@ -26,12 +26,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <Label htmlFor={inputId} className="text-slate-700">
             {label}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="text-red-500">*</span>}
           </Label>
         )}
         <div className="relative">
           {icon && <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">{icon}</div>}
-          <input type={type} id={inputId} className={cn(inputClasses, icon && "pl-10")} ref={ref} {...props} />
+          <input type={type} id={inputId} className={cn(inputClasses, icon && "pl-10")} ref={ref} required={required} {...props} />
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>

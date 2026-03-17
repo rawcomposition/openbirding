@@ -67,6 +67,18 @@ export type TargetSpecies = {
   taxonOrder: number;
 };
 
+export type AndroidNotifySignup = {
+  id: Generated<number>;
+  email: string;
+  createdAt: Generated<string>;
+};
+
+export type TargetMetadata = {
+  version: string;
+  versionMonth: string;
+  versionYear: string;
+};
+
 export type TargetHotspot = {
   id: string;
   name: string;

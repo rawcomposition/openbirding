@@ -1,4 +1,4 @@
-import { Bird, MapPin, Download, Bookmark, Mail } from "lucide-react";
+import { Bird, MapPin, Download, Bookmark, Mail, Sunrise, Star, Navigation } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PhoneScreenshot from "@/components/PhoneScreenshot";
 import AppStore from "@/components/AppStore";
@@ -32,7 +32,7 @@ const Home2 = () => {
               <p className="text-lg text-slate-600 mb-8 max-w-xl mx-auto lg:mx-0">
                 Whether traveling or birding close to home, OpenBirding makes it easy to find new birding locations.
               </p>
-              <div className="flex justify-center lg:justify-start">
+              <div className="flex flex-col items-center lg:items-start gap-3">
                 <a
                   href="https://apps.apple.com/us/app/openbirding/id6755897167"
                   target="_blank"
@@ -40,12 +40,18 @@ const Home2 = () => {
                 >
                   <AppStore className="w-[170px] h-auto" />
                 </a>
+                <p className="text-sm text-slate-500">
+                  Android user?{" "}
+                  <Link to="/android" className="text-emerald-600 hover:text-emerald-700 font-medium underline underline-offset-2">
+                    Get notified when it's available
+                  </Link>
+                </p>
               </div>
             </div>
 
             <div className="relative justify-center lg:justify-end hidden lg:flex">
               <PhoneScreenshot
-                src="/screenshot1.jpg"
+                src="/screenshot1-2.jpg"
                 alt="Screenshot of the OpenBirding app showing a color-coded hotspots on a map"
               />
             </div>
@@ -64,11 +70,14 @@ const Home2 = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {[
               {
-                src: "/screenshot1.jpg",
-                alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map",
+                src: "/screenshot2-2.jpg",
+                alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map with a hotspot detail dialog open",
               },
-              { src: "/screenshot2.jpg", alt: "Screenshot of the OpenBirding app showing the hotspot details dialog" },
-              { src: "/screenshot3.jpg", alt: "Screenshot of the OpenBirding app showing the pack download page" },
+              {
+                src: "/screenshot3-2.jpg",
+                alt: "Screenshot of the OpenBirding app showing a hotspot detail dialog open with the list of target bird species for the hotspot",
+              },
+              { src: "/screenshot4-2.jpg", alt: "Screenshot of the OpenBirding app showing a list of nearby hotspots" },
             ].map((screenshot, index) => (
               <div key={index} className="relative flex justify-center">
                 <PhoneScreenshot src={screenshot.src} alt={screenshot.alt} phoneClassName="drop-shadow-2xl" />
@@ -84,7 +93,6 @@ const Home2 = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Features</h2>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               Everything you need to discover and explore birding hotspots.
-              <br /> More features coming soon!
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -116,8 +124,10 @@ const Home2 = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-slate-700 text-base leading-relaxed">
-                  Download hotspots in packs so they can be accessed offline. Note that base maps still require an
-                  internet connection unless previously loaded for that area.
+                  Download hotspots in packs so they can be accessed offline.
+                  <p className="text-slate-700 text-xs leading-relaxed mt-2 italic">
+                    Base maps still require an internet connection unless previously loaded for that area.
+                  </p>
                 </CardDescription>
               </CardContent>
             </Card>
@@ -128,12 +138,64 @@ const Home2 = () => {
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <Bookmark className="h-6 w-6 text-emerald-600" />
                   </div>
-                  <CardTitle className="text-slate-900 text-xl">Save Your Favorites</CardTitle>
+                  <CardTitle className="text-slate-900 text-xl">Target Bird Species</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-slate-700 text-base leading-relaxed">
-                  Save hotspots that you want to quickly find later for easy access to your favorite birding locations.
+                  Import your eBird life list to see target bird species for each hotspot, no internet connection
+                  required.
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+            <Card className="bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Sunrise className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-slate-900 text-xl">Sunrise & Sunset Times</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-slate-700 text-base leading-relaxed">
+                  View sunrise and sunset times based on your current location.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Star className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-slate-900 text-xl">Save Locations</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-slate-700 text-base leading-relaxed">
+                  Save hotspots or custom locations with notes for quick access to your favorite birding spots.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Navigation className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-slate-900 text-xl">Get Directions</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-slate-700 text-base leading-relaxed">
+                  Quickly get directions to any location using your preferred navigation app — Google Maps, Apple Maps,
+                  Waze, or Organic Maps.
                 </CardDescription>
               </CardContent>
             </Card>
