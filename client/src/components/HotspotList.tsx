@@ -92,26 +92,29 @@ const HotspotList = ({ hotspots, total, showDistance, isLoading }: Props) => {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="h-5 w-5 bg-slate-200 rounded animate-pulse"></div>
-                        <div className="h-4 bg-slate-200 rounded w-40 animate-pulse"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-slate-200 rounded w-40 animate-pulse"></div>
+                          <div className="h-3 bg-slate-200 rounded w-24 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 bg-slate-200 rounded w-12 animate-pulse"></div>
+                        <div className="h-3 bg-slate-200 rounded w-28 animate-pulse"></div>
                       </div>
                     </td>
                     <td className="p-4 w-0 whitespace-nowrap">
-                      <div className="h-4 bg-slate-200 rounded w-8 animate-pulse"></div>
-                    </td>
-                    <td className="p-4">
-                      <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
-                    </td>
-                    <td className="p-4 w-0 whitespace-nowrap">
-                      <div className="h-4 bg-slate-200 rounded w-12 animate-pulse"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
+                      </div>
                     </td>
                     {showDistance && (
                       <td className="p-4 w-0 whitespace-nowrap">
                         <div className="h-4 bg-slate-200 rounded w-16 animate-pulse"></div>
                       </td>
                     )}
-                    <td className="p-4 w-0 whitespace-nowrap">
-                      <div className="h-4 bg-slate-200 rounded w-20 animate-pulse"></div>
-                    </td>
                   </tr>
                 ))}
               </>
