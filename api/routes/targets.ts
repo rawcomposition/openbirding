@@ -8,6 +8,13 @@ const LIMIT_DEFAULT = 200;
 
 const targetsRoute = new Hono();
 
+targetsRoute.use(async (c, next) => {
+  if (!targetsDb) {
+    throw new HTTPException(503, { message: "Targets database not available" });
+  }
+  await next();
+});
+
 targetsRoute.get("/species/search", async (c) => {
   try {
     const query = c.req.query("q");
