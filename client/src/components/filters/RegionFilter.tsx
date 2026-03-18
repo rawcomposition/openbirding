@@ -43,8 +43,9 @@ export function RegionFilter() {
       onClear={handleClear}
       open={open}
       onOpenChange={setOpen}
+      contentClassName="min-w-0 w-[95vw] max-w-[420px]"
     >
-      <Tabs defaultValue={defaultTab} className="w-[420px]">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full mx-auto">
           <TabsTrigger value="region" className="flex-1">Region</TabsTrigger>
           <TabsTrigger value="area" className="flex-1">Custom Area</TabsTrigger>
@@ -62,6 +63,7 @@ export function RegionFilter() {
             <AreaMap
               onComplete={handlePolygonComplete}
               onClear={() => setCustomArea(null)}
+              onRequestClose={() => setOpen(false)}
               initialPolygon={customArea?.polygon ?? null}
             />
           </div>

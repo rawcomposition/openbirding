@@ -11,6 +11,7 @@ type FilterButtonProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  contentClassName?: string;
 };
 
 export function FilterButton({
@@ -21,6 +22,7 @@ export function FilterButton({
   open,
   onOpenChange,
   className,
+  contentClassName,
 }: FilterButtonProps) {
   const hasValue = value != null && value !== "";
 
@@ -58,7 +60,11 @@ export function FilterButton({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="p-0 w-auto min-w-[280px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent
+        align="start"
+        className={cn("p-0 w-auto min-w-[280px]", contentClassName)}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         {children}
       </PopoverContent>
     </Popover>
