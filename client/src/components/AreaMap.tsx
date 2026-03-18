@@ -12,6 +12,9 @@ type AreaMapProps = {
 };
 
 const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+// MapLibre doesn't support oklch, so we hardcode hex (emerald-600)
+const MAP_COLOR = "#059669";
+
 
 function updateMapSource(map: maplibregl.Map, vertices: [number, number][], closed: boolean) {
   const features: GeoJSON.Feature[] = [];
@@ -111,8 +114,8 @@ export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMap
         source: "draw-polygon",
         filter: ["==", "$type", "Polygon"],
         paint: {
-          "fill-color": "#10b981",
-          "fill-opacity": 0.15,
+          "fill-color": MAP_COLOR,
+          "fill-opacity": 0.3,
         },
       });
 
@@ -121,8 +124,8 @@ export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMap
         type: "line",
         source: "draw-polygon",
         paint: {
-          "line-color": "#10b981",
-          "line-width": 2,
+          "line-color": MAP_COLOR,
+          "line-width": 3,
         },
       });
 
@@ -133,7 +136,7 @@ export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMap
         filter: ["==", "$type", "Point"],
         paint: {
           "circle-radius": 5,
-          "circle-color": "#10b981",
+          "circle-color": MAP_COLOR,
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 2,
         },
@@ -149,8 +152,8 @@ export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMap
         type: "line",
         source: "snap-line",
         paint: {
-          "line-color": "#10b981",
-          "line-width": 2,
+          "line-color": MAP_COLOR,
+          "line-width": 3,
           "line-dasharray": [2, 2],
         },
       });
@@ -165,8 +168,8 @@ export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMap
         type: "fill",
         source: "preview-fill",
         paint: {
-          "fill-color": "#10b981",
-          "fill-opacity": 0.1,
+          "fill-color": MAP_COLOR,
+          "fill-opacity": 0.2,
         },
       });
 
@@ -181,7 +184,7 @@ export default function AreaMap({ onComplete, onClear, initialPolygon }: AreaMap
         source: "cursor-dot",
         paint: {
           "circle-radius": 5,
-          "circle-color": "#10b981",
+          "circle-color": MAP_COLOR,
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 2,
         },

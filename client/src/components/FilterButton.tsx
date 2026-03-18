@@ -58,7 +58,7 @@ export function FilterButton({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="p-0 w-auto min-w-[280px]">
+      <PopoverContent align="start" className="p-0 w-auto min-w-[280px]" onOpenAutoFocus={(e) => e.preventDefault()}>
         {children}
       </PopoverContent>
     </Popover>

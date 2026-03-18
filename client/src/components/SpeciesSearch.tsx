@@ -115,75 +115,28 @@ export default function SpeciesSearch({ pill, ...props }: SearchProps) {
 
   return (
     <AsyncSelect
-      styles={{
-        input: (base) => ({
-          ...base,
-          outline: "none",
-          "input:focus": { boxShadow: "none" },
-        }),
-        singleValue: (base) => ({
-          ...base,
-          color: "#1e293b",
-          fontWeight: "normal",
-        }),
-        control: (base) => ({
-          ...base,
-          borderRadius: pill ? "50px" : "8px",
-          fontSize: "18px",
-          fontWeight: "normal",
-          padding: "0.5rem",
-          paddingLeft: pill ? "1rem" : "0.5rem",
-          border: "solid 1px #cbd5e1",
-          borderColor: "#cbd5e1 !important",
-          outline: "none",
-          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-          backgroundColor: "#ffffff",
-        }),
-        valueContainer: (base) => ({
-          ...base,
-          paddingLeft: "2rem",
-        }),
-        indicatorSeparator: () => ({
-          display: "none",
-        }),
-        menu: (base) => ({
-          ...base,
-          backgroundColor: "#ffffff",
-          border: "1px solid #cbd5e1",
-          borderRadius: "8px",
-          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-        }),
-        menuList: (base) => ({
-          ...base,
-          padding: "4px",
-        }),
-        option: (base, state) => ({
-          ...base,
-          backgroundColor: state.isFocused ? "#f1f5f9" : "transparent",
-          color: "#1e293b",
-          textAlign: "left",
-          padding: "8px 12px",
-          borderRadius: "4px",
-          cursor: "pointer",
-          "&:hover": {
-            backgroundColor: "#f1f5f9",
-          },
-        }),
-        placeholder: (base) => ({
-          ...base,
-          color: "#64748b",
-          textAlign: "left",
-        }),
-        noOptionsMessage: (base) => ({
-          ...base,
-          color: "#64748b",
-          textAlign: "left",
-        }),
-        loadingMessage: (base) => ({
-          ...base,
-          color: "#64748b",
-          textAlign: "left",
-        }),
+      unstyled
+      classNames={{
+        control: (state) =>
+          `${pill ? "rounded-full pl-4" : "rounded-lg pl-2"} text-lg font-normal p-3 border bg-white shadow-xs ${
+            state.isFocused
+              ? "border-emerald-500 ring-2 ring-emerald-500/25"
+              : "border-slate-300"
+          }`,
+        valueContainer: () => "pl-8",
+        singleValue: () => "text-slate-900 font-normal",
+        input: () => "text-slate-900",
+        placeholder: () => "text-slate-500 text-left",
+        clearIndicator: (state) =>
+          state.isFocused ? "opacity-60 hover:opacity-100" : "opacity-30 hover:opacity-60",
+        menu: () => "mt-1 bg-white border border-slate-300 rounded-lg shadow-lg",
+        menuList: () => "p-1",
+        option: (state) =>
+          `text-left text-slate-900 px-3 py-2 rounded cursor-pointer ${
+            state.isFocused ? "bg-slate-100" : ""
+          }`,
+        noOptionsMessage: () => "text-slate-500 text-left p-2",
+        loadingMessage: () => "text-slate-500 text-left p-2",
       }}
       inputId="species-search"
       instanceId="species-search"
