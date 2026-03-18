@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +9,14 @@ import { RegionFilter } from "@/components/filters/RegionFilter";
 import { MonthFilter } from "@/components/filters/MonthFilter";
 import { MinObservationsFilter } from "@/components/filters/MinObservationsFilter";
 import { useBirdFinderStore } from "@/stores/birdFinderStore";
+import { pointInPolygon } from "@/lib/geo";
 import type { TargetHotspot } from "@/lib/types";
 
 const BirdFinder = () => {
   useEffect(() => {
     document.title = "Bird Finder | OpenBirding";
   }, []);
-  const { species, month, minObservations, region } = useBirdFinderStore();
+  const { species, month, minObservations, region, customArea } = useBirdFinderStore();
 
   const buildQueryUrl = () => {
     const params = new URLSearchParams();
@@ -28,6 +29,10 @@ const BirdFinder = () => {
     if (region?.regionCode) {
       params.set("region", region.regionCode);
     }
+    if (customArea) {
+      const { minLng, minLat, maxLng, maxLat } = customArea.bbox;
+      params.set("bbox", `${minLng},${minLat},${maxLng},${maxLat}`);
+    }
     const queryString = params.toString();
     return `/targets/hotspots/${species?.code}${queryString ? `?${queryString}` : ""}`;
   };
@@ -37,6 +42,12 @@ const BirdFinder = () => {
     enabled: !!species?.code,
     refetchOnWindowFocus: false,
   });
+
+  const filteredHotspots = useMemo(() => {
+    if (!data?.hotspots) return [];
+    if (!customArea) return data.hotspots;
+    return data.hotspots.filter((h) => pointInPolygon([h.lng, h.lat], customArea.polygon));
+  }, [data?.hotspots, customArea]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -66,10 +77,10 @@ const BirdFinder = () => {
             <p className="text-slate-700 text-center">Search for a species to find the best hotspots</p>
           </CardContent>
         </Card>
-      ) : data?.hotspots && data.hotspots.length > 0 ? (
+      ) : filteredHotspots.length > 0 ? (
         <>
-          <HotspotList hotspots={data.hotspots} total={data.hotspots.length} isLoading={isLoadingHotspots} />
-          {data.citation && <p className="mt-6 text-xs text-slate-500 max-w-2xl">{data.citation}</p>}
+          <HotspotList hotspots={filteredHotspots} total={filteredHotspots.length} isLoading={isLoadingHotspots} />
+          {data?.citation && <p className="mt-6 text-xs text-slate-500 max-w-2xl">{data.citation}</p>}
         </>
       ) : isLoadingHotspots ? (
         <HotspotList hotspots={[]} isLoading={isLoadingHotspots} />

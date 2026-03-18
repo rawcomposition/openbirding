@@ -105,79 +105,27 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
 
   return (
     <AsyncSelect
-      styles={{
-        input: (base) => ({
-          ...base,
-          outline: "none",
-          "input:focus": { boxShadow: "none" },
-        }),
-        singleValue: (base) => ({
-          ...base,
-          color: "#1e293b",
-        }),
-        control: (base) => ({
-          ...base,
-          borderRadius: "6px",
-          fontSize: "14px",
-          minHeight: "36px",
-          border: "solid 1px #e2e8f0",
-          borderColor: "#e2e8f0 !important",
-          outline: "none",
-          boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-          backgroundColor: "#ffffff",
-        }),
-        valueContainer: (base) => ({
-          ...base,
-          padding: "0 8px",
-        }),
-        indicatorSeparator: () => ({
-          display: "none",
-        }),
-        indicatorsContainer: (base) => ({
-          ...base,
-          height: "34px",
-        }),
-        menu: (base) => ({
-          ...base,
-          backgroundColor: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "6px",
-          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-          zIndex: 50,
-        }),
-        menuList: (base) => ({
-          ...base,
-          padding: "4px",
-        }),
-        option: (base, state) => ({
-          ...base,
-          backgroundColor: state.isFocused ? "#f1f5f9" : "transparent",
-          color: "#1e293b",
-          textAlign: "left",
-          padding: "8px 12px",
-          borderRadius: "4px",
-          cursor: "pointer",
-          "&:hover": {
-            backgroundColor: "#f1f5f9",
-          },
-        }),
-        placeholder: (base) => ({
-          ...base,
-          color: "#94a3b8",
-          textAlign: "left",
-        }),
-        noOptionsMessage: (base) => ({
-          ...base,
-          color: "#64748b",
-          textAlign: "left",
-          fontSize: "14px",
-        }),
-        loadingMessage: (base) => ({
-          ...base,
-          color: "#64748b",
-          textAlign: "left",
-          fontSize: "14px",
-        }),
+      unstyled
+      classNames={{
+        control: (state) =>
+          `rounded-md text-sm min-h-[36px] border bg-white shadow-xs px-2 ${
+            state.isFocused
+              ? "border-emerald-500 ring-2 ring-emerald-500/25"
+              : "border-slate-200"
+          }`,
+        valueContainer: () => "gap-1",
+        singleValue: () => "text-slate-900",
+        input: () => "text-slate-900",
+        placeholder: () => "text-slate-400 text-left",
+        indicatorsContainer: () => "h-[34px]",
+        menu: () => "mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50",
+        menuList: () => "p-1",
+        option: (state) =>
+          `text-left text-slate-900 px-3 py-2 rounded cursor-pointer ${
+            state.isFocused ? "bg-slate-100" : ""
+          }`,
+        noOptionsMessage: () => "text-slate-500 text-left text-sm p-2",
+        loadingMessage: () => "text-slate-500 text-left text-sm p-2",
       }}
       inputId="region-search"
       instanceId="region-search"
@@ -195,6 +143,7 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
       onChange={onSelectChange}
       menuIsOpen={inputValue.length >= 2 ? undefined : false}
       escapeClearsValue
+      autoFocus
     />
   );
 }
