@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/support",
+      "destination": "https://ko-fi.com/rawcomposition",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
