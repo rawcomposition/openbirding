@@ -34,20 +34,20 @@ const BirdFinder = () => {
       params.set("bbox", `${minLng},${minLat},${maxLng},${maxLat}`);
     }
     const queryString = params.toString();
-    return `/targets/hotspots/${species?.code}${queryString ? `?${queryString}` : ""}`;
+    return `/hotspots/species/${species?.code}${queryString ? `?${queryString}` : ""}`;
   };
 
-  const { data, isLoading: isLoadingHotspots } = useQuery<{ hotspots: TargetHotspot[]; citation?: string }>({
+  const { data, isLoading: isLoadingHotspots } = useQuery<{ items: TargetHotspot[]; citation?: string }>({
     queryKey: [buildQueryUrl()],
     enabled: !!species?.code,
     refetchOnWindowFocus: false,
   });
 
   const filteredHotspots = useMemo(() => {
-    if (!data?.hotspots) return [];
-    if (!customArea) return data.hotspots;
-    return data.hotspots.filter((h) => pointInPolygon([h.lng, h.lat], customArea.polygon));
-  }, [data?.hotspots, customArea]);
+    if (!data?.items) return [];
+    if (!customArea) return data.items;
+    return data.items.filter((h) => pointInPolygon([h.lng, h.lat], customArea.polygon));
+  }, [data?.items, customArea]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">

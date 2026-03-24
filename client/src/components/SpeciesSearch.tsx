@@ -73,7 +73,7 @@ export default function SpeciesSearch({ pill, ...props }: SearchProps) {
 
   const searchSpecies = async (searchTerm: string): Promise<Option[]> => {
     try {
-      const data = (await get("/targets/species/search", { q: searchTerm })) as { species: Species[] };
+      const data = (await get("/species/search", { q: searchTerm })) as { species: Species[] };
 
       return data.species.map((species) => ({
         value: species.code,
