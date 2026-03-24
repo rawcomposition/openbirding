@@ -226,11 +226,11 @@ targetsRoute.get("/region-species", async (c) => {
     const regionIdSubquery = sql`SELECT id FROM regions WHERE ${regionConditions}`;
     const monthList = months ? sql.join(months.map((m) => sql`${m}`), sql`, `) : null;
     const obsExpr = monthList
-      ? sql`SUM(CASE WHEN month IN (${monthList}) THEN obs ELSE 0 END)`
-      : sql`SUM(obs)`;
+      ? sql`SUM(CASE WHEN rmo.month IN (${monthList}) THEN rmo.obs ELSE 0 END)`
+      : sql`SUM(rmo.obs)`;
     const samplesExpr = monthList
-      ? sql`SUM(CASE WHEN month IN (${monthList}) THEN samples ELSE 0 END)`
-      : sql`SUM(samples)`;
+      ? sql`SUM(CASE WHEN rms.month IN (${monthList}) THEN rms.samples ELSE 0 END)`
+      : sql`SUM(rms.samples)`;
 
     const [speciesResult, totalsResult] = await Promise.all([
       sql<{ code: string; name: string; obs: number; samples: number; obsYear: number; samplesYear: number }>`
@@ -239,30 +239,25 @@ targetsRoute.get("/region-species", async (c) => {
           s.name,
           ${obsExpr} AS obs,
           ${samplesExpr} AS samples,
-          SUM(obs) AS "obsYear",
-          SUM(samples) AS "samplesYear"
-        FROM region_month_obs
-        JOIN species s ON s.id = species_id
-        WHERE region_id IN (${regionIdSubquery})
-        GROUP BY species_id
+          SUM(rmo.obs) AS "obsYear",
+          SUM(rms.samples) AS "samplesYear"
+        FROM region_month_obs rmo
+        JOIN region_month_samples rms ON rms.region_id = rmo.region_id AND rms.month = rmo.month
+        JOIN species s ON s.id = rmo.species_id
+        WHERE rmo.region_id IN (${regionIdSubquery})
+        GROUP BY rmo.species_id
         HAVING ${obsExpr} > 0
         ORDER BY (${obsExpr} * 1.0 / ${samplesExpr}) DESC, ${obsExpr} DESC, s.taxon_order ASC
       `.execute(targetsDb),
 
-      // Total checklists per region+month. Uses MAX across species because every
-      // species row within the same region+month shares the same sample count.
       sql<{ samples: number; samplesYear: number }>`
         SELECT
           ${monthList
-            ? sql`SUM(CASE WHEN t.month IN (${monthList}) THEN t.samples ELSE 0 END)`
-            : sql`SUM(t.samples)`} AS samples,
-          SUM(t.samples) AS "samplesYear"
-        FROM (
-          SELECT region_id, month, MAX(samples) AS samples
-          FROM region_month_obs
-          WHERE region_id IN (${regionIdSubquery})
-          GROUP BY region_id, month
-        ) t
+            ? sql`SUM(CASE WHEN month IN (${monthList}) THEN samples ELSE 0 END)`
+            : sql`SUM(samples)`} AS samples,
+          SUM(samples) AS "samplesYear"
+        FROM region_month_samples
+        WHERE region_id IN (${regionIdSubquery})
       `.execute(targetsDb),
     ]);
 

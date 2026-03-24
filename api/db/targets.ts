@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { CamelCasePlugin, Kysely, SqliteDialect } from "kysely";
 import { TARGETS_DB_FILENAME } from "../lib/config.js";
-import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies, TargetMetadata, TargetRegion, RegionMonthObs } from "../lib/types.js";
+import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies, TargetMetadata, TargetRegion, RegionMonthObs, RegionMonthSamples } from "../lib/types.js";
 
 export type TargetsDatabaseSchema = {
   hotspots: TargetHotspot;
@@ -11,6 +11,7 @@ export type TargetsDatabaseSchema = {
   metadata: TargetMetadata;
   regions: TargetRegion;
   regionMonthObs: RegionMonthObs;
+  regionMonthSamples: RegionMonthSamples;
 };
 
 const unavailableTargetsDb = new Proxy({} as Kysely<TargetsDatabaseSchema>, {

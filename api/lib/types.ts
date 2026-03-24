@@ -89,6 +89,11 @@ export type RegionMonthObs = {
   month: number;
   speciesId: number;
   obs: number;
+};
+
+export type RegionMonthSamples = {
+  regionId: number;
+  month: number;
   samples: number;
 };
 
