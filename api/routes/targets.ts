@@ -223,6 +223,7 @@ targetsRoute.get("/region-species", async (c) => {
     }
 
     const regionConditions = buildRegionConditions(regionCodes);
+    const regionIdSubquery = sql`SELECT id FROM regions WHERE ${regionConditions}`;
     const monthList = months ? sql.join(months.map((m) => sql`${m}`), sql`, `) : null;
     const obsExpr = monthList
       ? sql`SUM(CASE WHEN month IN (${monthList}) THEN obs ELSE 0 END)`
@@ -230,52 +231,36 @@ targetsRoute.get("/region-species", async (c) => {
     const samplesExpr = monthList
       ? sql`SUM(CASE WHEN month IN (${monthList}) THEN samples ELSE 0 END)`
       : sql`SUM(samples)`;
-    const obsHavingExpr = monthList
-      ? sql`SUM(CASE WHEN month IN (${monthList}) THEN obs ELSE 0 END)`
-      : sql`SUM(obs)`;
 
     const [speciesResult, totalsResult] = await Promise.all([
       sql<{ code: string; name: string; obs: number; samples: number; obsYear: number; samplesYear: number }>`
-        WITH agg AS (
-          SELECT
-            species_id AS "speciesId",
-            ${obsExpr} AS obs,
-            ${samplesExpr} AS samples,
-            SUM(obs) AS "obsYear",
-            SUM(samples) AS "samplesYear"
-          FROM region_month_obs
-          WHERE region_id IN (
-            SELECT id
-            FROM regions
-            WHERE ${regionConditions}
-          )
-          GROUP BY species_id
-          HAVING ${obsHavingExpr} > 0
-        )
         SELECT
           s.code,
           s.name,
-          agg.obs,
-          agg.samples,
-          agg."obsYear",
-          agg."samplesYear"
-        FROM agg
-        JOIN species s ON s.id = agg."speciesId"
-        ORDER BY (agg.obs * 1.0 / agg.samples) DESC, agg.obs DESC, s.taxon_order ASC
+          ${obsExpr} AS obs,
+          ${samplesExpr} AS samples,
+          SUM(obs) AS "obsYear",
+          SUM(samples) AS "samplesYear"
+        FROM region_month_obs
+        JOIN species s ON s.id = species_id
+        WHERE region_id IN (${regionIdSubquery})
+        GROUP BY species_id
+        HAVING ${obsExpr} > 0
+        ORDER BY (${obsExpr} * 1.0 / ${samplesExpr}) DESC, ${obsExpr} DESC, s.taxon_order ASC
       `.execute(targetsDb),
 
+      // Total checklists per region+month. Uses MAX across species because every
+      // species row within the same region+month shares the same sample count.
       sql<{ samples: number; samplesYear: number }>`
         SELECT
-          ${monthList ? sql`SUM(CASE WHEN t.month IN (${monthList}) THEN t.samples ELSE 0 END)` : sql`SUM(t.samples)`} AS samples,
+          ${monthList
+            ? sql`SUM(CASE WHEN t.month IN (${monthList}) THEN t.samples ELSE 0 END)`
+            : sql`SUM(t.samples)`} AS samples,
           SUM(t.samples) AS "samplesYear"
         FROM (
           SELECT region_id, month, MAX(samples) AS samples
           FROM region_month_obs
-          WHERE region_id IN (
-            SELECT id
-            FROM regions
-            WHERE ${regionConditions}
-          )
+          WHERE region_id IN (${regionIdSubquery})
           GROUP BY region_id, month
         ) t
       `.execute(targetsDb),
