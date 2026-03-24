@@ -186,7 +186,20 @@ function buildRegionConditions(regionCodes: string[]) {
   );
 }
 
-targetsRoute.get("/region-species", async (c) => {
+function parseMonthsParam(rawMonths: string | undefined | null): number[] | null {
+  if (!rawMonths) {
+    return null;
+  }
+
+  const months = [...new Set(rawMonths.split(",").map(Number))].sort((a, b) => a - b);
+  if (months.some((month) => isNaN(month) || month < 1 || month > 12)) {
+    throw new HTTPException(400, { message: "months must be comma-separated values between 1 and 12" });
+  }
+
+  return months;
+}
+
+targetsRoute.get("/region-targets", async (c) => {
   return withTargetsDb(async (targetsDb) => {
     const startTime = performance.now();
     try {
@@ -218,14 +231,7 @@ targetsRoute.get("/region-species", async (c) => {
         }
       }
 
-      const monthsParam = c.req.query("months");
-      let months: number[] | null = null;
-      if (monthsParam) {
-        months = [...new Set(monthsParam.split(",").map(Number))].sort((a, b) => a - b);
-        if (months.some((m) => isNaN(m) || m < 1 || m > 12)) {
-          throw new HTTPException(400, { message: "months must be comma-separated values between 1 and 12" });
-        }
-      }
+      const months = parseMonthsParam(c.req.query("months"));
 
       const regionConditions = buildRegionConditions(regionCodes);
       const regionIdSubquery = sql`SELECT id FROM regions WHERE ${regionConditions}`;
@@ -238,14 +244,12 @@ targetsRoute.get("/region-species", async (c) => {
         : sql`SUM(rms.samples)`;
 
       const [speciesResult, totalsResult] = await Promise.all([
-        sql<{ code: string; name: string; obs: number; samples: number; obsYear: number; samplesYear: number }>`
+        sql<{ code: string; name: string; obs: number; samples: number }>`
           SELECT
             s.code,
             s.name,
             ${obsExpr} AS obs,
-            ${samplesExpr} AS samples,
-            SUM(rmo.obs) AS "obsYear",
-            SUM(rms.samples) AS "samplesYear"
+            ${samplesExpr} AS samples
           FROM region_month_obs rmo
           JOIN region_month_samples rms ON rms.region_id = rmo.region_id AND rms.month = rmo.month
           JOIN species s ON s.id = rmo.species_id
@@ -255,12 +259,11 @@ targetsRoute.get("/region-species", async (c) => {
           ORDER BY (${obsExpr} * 1.0 / ${samplesExpr}) DESC, ${obsExpr} DESC, s.taxon_order ASC
         `.execute(targetsDb),
 
-        sql<{ samples: number; samplesYear: number }>`
+        sql<{ samples: number }>`
           SELECT
             ${monthList
               ? sql`SUM(CASE WHEN month IN (${monthList}) THEN samples ELSE 0 END)`
-              : sql`SUM(samples)`} AS samples,
-            SUM(samples) AS "samplesYear"
+              : sql`SUM(samples)`} AS samples
           FROM region_month_samples
           WHERE region_id IN (${regionIdSubquery})
         `.execute(targetsDb),
@@ -272,10 +275,8 @@ targetsRoute.get("/region-species", async (c) => {
           name: row.name,
           code: row.code,
           frequency: roundFrequency((row.obs / row.samples) * 100),
-          frequencyYear: roundFrequency((row.obsYear / row.samplesYear) * 100),
         })),
         samples: totals?.samples ?? 0,
-        samplesYear: totals?.samplesYear ?? 0,
       };
 
       const queryTime = Math.round(performance.now() - startTime);
@@ -287,7 +288,7 @@ targetsRoute.get("/region-species", async (c) => {
       if (error instanceof HTTPException) {
         throw error;
       }
-      console.error("Region species error:", error);
+      console.error("Region targets error:", error);
       throw new HTTPException(500, {
         message: error instanceof Error ? error.message : "Internal Server Error",
       });
@@ -295,7 +296,7 @@ targetsRoute.get("/region-species", async (c) => {
   });
 });
 
-targetsRoute.get("/hotspot-species/:locationId", async (c) => {
+targetsRoute.get("/hotspot-targets/:locationId", async (c) => {
   return withTargetsDb(async (targetsDb) => {
     try {
       const locationId = c.req.param("locationId");
@@ -334,7 +335,7 @@ targetsRoute.get("/hotspot-species/:locationId", async (c) => {
 
       const species = [...speciesByCode.entries()].map(([code, monthObs]) => [code, ...monthObs]);
 
-      return c.json({ v: 1, samples, species });
+      return c.json({ id: locationId, samples, species });
     } catch (error) {
       if (error instanceof HTTPException) {
         throw error;
