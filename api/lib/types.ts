@@ -79,6 +79,19 @@ export type TargetMetadata = {
   versionYear: string;
 };
 
+export type TargetRegion = {
+  id: number;
+  code: string;
+};
+
+export type RegionMonthObs = {
+  regionId: number;
+  month: number;
+  speciesId: number;
+  obs: number;
+  samples: number;
+};
+
 export type TargetHotspot = {
   id: string;
   name: string;

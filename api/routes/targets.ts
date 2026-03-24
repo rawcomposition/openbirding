@@ -5,6 +5,7 @@ import { targetsDb, hasTargetsDb, db } from "../db/index.js";
 import { getEbdCitation } from "../lib/ebird.js";
 
 const LIMIT_DEFAULT = 200;
+const REGION_CODE_RE = /^[A-Z]{2}(?:-[A-Z0-9]{1,3}){0,2}$/;
 
 const targetsRoute = new Hono();
 
@@ -162,6 +163,146 @@ targetsRoute.get("/hotspots/:speciesCode", async (c) => {
       throw error;
     }
     console.error("Targets hotspots error:", error);
+    throw new HTTPException(500, {
+      message: error instanceof Error ? error.message : "Internal Server Error",
+    });
+  }
+});
+
+function roundFrequency(pct: number): number {
+  if (pct >= 1) return Math.round(pct);
+  if (pct >= 0.1) return Math.round(pct * 10) / 10;
+  return Math.round(pct * 100) / 100;
+}
+
+function buildRegionConditions(regionCodes: string[]) {
+  return sql.join(
+    regionCodes.map((code) => sql`(code = ${code} OR code LIKE ${code + "-%"})`),
+    sql` OR `
+  );
+}
+
+targetsRoute.get("/region-species", async (c) => {
+  const startTime = performance.now();
+  try {
+    const regionsParam = c.req.query("regions");
+    if (!regionsParam) {
+      throw new HTTPException(400, { message: "regions parameter is required" });
+    }
+
+    const rawCodes = regionsParam.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+    if (rawCodes.length === 0) {
+      throw new HTTPException(400, { message: "At least one region code is required" });
+    }
+    if (rawCodes.length > 20) {
+      throw new HTTPException(400, { message: "Maximum 20 region codes allowed" });
+    }
+    if (rawCodes.some((code) => !REGION_CODE_RE.test(code))) {
+      throw new HTTPException(400, {
+        message: "regions must be comma-separated eBird region codes like US, US-CA, or US-CA-065",
+      });
+    }
+
+    // Deduplicate: remove child regions already covered by a parent
+    const sorted = [...new Set(rawCodes)].sort((a, b) => a.length - b.length || a.localeCompare(b));
+    const regionCodes: string[] = [];
+    for (const code of sorted) {
+      const coveredByParent = regionCodes.some((parent) => code.startsWith(parent + "-"));
+      if (!coveredByParent) {
+        regionCodes.push(code);
+      }
+    }
+
+    const monthsParam = c.req.query("months");
+    let months: number[] | null = null;
+    if (monthsParam) {
+      months = [...new Set(monthsParam.split(",").map(Number))].sort((a, b) => a - b);
+      if (months.some((m) => isNaN(m) || m < 1 || m > 12)) {
+        throw new HTTPException(400, { message: "months must be comma-separated values between 1 and 12" });
+      }
+    }
+
+    const regionConditions = buildRegionConditions(regionCodes);
+    const monthList = months ? sql.join(months.map((m) => sql`${m}`), sql`, `) : null;
+    const obsExpr = monthList
+      ? sql`SUM(CASE WHEN month IN (${monthList}) THEN obs ELSE 0 END)`
+      : sql`SUM(obs)`;
+    const samplesExpr = monthList
+      ? sql`SUM(CASE WHEN month IN (${monthList}) THEN samples ELSE 0 END)`
+      : sql`SUM(samples)`;
+    const obsHavingExpr = monthList
+      ? sql`SUM(CASE WHEN month IN (${monthList}) THEN obs ELSE 0 END)`
+      : sql`SUM(obs)`;
+
+    const [speciesResult, totalsResult] = await Promise.all([
+      sql<{ code: string; name: string; obs: number; samples: number; obsYear: number; samplesYear: number }>`
+        WITH agg AS (
+          SELECT
+            species_id AS "speciesId",
+            ${obsExpr} AS obs,
+            ${samplesExpr} AS samples,
+            SUM(obs) AS "obsYear",
+            SUM(samples) AS "samplesYear"
+          FROM region_month_obs
+          WHERE region_id IN (
+            SELECT id
+            FROM regions
+            WHERE ${regionConditions}
+          )
+          GROUP BY species_id
+          HAVING ${obsHavingExpr} > 0
+        )
+        SELECT
+          s.code,
+          s.name,
+          agg.obs,
+          agg.samples,
+          agg."obsYear",
+          agg."samplesYear"
+        FROM agg
+        JOIN species s ON s.id = agg."speciesId"
+        ORDER BY (agg.obs * 1.0 / agg.samples) DESC, agg.obs DESC, s.taxon_order ASC
+      `.execute(targetsDb),
+
+      sql<{ samples: number; samplesYear: number }>`
+        SELECT
+          ${monthList ? sql`SUM(CASE WHEN t.month IN (${monthList}) THEN t.samples ELSE 0 END)` : sql`SUM(t.samples)`} AS samples,
+          SUM(t.samples) AS "samplesYear"
+        FROM (
+          SELECT region_id, month, MAX(samples) AS samples
+          FROM region_month_obs
+          WHERE region_id IN (
+            SELECT id
+            FROM regions
+            WHERE ${regionConditions}
+          )
+          GROUP BY region_id, month
+        ) t
+      `.execute(targetsDb),
+    ]);
+
+    const totals = totalsResult.rows[0];
+    const response = {
+      items: speciesResult.rows.map((row) => ({
+        name: row.name,
+        code: row.code,
+        frequency: roundFrequency((row.obs / row.samples) * 100),
+        frequencyYear: roundFrequency((row.obsYear / row.samplesYear) * 100),
+      })),
+      samples: totals?.samples ?? 0,
+      samplesYear: totals?.samplesYear ?? 0,
+    };
+
+    const queryTime = Math.round(performance.now() - startTime);
+    return c.json({
+      ...response,
+      queryTime: `${queryTime} ms`,
+    });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error("Region species error:", error);
     throw new HTTPException(500, {
       message: error instanceof Error ? error.message : "Internal Server Error",
     });
