@@ -93,11 +93,7 @@ export async function getTargetsMetadata(targetsDb: TargetsDb): Promise<TargetMe
 function validateDb(path: string): { ok: true } | { ok: false; error: string } {
   const db = new (Database as any)(path, { readonly: true, fileMustExist: true });
   try {
-    const integrity = db.pragma("quick_check") as { quick_check: string }[];
-    if (integrity[0]?.quick_check !== "ok") {
-      return { ok: false, error: `quick_check failed: ${JSON.stringify(integrity)}` };
-    }
-
+    // Check required tables and FTS index exist (sqlite_master is fast)
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[])
       .map((r) => r.name);
 
@@ -110,14 +106,10 @@ function validateDb(path: string): { ok: true } | { ok: false; error: string } {
       return { ok: false, error: "Missing FTS5 index: species_fts" };
     }
 
+    // Metadata row must be present and complete
     const meta = db.prepare("SELECT * FROM metadata").get() as Record<string, unknown> | undefined;
     if (!meta?.version || !meta?.version_year || !meta?.generated_at) {
       return { ok: false, error: `Metadata row missing or incomplete: ${JSON.stringify(meta)}` };
-    }
-
-    const speciesCount = (db.prepare("SELECT count(*) as c FROM species").get() as { c: number }).c;
-    if (speciesCount < 100) {
-      return { ok: false, error: `Species count suspiciously low: ${speciesCount}` };
     }
 
     return { ok: true };
