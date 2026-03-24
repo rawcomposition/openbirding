@@ -93,9 +93,9 @@ export async function getTargetsMetadata(targetsDb: TargetsDb): Promise<TargetMe
 function validateDb(path: string): { ok: true } | { ok: false; error: string } {
   const db = new (Database as any)(path, { readonly: true, fileMustExist: true });
   try {
-    const integrity = db.pragma("integrity_check") as { integrity_check: string }[];
-    if (integrity[0]?.integrity_check !== "ok") {
-      return { ok: false, error: `integrity_check failed: ${JSON.stringify(integrity)}` };
+    const integrity = db.pragma("quick_check") as { quick_check: string }[];
+    if (integrity[0]?.quick_check !== "ok") {
+      return { ok: false, error: `quick_check failed: ${JSON.stringify(integrity)}` };
     }
 
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[])
