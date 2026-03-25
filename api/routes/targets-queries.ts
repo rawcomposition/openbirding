@@ -8,7 +8,7 @@ type HotspotsRequestOptions = {
   speciesCode: string;
   region: string | null;
   limit: number;
-  month: number | null;
+  months: number[] | null;
   minObservations: number | null;
   bbox: {
     minLng: number;
@@ -17,6 +17,21 @@ type HotspotsRequestOptions = {
     maxLat: number;
   } | null;
   locationIds: string[] | null;
+};
+
+type HotspotBaseRow = {
+  id: string;
+  name: string;
+  countryCode: string;
+  subnational1Code: string | null;
+  lat: number;
+  lng: number;
+  obs: number;
+  samples: number;
+};
+
+type HotspotScoreRow = HotspotBaseRow & {
+  score: number;
 };
 
 export function roundFrequency(pct: number): number {
@@ -32,67 +47,23 @@ function buildRegionConditions(regionCodes: string[]) {
   );
 }
 
-export async function executeHotspotsQuery(targetsDb: TargetsDb, options: HotspotsRequestOptions) {
-  const startTime = performance.now();
-
+async function resolveSpeciesId(targetsDb: TargetsDb, speciesCode: string) {
   const species = await targetsDb
     .selectFrom("species")
     .select("id")
-    .where("code", "=", options.speciesCode.toLowerCase())
+    .where("code", "=", speciesCode.toLowerCase())
     .executeTakeFirst();
 
   if (!species) {
     throw new HTTPException(404, { message: "Species not found" });
   }
 
-  const obsTable = options.month != null ? "monthObs" : "yearObs";
+  return species.id;
+}
 
-  let query = targetsDb
-    .selectFrom(obsTable)
-    .innerJoin("hotspots", `${obsTable}.locationId`, "hotspots.id")
-    .where(`${obsTable}.speciesId`, "=", species.id)
-    .select([
-      "hotspots.id",
-      "hotspots.name",
-      "hotspots.countryCode",
-      "hotspots.subnational1Code",
-      "hotspots.lat",
-      "hotspots.lng",
-      `${obsTable}.obs`,
-      `${obsTable}.samples`,
-      `${obsTable}.score`,
-    ])
-    .orderBy("score", "desc")
-    .limit(options.limit);
-
-  if (options.month != null) {
-    query = query.where("monthObs.month", "=", options.month);
-  }
-
-  if (options.minObservations != null) {
-    query = query.where(`${obsTable}.obs`, ">=", options.minObservations);
-  }
-
-  if (options.region) {
-    query = query.where("hotspots.regionCode", "like", `${options.region}%`);
-  }
-
-  if (options.locationIds) {
-    query = query.where("hotspots.id", "in", options.locationIds);
-  }
-
-  if (options.bbox) {
-    query = query
-      .where("hotspots.lat", ">=", options.bbox.minLat)
-      .where("hotspots.lat", "<=", options.bbox.maxLat)
-      .where("hotspots.lng", ">=", options.bbox.minLng)
-      .where("hotspots.lng", "<=", options.bbox.maxLng);
-  }
-
-  const rows = await query.execute();
-
+async function loadRegionMap(rows: Array<{ countryCode: string; subnational1Code: string | null }>, region: string | null) {
   let regionMap = new Map<string, string | null>();
-  if (!options.region) {
+  if (!region) {
     const regionCodes = [...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code]))];
     const regions = await db
       .selectFrom("regions")
@@ -101,17 +72,200 @@ export async function executeHotspotsQuery(targetsDb: TargetsDb, options: Hotspo
       .execute();
     regionMap = new Map(regions.map((r) => [r.id, r.longName]));
   }
+  return regionMap;
+}
 
-  const items = rows.map((row) => ({
+function applyHotspotWhereFilters<T>(query: T, options: Pick<HotspotsRequestOptions, "region" | "bbox" | "locationIds">): T {
+  let filteredQuery = query as any;
+
+  if (options.region) {
+    filteredQuery = filteredQuery.where("hotspots.regionCode", "like", `${options.region}%`);
+  }
+
+  if (options.locationIds) {
+    filteredQuery = filteredQuery.where("hotspots.id", "in", options.locationIds);
+  }
+
+  if (options.bbox) {
+    filteredQuery = filteredQuery
+      .where("hotspots.lat", ">=", options.bbox.minLat)
+      .where("hotspots.lat", "<=", options.bbox.maxLat)
+      .where("hotspots.lng", ">=", options.bbox.minLng)
+      .where("hotspots.lng", "<=", options.bbox.maxLng);
+  }
+
+  return filteredQuery;
+}
+
+function mapHotspotRegion(
+  row: Pick<HotspotBaseRow, "countryCode" | "subnational1Code">,
+  regionMap: Map<string, string | null>
+) {
+  return (row.subnational1Code ? regionMap.get(row.subnational1Code) : undefined) || regionMap.get(row.countryCode) || null;
+}
+
+function mapScoredHotspotItems(rows: HotspotScoreRow[], regionMap: Map<string, string | null>) {
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
-    region: regionMap.get(row.subnational1Code) || regionMap.get(row.countryCode) || null,
+    region: mapHotspotRegion(row, regionMap),
     lat: row.lat,
     lng: row.lng,
     score: Math.round(row.score * 1000) / 10,
     frequency: Math.round((row.obs / row.samples) * 1000) / 10,
     samples: row.samples,
   }));
+}
+
+function mapFrequencyHotspotItems(rows: HotspotBaseRow[], regionMap: Map<string, string | null>) {
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    region: mapHotspotRegion(row, regionMap),
+    lat: row.lat,
+    lng: row.lng,
+    frequency: Math.round((row.obs / row.samples) * 1000) / 10,
+    samples: row.samples,
+  }));
+}
+
+async function fetchGetHotspotRows(targetsDb: TargetsDb, speciesId: number, options: HotspotsRequestOptions): Promise<HotspotScoreRow[]> {
+  if (options.months) {
+    const [month] = options.months;
+    let query = targetsDb
+      .selectFrom("monthObs")
+      .innerJoin("hotspots", "monthObs.locationId", "hotspots.id")
+      .where("monthObs.speciesId", "=", speciesId)
+      .where("monthObs.month", "=", month)
+      .select([
+        "hotspots.id",
+        "hotspots.name",
+        "hotspots.countryCode",
+        "hotspots.subnational1Code",
+        "hotspots.lat",
+        "hotspots.lng",
+        "monthObs.obs",
+        "monthObs.samples",
+        "monthObs.score",
+      ])
+      .orderBy("score", "desc")
+      .limit(options.limit);
+
+    if (options.minObservations != null) {
+      query = query.where("monthObs.obs", ">=", options.minObservations);
+    }
+
+    return applyHotspotWhereFilters(query, options).execute();
+  }
+
+  let query = targetsDb
+    .selectFrom("yearObs")
+    .innerJoin("hotspots", "yearObs.locationId", "hotspots.id")
+    .where("yearObs.speciesId", "=", speciesId)
+    .select([
+      "hotspots.id",
+      "hotspots.name",
+      "hotspots.countryCode",
+      "hotspots.subnational1Code",
+      "hotspots.lat",
+      "hotspots.lng",
+      "yearObs.obs",
+      "yearObs.samples",
+      "yearObs.score",
+    ])
+    .orderBy("score", "desc")
+    .limit(options.limit);
+
+  if (options.minObservations != null) {
+    query = query.where("yearObs.obs", ">=", options.minObservations);
+  }
+
+  return applyHotspotWhereFilters(query, options).execute();
+}
+
+async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, options: HotspotsRequestOptions): Promise<HotspotBaseRow[]> {
+  if (options.months) {
+    const monthList = sql.join(options.months.map((month) => sql`${month}`), sql`, `);
+    const obsExpr = sql<number>`SUM(month_obs.obs)`;
+    const samplesExpr = sql<number>`SUM(month_obs.samples)`;
+    const frequencyExpr = sql<number>`(${obsExpr} * 1.0 / ${samplesExpr})`;
+
+    let query = targetsDb
+      .selectFrom("monthObs as month_obs")
+      .innerJoin("hotspots", "month_obs.locationId", "hotspots.id")
+      .where("month_obs.speciesId", "=", speciesId)
+      .where(sql<boolean>`month_obs.month IN (${monthList})`)
+      .select([
+        "hotspots.id",
+        "hotspots.name",
+        "hotspots.countryCode",
+        "hotspots.subnational1Code",
+        "hotspots.lat",
+        "hotspots.lng",
+        obsExpr.as("obs"),
+        samplesExpr.as("samples"),
+      ])
+      .groupBy([
+        "hotspots.id",
+        "hotspots.name",
+        "hotspots.countryCode",
+        "hotspots.subnational1Code",
+        "hotspots.lat",
+        "hotspots.lng",
+      ])
+      .orderBy(frequencyExpr, "desc")
+      .orderBy(obsExpr, "desc")
+      .limit(options.limit);
+
+    if (options.minObservations != null) {
+      query = query.having(obsExpr, ">=", options.minObservations);
+    }
+
+    return applyHotspotWhereFilters(query, options).execute();
+  }
+
+  let query = targetsDb
+    .selectFrom("yearObs as year_obs")
+    .innerJoin("hotspots", "year_obs.locationId", "hotspots.id")
+    .where("year_obs.speciesId", "=", speciesId)
+    .select([
+      "hotspots.id",
+      "hotspots.name",
+      "hotspots.countryCode",
+      "hotspots.subnational1Code",
+      "hotspots.lat",
+      "hotspots.lng",
+      "year_obs.obs",
+      "year_obs.samples",
+    ])
+    .orderBy(sql`(year_obs.obs * 1.0 / year_obs.samples)`, "desc")
+    .orderBy("year_obs.obs", "desc")
+    .limit(options.limit);
+
+  if (options.minObservations != null) {
+    query = query.where("year_obs.obs", ">=", options.minObservations);
+  }
+
+  return applyHotspotWhereFilters(query, options).execute();
+}
+
+export async function executeHotspotsQuery(targetsDb: TargetsDb, options: HotspotsRequestOptions) {
+  const startTime = performance.now();
+  const speciesId = await resolveSpeciesId(targetsDb, options.speciesCode);
+  const rows = await fetchGetHotspotRows(targetsDb, speciesId, options);
+  const regionMap = await loadRegionMap(rows, options.region);
+  const items = mapScoredHotspotItems(rows, regionMap);
+
+  const queryTime = Math.round(performance.now() - startTime);
+  return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
+}
+
+export async function executeHotspotsPostQuery(targetsDb: TargetsDb, options: HotspotsRequestOptions) {
+  const startTime = performance.now();
+  const speciesId = await resolveSpeciesId(targetsDb, options.speciesCode);
+  const rows = await fetchPostHotspotRows(targetsDb, speciesId, options);
+  const regionMap = await loadRegionMap(rows, options.region);
+  const items = mapFrequencyHotspotItems(rows, regionMap);
 
   const queryTime = Math.round(performance.now() - startTime);
   return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
