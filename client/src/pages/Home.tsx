@@ -42,7 +42,10 @@ const Home2 = () => {
                 </a>
                 <p className="text-sm text-slate-500">
                   Android user?{" "}
-                  <Link to="/android" className="text-emerald-600 hover:text-emerald-700 font-medium underline underline-offset-2">
+                  <Link
+                    to="/android"
+                    className="text-emerald-600 hover:text-emerald-700 font-medium underline underline-offset-2"
+                  >
                     Get notified when it's available
                   </Link>
                 </p>
@@ -70,11 +73,11 @@ const Home2 = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {[
               {
-                src: "/screenshot2-2.jpg",
+                src: "/screenshot2-3.jpg",
                 alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map with a hotspot detail dialog open",
               },
               {
-                src: "/screenshot3-2.jpg",
+                src: "/screenshot3-3.jpg",
                 alt: "Screenshot of the OpenBirding app showing a hotspot detail dialog open with the list of target bird species for the hotspot",
               },
               { src: "/screenshot4-2.jpg", alt: "Screenshot of the OpenBirding app showing a list of nearby hotspots" },
