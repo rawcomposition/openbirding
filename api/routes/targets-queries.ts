@@ -24,6 +24,7 @@ type HotspotBaseRow = {
   name: string;
   countryCode: string;
   subnational1Code: string | null;
+  subnational2Code: string | null;
   lat: number;
   lng: number;
   obs: number;
@@ -32,6 +33,11 @@ type HotspotBaseRow = {
 
 type HotspotScoreRow = HotspotBaseRow & {
   score: number;
+};
+
+type RegionInfo = {
+  name: string;
+  longName: string | null;
 };
 
 export function roundFrequency(pct: number): number {
@@ -61,18 +67,16 @@ async function resolveSpeciesId(targetsDb: TargetsDb, speciesCode: string) {
   return species.id;
 }
 
-async function loadRegionMap(rows: Array<{ countryCode: string; subnational1Code: string | null }>, region: string | null) {
-  let regionMap = new Map<string, string | null>();
-  if (!region) {
-    const regionCodes = [...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code]))];
-    const regions = await db
-      .selectFrom("regions")
-      .select(["id", "longName"])
-      .where("id", "in", regionCodes)
-      .execute();
-    regionMap = new Map(regions.map((r) => [r.id, r.longName]));
-  }
-  return regionMap;
+async function loadRegionMap(rows: Array<Pick<HotspotBaseRow, "countryCode" | "subnational1Code" | "subnational2Code">>) {
+  const regionCodes = [
+    ...new Set(rows.flatMap((row) => [row.countryCode, row.subnational1Code, row.subnational2Code]).filter((c): c is string => c != null)),
+  ];
+  const regions = await db
+    .selectFrom("regions")
+    .select(["id", "name", "longName"])
+    .where("id", "in", regionCodes)
+    .execute();
+  return new Map<string, RegionInfo>(regions.map((region) => [region.id, { name: region.name, longName: region.longName }]));
 }
 
 function applyHotspotWhereFilters<T>(query: T, options: Pick<HotspotsRequestOptions, "region" | "bbox" | "locationIds">): T {
@@ -98,17 +102,48 @@ function applyHotspotWhereFilters<T>(query: T, options: Pick<HotspotsRequestOpti
 }
 
 function mapHotspotRegion(
-  row: Pick<HotspotBaseRow, "countryCode" | "subnational1Code">,
-  regionMap: Map<string, string | null>
+  row: Pick<HotspotBaseRow, "countryCode" | "subnational1Code" | "subnational2Code">,
+  regionMap: Map<string, RegionInfo>,
+  selectedRegion: string | null
 ) {
-  return (row.subnational1Code ? regionMap.get(row.subnational1Code) : undefined) || regionMap.get(row.countryCode) || null;
+  const deepestRegionCode = row.subnational2Code || row.subnational1Code || row.countryCode;
+  const deepestRegion = regionMap.get(deepestRegionCode);
+
+  if (!deepestRegion) {
+    return null;
+  }
+
+  if (!selectedRegion) {
+    return deepestRegion.longName || deepestRegion.name;
+  }
+
+  if (deepestRegionCode === selectedRegion) {
+    return null;
+  }
+
+  const breadcrumbParts: string[] = [];
+  let currentRegionCode: string | null = deepestRegionCode;
+
+  while (currentRegionCode && currentRegionCode !== selectedRegion) {
+    const region = regionMap.get(currentRegionCode);
+    if (!region) {
+      return null;
+    }
+
+    breadcrumbParts.push(region.name);
+    currentRegionCode = currentRegionCode.includes("-")
+      ? currentRegionCode.slice(0, currentRegionCode.lastIndexOf("-"))
+      : null;
+  }
+
+  return currentRegionCode === selectedRegion ? breadcrumbParts.join(", ") : null;
 }
 
-function mapScoredHotspotItems(rows: HotspotScoreRow[], regionMap: Map<string, string | null>) {
+function mapScoredHotspotItems(rows: HotspotScoreRow[], regionMap: Map<string, RegionInfo>, selectedRegion: string | null) {
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
-    region: mapHotspotRegion(row, regionMap),
+    region: mapHotspotRegion(row, regionMap, selectedRegion),
     lat: row.lat,
     lng: row.lng,
     score: Math.round(row.score * 1000) / 10,
@@ -117,11 +152,11 @@ function mapScoredHotspotItems(rows: HotspotScoreRow[], regionMap: Map<string, s
   }));
 }
 
-function mapFrequencyHotspotItems(rows: HotspotBaseRow[], regionMap: Map<string, string | null>) {
+function mapFrequencyHotspotItems(rows: HotspotBaseRow[], regionMap: Map<string, RegionInfo>, selectedRegion: string | null) {
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
-    region: mapHotspotRegion(row, regionMap),
+    region: mapHotspotRegion(row, regionMap, selectedRegion),
     lat: row.lat,
     lng: row.lng,
     frequency: Math.round((row.obs / row.samples) * 1000) / 10,
@@ -142,6 +177,7 @@ async function fetchGetHotspotRows(targetsDb: TargetsDb, speciesId: number, opti
         "hotspots.name",
         "hotspots.countryCode",
         "hotspots.subnational1Code",
+        "hotspots.subnational2Code",
         "hotspots.lat",
         "hotspots.lng",
         "monthObs.obs",
@@ -167,6 +203,7 @@ async function fetchGetHotspotRows(targetsDb: TargetsDb, speciesId: number, opti
       "hotspots.name",
       "hotspots.countryCode",
       "hotspots.subnational1Code",
+      "hotspots.subnational2Code",
       "hotspots.lat",
       "hotspots.lng",
       "yearObs.obs",
@@ -200,6 +237,7 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
         "hotspots.name",
         "hotspots.countryCode",
         "hotspots.subnational1Code",
+        "hotspots.subnational2Code",
         "hotspots.lat",
         "hotspots.lng",
         obsExpr.as("obs"),
@@ -210,6 +248,7 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
         "hotspots.name",
         "hotspots.countryCode",
         "hotspots.subnational1Code",
+        "hotspots.subnational2Code",
         "hotspots.lat",
         "hotspots.lng",
       ])
@@ -233,6 +272,7 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
       "hotspots.name",
       "hotspots.countryCode",
       "hotspots.subnational1Code",
+      "hotspots.subnational2Code",
       "hotspots.lat",
       "hotspots.lng",
       "year_obs.obs",
@@ -253,8 +293,8 @@ export async function executeHotspotsQuery(targetsDb: TargetsDb, options: Hotspo
   const startTime = performance.now();
   const speciesId = await resolveSpeciesId(targetsDb, options.speciesCode);
   const rows = await fetchGetHotspotRows(targetsDb, speciesId, options);
-  const regionMap = await loadRegionMap(rows, options.region);
-  const items = mapScoredHotspotItems(rows, regionMap);
+  const regionMap = await loadRegionMap(rows);
+  const items = mapScoredHotspotItems(rows, regionMap, options.region);
 
   const queryTime = Math.round(performance.now() - startTime);
   return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
@@ -264,8 +304,8 @@ export async function executeHotspotsPostQuery(targetsDb: TargetsDb, options: Ho
   const startTime = performance.now();
   const speciesId = await resolveSpeciesId(targetsDb, options.speciesCode);
   const rows = await fetchPostHotspotRows(targetsDb, speciesId, options);
-  const regionMap = await loadRegionMap(rows, options.region);
-  const items = mapFrequencyHotspotItems(rows, regionMap);
+  const regionMap = await loadRegionMap(rows);
+  const items = mapFrequencyHotspotItems(rows, regionMap, options.region);
 
   const queryTime = Math.round(performance.now() - startTime);
   return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
