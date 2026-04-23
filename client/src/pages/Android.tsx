@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,9 @@ import { FormError } from "@/components/ui/form-error";
 import { mutate } from "@/lib/utils";
 
 const AndroidNotify = () => {
+  useEffect(() => {
+    document.title = "Android | OpenBirding";
+  }, []);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");

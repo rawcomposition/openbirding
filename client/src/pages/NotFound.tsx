@@ -1,7 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 
 export default function NotFound() {
+  useEffect(() => {
+    document.title = "Page Not Found | OpenBirding";
+  }, []);
   return (
     <div className="flex flex-col items-center justify-center h-screen px-4">
       <div className="text-center">

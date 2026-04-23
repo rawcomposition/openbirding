@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Bird, MapPin, Download, Bookmark, Mail, Sunrise, Star, Navigation } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PhoneScreenshot from "@/components/PhoneScreenshot";
@@ -5,6 +6,9 @@ import AppStore from "@/components/AppStore";
 import { Link } from "react-router-dom";
 
 const Home2 = () => {
+  useEffect(() => {
+    document.title = "OpenBirding";
+  }, []);
   return (
     <div className="min-h-screen bg-white">
       <section className="relative py-12 md:py-20 md:px-20 px-4 overflow-hidden bg-gradient-to-b from-white via-emerald-50/20 to-white">
