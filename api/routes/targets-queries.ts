@@ -316,51 +316,86 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
   const regionCodes = parseRegionCodes(regionCode);
   const regionConditions = buildRegionConditions(regionCodes);
   const regionIdSubquery = sql`SELECT id FROM regions WHERE ${regionConditions}`;
-  const monthList = months ? sql.join(months.map((m) => sql`${m}`), sql`, `) : null;
-  const obsExpr = monthList
-    ? sql`SUM(CASE WHEN rmo.month IN (${monthList}) THEN rmo.obs ELSE 0 END)`
-    : sql`SUM(rmo.obs)`;
-  const samplesExpr = monthList
-    ? sql`SUM(CASE WHEN rms.month IN (${monthList}) THEN rms.samples ELSE 0 END)`
-    : sql`SUM(rms.samples)`;
 
-  const [speciesResult, totalsResult] = await Promise.all([
-    sql<{ code: string; name: string; obs: number; samples: number }>`
+  const [speciesResult, samplesResult] = await Promise.all([
+    sql<{ code: string; name: string; taxon_order: number; month: number; obs: number }>`
       SELECT
         s.code,
         s.name,
-        ${obsExpr} AS obs,
-        ${samplesExpr} AS samples
+        s.taxon_order,
+        rmo.month,
+        SUM(rmo.obs) AS obs
       FROM region_month_obs rmo
-      JOIN region_month_samples rms ON rms.region_id = rmo.region_id AND rms.month = rmo.month
       JOIN species s ON s.id = rmo.species_id
       WHERE rmo.region_id IN (${regionIdSubquery})
-      GROUP BY rmo.species_id
-      HAVING ${obsExpr} > 0
-      ORDER BY (${obsExpr} * 1.0 / ${samplesExpr}) DESC, ${obsExpr} DESC, s.taxon_order ASC
+      GROUP BY rmo.species_id, rmo.month
     `.execute(targetsDb),
 
-    sql<{ samples: number }>`
-      SELECT
-        ${monthList
-          ? sql`SUM(CASE WHEN month IN (${monthList}) THEN samples ELSE 0 END)`
-          : sql`SUM(samples)`} AS samples
+    sql<{ month: number; samples: number }>`
+      SELECT month, SUM(samples) AS samples
       FROM region_month_samples
       WHERE region_id IN (${regionIdSubquery})
+      GROUP BY month
     `.execute(targetsDb),
   ]);
 
-  const totals = totalsResult.rows[0];
-  const queryTime = Math.round(performance.now() - startTime);
+  const samples: number[] = Array(12).fill(0);
+  for (const row of samplesResult.rows) {
+    samples[row.month - 1] = row.samples;
+  }
+
+  const monthFilter = months ? new Set(months) : null;
+  type SpeciesEntry = {
+    name: string;
+    taxonOrder: number;
+    obs: number[];
+    filteredObs: number;
+    filteredSamples: number;
+  };
+  const speciesByCode = new Map<string, SpeciesEntry>();
+
+  for (const row of speciesResult.rows) {
+    let entry = speciesByCode.get(row.code);
+    if (!entry) {
+      entry = {
+        name: row.name,
+        taxonOrder: row.taxon_order,
+        obs: Array(12).fill(0),
+        filteredObs: 0,
+        filteredSamples: 0,
+      };
+      speciesByCode.set(row.code, entry);
+    }
+    const monthIdx = row.month - 1;
+    entry.obs[monthIdx] = row.obs;
+    if (!monthFilter || monthFilter.has(row.month)) {
+      entry.filteredObs += row.obs;
+      entry.filteredSamples += samples[monthIdx];
+    }
+  }
+
+  const items = [...speciesByCode.entries()]
+    .filter(([, entry]) => entry.filteredObs > 0 && entry.filteredSamples > 0)
+    .map(([code, entry]) => ({
+      code,
+      name: entry.name,
+      frequency: roundFrequency((entry.filteredObs / entry.filteredSamples) * 100),
+      obs: entry.obs,
+      _filteredObs: entry.filteredObs,
+      _taxonOrder: entry.taxonOrder,
+    }))
+    .sort((a, b) => {
+      if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+      if (b._filteredObs !== a._filteredObs) return b._filteredObs - a._filteredObs;
+      return a._taxonOrder - b._taxonOrder;
+    })
+    .map(({ _filteredObs, _taxonOrder, ...rest }) => rest);
+
   return {
-    items: speciesResult.rows.map((row) => ({
-      name: row.name,
-      code: row.code,
-      frequency: roundFrequency((row.obs / row.samples) * 100),
-    })),
-    samples: totals?.samples ?? 0,
+    items,
+    samples,
     citation: await getEbdCitation(targetsDb),
-    queryTime: `${queryTime} ms`,
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
 }
 
