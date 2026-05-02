@@ -333,10 +333,11 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
   const regionIdSubquery = sql`SELECT id FROM regions WHERE ${regionConditions}`;
 
   const [speciesResult, samplesResult] = await Promise.all([
-    sql<{ code: string; name: string; taxon_order: number; month: number; obs: number }>`
+    sql<{ code: string; name: string; sciName: string; taxonOrder: number; month: number; obs: number }>`
       SELECT
         s.code,
         s.name,
+        s.sci_name,
         s.taxon_order,
         rmo.month,
         SUM(rmo.obs) AS obs
@@ -362,6 +363,7 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
   const monthFilter = months ? new Set(months) : null;
   type SpeciesEntry = {
     name: string;
+    sciName: string;
     taxonOrder: number;
     obs: number[];
     filteredObs: number;
@@ -374,7 +376,8 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
     if (!entry) {
       entry = {
         name: row.name,
-        taxonOrder: row.taxon_order,
+        sciName: row.sciName,
+        taxonOrder: row.taxonOrder,
         obs: Array(12).fill(0),
         filteredObs: 0,
         filteredSamples: 0,
@@ -394,6 +397,7 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
     .map(([code, entry]) => ({
       code,
       name: entry.name,
+      sciName: entry.sciName,
       frequency: roundFrequency((entry.filteredObs / entry.filteredSamples) * 100),
       obs: entry.obs,
       _filteredObs: entry.filteredObs,
