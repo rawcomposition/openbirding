@@ -83,7 +83,10 @@ function applyHotspotWhereFilters<T>(query: T, options: Pick<HotspotsRequestOpti
   let filteredQuery = query as any;
 
   if (options.region) {
-    filteredQuery = filteredQuery.where("hotspots.regionCode", "like", `${options.region}%`);
+    const codes = parseRegionCodes(options.region);
+    filteredQuery = filteredQuery.where((eb: any) =>
+      eb.or(codes.map((code) => eb("hotspots.regionCode", "like", `${code}%`)))
+    );
   }
 
   if (options.locationIds) {
