@@ -53,6 +53,14 @@ hotspotsRoute.post("/species/:speciesCode", async (c) => {
     }
   }
 
+  let sortBy: "best" | "frequency" | null = null;
+  if (body.sortBy != null) {
+    if (body.sortBy !== "best" && body.sortBy !== "frequency") {
+      throw new HTTPException(400, { message: "sortBy must be 'best' or 'frequency'" });
+    }
+    sortBy = body.sortBy;
+  }
+
   return c.json(await withTargetsDb((targetsDb) =>
     executeHotspotsPostQuery(targetsDb, {
       speciesCode,
@@ -62,6 +70,7 @@ hotspotsRoute.post("/species/:speciesCode", async (c) => {
       minObservations: parseMinObservations(body.minObservations as string | number | undefined | null),
       bbox: parseBBoxBody(body.bbox),
       locationIds: parseLocationIds(body.locationIds),
+      sortBy,
     })
   ));
 });

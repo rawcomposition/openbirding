@@ -17,6 +17,7 @@ type HotspotsRequestOptions = {
     maxLat: number;
   } | null;
   locationIds: string[] | null;
+  sortBy?: "best" | "frequency" | null;
 };
 
 type HotspotBaseRow = {
@@ -29,6 +30,7 @@ type HotspotBaseRow = {
   lng: number;
   obs: number;
   samples: number;
+  score?: number;
 };
 
 type HotspotScoreRow = HotspotBaseRow & {
@@ -164,6 +166,7 @@ function mapFrequencyHotspotItems(rows: HotspotBaseRow[], regionMap: Map<string,
     lng: row.lng,
     frequency: Math.round((row.obs / row.samples) * 1000) / 10,
     samples: row.samples,
+    ...(row.score != null ? { score: Math.round(row.score * 1000) / 10 } : {}),
   }));
 }
 
@@ -224,28 +227,33 @@ async function fetchGetHotspotRows(targetsDb: TargetsDb, speciesId: number, opti
 }
 
 async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, options: HotspotsRequestOptions): Promise<HotspotBaseRow[]> {
+  const useBest = options.sortBy === "best";
+
   if (options.months) {
     const monthList = sql.join(options.months.map((month) => sql`${month}`), sql`, `);
     const obsExpr = sql<number>`SUM(month_obs.obs)`;
     const samplesExpr = sql<number>`SUM(month_obs.samples)`;
     const frequencyExpr = sql<number>`(${obsExpr} * 1.0 / ${samplesExpr})`;
+    const scoreExpr = sql<number>`(SUM(month_obs.score * month_obs.samples) * 1.0 / NULLIF(${samplesExpr}, 0))`;
+
+    const baseSelect = [
+      "hotspots.id",
+      "hotspots.name",
+      "hotspots.countryCode",
+      "hotspots.subnational1Code",
+      "hotspots.subnational2Code",
+      "hotspots.lat",
+      "hotspots.lng",
+      obsExpr.as("obs"),
+      samplesExpr.as("samples"),
+    ] as const;
 
     let query = targetsDb
       .selectFrom("monthObs as month_obs")
       .innerJoin("hotspots", "month_obs.locationId", "hotspots.id")
       .where("month_obs.speciesId", "=", speciesId)
       .where(sql<boolean>`month_obs.month IN (${monthList})`)
-      .select([
-        "hotspots.id",
-        "hotspots.name",
-        "hotspots.countryCode",
-        "hotspots.subnational1Code",
-        "hotspots.subnational2Code",
-        "hotspots.lat",
-        "hotspots.lng",
-        obsExpr.as("obs"),
-        samplesExpr.as("samples"),
-      ])
+      .select(useBest ? [...baseSelect, scoreExpr.as("score")] : [...baseSelect])
       .groupBy([
         "hotspots.id",
         "hotspots.name",
@@ -255,8 +263,8 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
         "hotspots.lat",
         "hotspots.lng",
       ])
-      .orderBy(frequencyExpr, "desc")
-      .orderBy(obsExpr, "desc")
+      .$if(useBest, (qb) => qb.orderBy(scoreExpr, "desc").orderBy(obsExpr, "desc"))
+      .$if(!useBest, (qb) => qb.orderBy(frequencyExpr, "desc").orderBy(obsExpr, "desc"))
       .limit(options.limit);
 
     if (options.minObservations != null) {
@@ -266,23 +274,27 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
     return applyHotspotWhereFilters(query, options).execute();
   }
 
+  const baseSelect = [
+    "hotspots.id",
+    "hotspots.name",
+    "hotspots.countryCode",
+    "hotspots.subnational1Code",
+    "hotspots.subnational2Code",
+    "hotspots.lat",
+    "hotspots.lng",
+    "year_obs.obs",
+    "year_obs.samples",
+  ] as const;
+
   let query = targetsDb
     .selectFrom("yearObs as year_obs")
     .innerJoin("hotspots", "year_obs.locationId", "hotspots.id")
     .where("year_obs.speciesId", "=", speciesId)
-    .select([
-      "hotspots.id",
-      "hotspots.name",
-      "hotspots.countryCode",
-      "hotspots.subnational1Code",
-      "hotspots.subnational2Code",
-      "hotspots.lat",
-      "hotspots.lng",
-      "year_obs.obs",
-      "year_obs.samples",
-    ])
-    .orderBy(sql`(year_obs.obs * 1.0 / year_obs.samples)`, "desc")
-    .orderBy("year_obs.obs", "desc")
+    .select(useBest ? [...baseSelect, "year_obs.score"] : [...baseSelect])
+    .$if(useBest, (qb) => qb.orderBy("year_obs.score", "desc").orderBy("year_obs.obs", "desc"))
+    .$if(!useBest, (qb) =>
+      qb.orderBy(sql`(year_obs.obs * 1.0 / year_obs.samples)`, "desc").orderBy("year_obs.obs", "desc")
+    )
     .limit(options.limit);
 
   if (options.minObservations != null) {
