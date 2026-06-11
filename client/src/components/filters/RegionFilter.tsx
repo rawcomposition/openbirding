@@ -43,7 +43,7 @@ export function RegionFilter() {
       onClear={handleClear}
       open={open}
       onOpenChange={setOpen}
-      contentClassName="min-w-0 w-[95vw] max-w-[420px]"
+      contentClassName="min-w-0 w-[95vw] max-w-[560px]"
     >
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full mx-auto">
