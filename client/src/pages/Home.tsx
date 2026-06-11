@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Bird, MapPin, Download, Bookmark, Mail, Sunrise, Star, Navigation } from "lucide-react";
+import { MapPin, Download, Bookmark, Mail, Sunrise, Star, Navigation } from "lucide-react";
+import Logo from "@/components/Logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PhoneScreenshot from "@/components/PhoneScreenshot";
 import AppStore from "@/components/AppStore";
@@ -22,7 +23,7 @@ const Home2 = () => {
               <div className="flex justify-center lg:justify-start mb-6">
                 <div className="relative">
                   <div className="absolute -inset-8 bg-gradient-to-r from-emerald-300/15 to-teal-300/15 rounded-full blur-3xl"></div>
-                  <Bird className="relative h-16 w-16 text-emerald-600 drop-shadow-lg" />
+                  <Logo className="relative h-16 w-16 drop-shadow-lg" />
                 </div>
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
