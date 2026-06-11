@@ -21,8 +21,8 @@ type AreaMapProps = {
 };
 
 const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-// MapLibre doesn't support oklch, so we hardcode hex (emerald-600)
-const MAP_COLOR = "#059669";
+// MapLibre doesn't support oklch, so we hardcode hex (brand green, emerald-600)
+const MAP_COLOR = "#2e7d55";
 const DEFAULT_VERTEX_RADIUS = 6;
 const COARSE_VERTEX_RADIUS = 9;
 

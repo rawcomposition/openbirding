@@ -9,7 +9,7 @@ export default function Logo({ className, ...props }: React.SVGProps<SVGSVGEleme
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="OpenBirding"
-      className={cn("text-[#3F9F6F]", className)}
+      className={cn("text-[#2E7D55]", className)}
       style={{ fillRule: "evenodd", clipRule: "evenodd", strokeLinejoin: "round", strokeMiterlimit: 2 }}
       {...props}
     >

@@ -23,7 +23,7 @@ const Home2 = () => {
               <div className="flex justify-center lg:justify-start mb-6">
                 <div className="relative">
                   <div className="absolute -inset-8 bg-gradient-to-r from-emerald-300/15 to-teal-300/15 rounded-full blur-3xl"></div>
-                  <Logo className="relative h-16 w-16 drop-shadow-lg" />
+                  <Logo className="relative h-16 w-16" />
                 </div>
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">

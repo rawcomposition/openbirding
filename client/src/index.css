@@ -3,6 +3,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * OpenBirding brand green. The site's accent utilities (emerald-*) are remapped
+ * to a scale anchored on the logo green (#2E7D55 at the 600 step) so the whole
+ * UI matches the app icon / logo. Change these to restyle the accent everywhere.
+ */
+@theme {
+  --color-emerald-50: #f1f9f5;
+  --color-emerald-100: #dff1e8;
+  --color-emerald-200: #bce1cf;
+  --color-emerald-300: #86cba8;
+  --color-emerald-400: #47b880;
+  --color-emerald-500: #379566;
+  --color-emerald-600: #2e7d55;
+  --color-emerald-700: #246645;
+  --color-emerald-800: #1b5036;
+  --color-emerald-900: #153f2a;
+  --color-emerald-950: #0c271a;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
