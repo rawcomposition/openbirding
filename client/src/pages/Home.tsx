@@ -59,7 +59,7 @@ const Home2 = () => {
 
             <div className="relative justify-center lg:justify-end hidden lg:flex">
               <PhoneScreenshot
-                src="/screenshot1-2.jpg"
+                src="/screenshot1-3.jpg"
                 alt="Screenshot of the OpenBirding app showing a color-coded hotspots on a map"
               />
             </div>
@@ -78,14 +78,14 @@ const Home2 = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {[
               {
-                src: "/screenshot2-3.jpg",
+                src: "/screenshot2-4.jpg",
                 alt: "Screenshot of the OpenBirding app showing a color-coded hotspots on a map with a hotspot detail dialog open",
               },
               {
                 src: "/screenshot3-3.jpg",
                 alt: "Screenshot of the OpenBirding app showing a hotspot detail dialog open with the list of target bird species for the hotspot",
               },
-              { src: "/screenshot4-2.jpg", alt: "Screenshot of the OpenBirding app showing a list of nearby hotspots" },
+              { src: "/screenshot4-3.jpg", alt: "Screenshot of the OpenBirding app showing nearby hotspot packs" },
             ].map((screenshot, index) => (
               <div key={index} className="relative flex justify-center">
                 <PhoneScreenshot src={screenshot.src} alt={screenshot.alt} phoneClassName="drop-shadow-2xl" />
