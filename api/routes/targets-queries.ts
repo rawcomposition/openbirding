@@ -326,6 +326,75 @@ export async function executeHotspotsPostQuery(targetsDb: TargetsDb, options: Ho
   return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
 }
 
+type TargetsSpeciesRow = {
+  code: string;
+  name: string;
+  sciName: string;
+  taxonOrder: number;
+  month: number;
+  obs: number;
+};
+
+function buildMonthlySamples(samplesRows: Array<{ month: number; samples: number }>): number[] {
+  const samples: number[] = Array(12).fill(0);
+  for (const row of samplesRows) {
+    samples[row.month - 1] = row.samples;
+  }
+  return samples;
+}
+
+function buildTargetsItems(speciesRows: TargetsSpeciesRow[], samples: number[], months: number[] | null) {
+  const monthFilter = months ? new Set(months) : null;
+  type SpeciesEntry = {
+    name: string;
+    sciName: string;
+    taxonOrder: number;
+    obs: number[];
+    filteredObs: number;
+    filteredSamples: number;
+  };
+  const speciesByCode = new Map<string, SpeciesEntry>();
+
+  for (const row of speciesRows) {
+    let entry = speciesByCode.get(row.code);
+    if (!entry) {
+      entry = {
+        name: row.name,
+        sciName: row.sciName,
+        taxonOrder: row.taxonOrder,
+        obs: Array(12).fill(0),
+        filteredObs: 0,
+        filteredSamples: 0,
+      };
+      speciesByCode.set(row.code, entry);
+    }
+    const monthIdx = row.month - 1;
+    entry.obs[monthIdx] = row.obs;
+    if (!monthFilter || monthFilter.has(row.month)) {
+      entry.filteredObs += row.obs;
+      entry.filteredSamples += samples[monthIdx];
+    }
+  }
+
+  return [...speciesByCode.entries()]
+    .filter(([, entry]) => entry.filteredObs > 0 && entry.filteredSamples > 0)
+    .map(([code, entry]) => ({
+      code,
+      name: entry.name,
+      sciName: entry.sciName,
+      frequency: roundFrequency((entry.filteredObs / entry.filteredSamples) * 100),
+      obs: entry.obs,
+      _filteredObs: entry.filteredObs,
+      _taxonOrder: entry.taxonOrder,
+    }))
+    .sort((a, b) => {
+      if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+      if (b._filteredObs !== a._filteredObs) return b._filteredObs - a._filteredObs;
+      return a._taxonOrder - b._taxonOrder;
+    })
+    .map(({ _filteredObs, _taxonOrder, ...rest }) => rest);
+}
+
 export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode: string, months: number[] | null) {
   const startTime = performance.now();
   const regionCodes = parseRegionCodes(regionCode);
@@ -333,7 +402,7 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
   const regionIdSubquery = sql`SELECT id FROM regions WHERE ${regionConditions}`;
 
   const [speciesResult, samplesResult] = await Promise.all([
-    sql<{ code: string; name: string; sciName: string; taxonOrder: number; month: number; obs: number }>`
+    sql<TargetsSpeciesRow>`
       SELECT
         s.code,
         s.name,
@@ -355,64 +424,66 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
     `.execute(targetsDb),
   ]);
 
-  const samples: number[] = Array(12).fill(0);
-  for (const row of samplesResult.rows) {
-    samples[row.month - 1] = row.samples;
-  }
-
-  const monthFilter = months ? new Set(months) : null;
-  type SpeciesEntry = {
-    name: string;
-    sciName: string;
-    taxonOrder: number;
-    obs: number[];
-    filteredObs: number;
-    filteredSamples: number;
-  };
-  const speciesByCode = new Map<string, SpeciesEntry>();
-
-  for (const row of speciesResult.rows) {
-    let entry = speciesByCode.get(row.code);
-    if (!entry) {
-      entry = {
-        name: row.name,
-        sciName: row.sciName,
-        taxonOrder: row.taxonOrder,
-        obs: Array(12).fill(0),
-        filteredObs: 0,
-        filteredSamples: 0,
-      };
-      speciesByCode.set(row.code, entry);
-    }
-    const monthIdx = row.month - 1;
-    entry.obs[monthIdx] = row.obs;
-    if (!monthFilter || monthFilter.has(row.month)) {
-      entry.filteredObs += row.obs;
-      entry.filteredSamples += samples[monthIdx];
-    }
-  }
-
-  const items = [...speciesByCode.entries()]
-    .filter(([, entry]) => entry.filteredObs > 0 && entry.filteredSamples > 0)
-    .map(([code, entry]) => ({
-      code,
-      name: entry.name,
-      sciName: entry.sciName,
-      frequency: roundFrequency((entry.filteredObs / entry.filteredSamples) * 100),
-      obs: entry.obs,
-      _filteredObs: entry.filteredObs,
-      _taxonOrder: entry.taxonOrder,
-    }))
-    .sort((a, b) => {
-      if (b.frequency !== a.frequency) return b.frequency - a.frequency;
-      if (b._filteredObs !== a._filteredObs) return b._filteredObs - a._filteredObs;
-      return a._taxonOrder - b._taxonOrder;
-    })
-    .map(({ _filteredObs, _taxonOrder, ...rest }) => rest);
+  const samples = buildMonthlySamples(samplesResult.rows);
+  const items = buildTargetsItems(speciesResult.rows, samples, months);
 
   return {
     items,
     samples,
+    citation: await getEbdCitation(targetsDb),
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
+  };
+}
+
+export async function executeH3TargetsQuery(targetsDb: TargetsDb, cells: bigint[], months: number[] | null) {
+  const startTime = performance.now();
+  const cellList = sql.join(cells.map((cell) => sql`${cell}`), sql`, `);
+  const cellRefsResult = await sql<{ cellRef: number }>`
+    SELECT cell_ref FROM h3_cells WHERE h3 IN (${cellList})
+  `.execute(targetsDb);
+
+  if (cellRefsResult.rows.length === 0) {
+    return {
+      items: [],
+      samples: Array(12).fill(0),
+      cellCount: 0,
+      citation: await getEbdCitation(targetsDb),
+      queryTime: `${Math.round(performance.now() - startTime)} ms`,
+    };
+  }
+
+  const refList = sql.join(cellRefsResult.rows.map((row) => sql`${row.cellRef}`), sql`, `);
+
+  const [speciesResult, samplesResult] = await Promise.all([
+    sql<TargetsSpeciesRow>`
+      SELECT
+        s.code,
+        s.name,
+        s.sci_name,
+        s.taxon_order,
+        o.month,
+        SUM(o.obs) AS obs
+      FROM h3_cell_obs o
+      JOIN species s ON s.id = o.species_id
+      WHERE o.cell_ref IN (${refList})
+      GROUP BY o.species_id, o.month
+    `.execute(targetsDb),
+
+    sql<{ month: number; samples: number }>`
+      SELECT month, SUM(samples) AS samples
+      FROM h3_cell_samples
+      WHERE cell_ref IN (${refList})
+      GROUP BY month
+    `.execute(targetsDb),
+  ]);
+
+  const samples = buildMonthlySamples(samplesResult.rows);
+  const items = buildTargetsItems(speciesResult.rows, samples, months);
+
+  return {
+    items,
+    samples,
+    cellCount: cellRefsResult.rows.length,
     citation: await getEbdCitation(targetsDb),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };

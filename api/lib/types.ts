@@ -97,6 +97,27 @@ export type RegionMonthSamples = {
   samples: number;
 };
 
+export type H3Cell = {
+  cellRef: number;
+  h3: bigint;
+  regionCode: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+export type H3CellObs = {
+  cellRef: number;
+  month: number;
+  speciesId: number;
+  obs: number;
+};
+
+export type H3CellSamples = {
+  cellRef: number;
+  month: number;
+  samples: number;
+};
+
 export type TargetHotspot = {
   id: string;
   name: string;

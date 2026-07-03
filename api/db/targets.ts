@@ -3,7 +3,7 @@ import { rename } from "node:fs/promises";
 import { join } from "node:path";
 import { CamelCasePlugin, Kysely, SqliteDialect } from "kysely";
 import { TARGETS_DB_FILENAME } from "../lib/config.js";
-import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies, TargetMetadata, TargetRegion, RegionMonthObs, RegionMonthSamples } from "../lib/types.js";
+import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies, TargetMetadata, TargetRegion, RegionMonthObs, RegionMonthSamples, H3Cell, H3CellObs, H3CellSamples } from "../lib/types.js";
 
 export type TargetsDatabaseSchema = {
   hotspots: TargetHotspot;
@@ -14,6 +14,9 @@ export type TargetsDatabaseSchema = {
   regions: TargetRegion;
   regionMonthObs: RegionMonthObs;
   regionMonthSamples: RegionMonthSamples;
+  h3Cells: H3Cell;
+  h3CellObs: H3CellObs;
+  h3CellSamples: H3CellSamples;
 };
 
 export type TargetsDb = Kysely<TargetsDatabaseSchema>;
@@ -21,6 +24,7 @@ export type TargetsDb = Kysely<TargetsDatabaseSchema>;
 const REQUIRED_TABLES = [
   "hotspots", "month_obs", "year_obs", "species",
   "metadata", "regions", "region_month_obs", "region_month_samples",
+  "h3_cells", "h3_cell_obs", "h3_cell_samples",
 ];
 
 type TargetsDbState = {

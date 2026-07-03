@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { withTargetsDb } from "../db/index.js";
 import { requireTargetsDb } from "./targets-middleware.js";
-import { executeLocationTargetsQuery, executeRegionTargetsQuery } from "./targets-queries.js";
-import { isLocationId, parseMonthsParam } from "./targets-validators.js";
+import { executeH3TargetsQuery, executeLocationTargetsQuery, executeRegionTargetsQuery } from "./targets-queries.js";
+import { isLocationId, parseH3Cells, parseMonthsBody, parseMonthsParam } from "./targets-validators.js";
 
 const targetsRoute = new Hono();
 
@@ -14,6 +14,16 @@ targetsRoute.get("/region/:regionCode", async (c) => {
   const months = parseMonthsParam(c.req.query("months"));
 
   return c.json(await withTargetsDb((targetsDb) => executeRegionTargetsQuery(targetsDb, regionCode, months)));
+});
+
+targetsRoute.post("/h3", async (c) => {
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+  const cells = parseH3Cells(body.cells);
+  const months = parseMonthsBody(body.months);
+
+  return c.json(await withTargetsDb((targetsDb) => executeH3TargetsQuery(targetsDb, cells, months)));
 });
 
 targetsRoute.get("/location/:locationId", async (c) => {

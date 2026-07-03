@@ -2,8 +2,10 @@ import { HTTPException } from "hono/http-exception";
 
 const LIMIT_DEFAULT = 200;
 const LOCATION_IDS_MAX = 500;
+const H3_CELLS_MAX = 3000;
 const REGION_CODE_RE = /^[A-Z]{2}(?:-[A-Z0-9]{1,3}){0,2}$/;
 const LOCATION_ID_RE = /^L\d+$/;
+const H3_INDEX_RE = /^[0-9a-f]{15}$/;
 
 export type BoundingBox = {
   minLng: number;
@@ -27,6 +29,37 @@ export function parseMonthsParam(rawMonths: string | undefined | null): number[]
   }
 
   return months;
+}
+
+export function parseMonthsBody(value: unknown): number[] | null {
+  if (value == null) {
+    return null;
+  }
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HTTPException(400, { message: "months must be a non-empty array of values between 1 and 12" });
+  }
+  return parseMonthsParam(value.join(","));
+}
+
+export function parseH3Cells(value: unknown): bigint[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HTTPException(400, { message: "cells must be a non-empty array of H3 cell indexes" });
+  }
+  if (value.length > H3_CELLS_MAX) {
+    throw new HTTPException(400, {
+      message: `cells cannot contain more than ${H3_CELLS_MAX} cells — use an eBird region for areas this large`,
+    });
+  }
+
+  const cells = value.map((item) => {
+    const cell = typeof item === "string" ? item.trim().toLowerCase() : "";
+    if (!H3_INDEX_RE.test(cell)) {
+      throw new HTTPException(400, { message: "cells must contain H3 cell indexes like 86be8d92fffffff" });
+    }
+    return BigInt(`0x${cell}`);
+  });
+
+  return [...new Set(cells)];
 }
 
 export function parseRegionCodes(rawRegions: string): string[] {
