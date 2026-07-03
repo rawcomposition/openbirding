@@ -23,8 +23,18 @@ milliseconds.
 3. Get a ranked, mapped list of either:
    - **Hotspots** — individual eBird hotspots, or
    - **Zones** — ~36 km² H3 hexagons ("if I bird this whole area…"), better for
-     trip planning.
-4. Expand any result to see the exact potential lifers, most-likely first.
+     trip planning. Zones are named after the most-birded hotspot inside them
+     ("Amazon Manú Lodge area") and render as real hexagons on the map (as
+     graduated circles when zoomed out, crossfading to hexes around z8).
+4. Select any result to see the exact potential lifers, most-likely first
+   (each links to its eBird species page). Selected zones also list the best
+   hotspots inside them (a bbox query over the hotspot index), bridging
+   "this area is rich" to "go to this exact spot".
+
+The list and map are two views of one selection: hovering a row highlights its
+feature, clicking a row flies the map to it, clicking a feature scrolls its row
+into view, and clicking empty map clears the selection. Filter changes keep the
+previous results on screen (dimmed) instead of flashing to skeletons.
 
 ---
 
@@ -127,6 +137,11 @@ common name → base-binomial fallback.
 - `POST /zones` — same body → ranked H3 zones.
 - `POST /zone/:cellRef` — the specific lifer species in one zone.
 
+Items carry a human-readable `regionName` (resolved from the `regions` table,
+walking up the code hierarchy for unknown sub-codes) and zones carry an
+`anchorHotspot` — the most-birded hotspot within 4 km of the cell center, found
+via a 0.5° spatial grid built over the hotspot index at load.
+
 `frequency` accepts a fraction (`0.05`) or a percent (`5`); it snaps to the
 nearest bucket.
 
@@ -153,11 +168,10 @@ nearest bucket.
 
 ## Follow-ups / ideas
 
-- **Region names for zones.** Zones are labelled "Zone near VE-F" (raw eBird
-  region code). Resolve to human names via the `regions` table for nicer labels.
-- **Render zones as hexagons** on the map (currently plotted as points at the
-  cell center). Needs `h3-js` on the client to compute cell boundaries from the
-  H3 index (already returned as hex in the API).
+- ~~**Region names for zones.**~~ Done — resolved from the `regions` table,
+  plus hotspot-anchored zone names.
+- ~~**Render zones as hexagons.**~~ Done — `h3-js` boundaries with an
+  antimeridian unwrap, circle fallback below ~z8 where hexes are sub-pixel.
 - **Month filter.** The month-partitioned data exists (`h3_cell_*`, `month_obs`)
   — a "planning a trip in October" filter is very doable but would need
   per-month buckets (bigger `lifers.db`) or an on-the-fly path.
