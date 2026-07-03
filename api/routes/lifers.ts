@@ -1,23 +1,52 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { sql } from "kysely";
 import { withTargetsDb } from "../db/index.js";
 import { getEbdCitation } from "../lib/ebird.js";
 import {
   getLifersIndex,
   lifersIndexStatus,
   warmLifersIndex,
+  type LifersIndex,
   type SpeciesInput,
 } from "../lib/lifers-index.js";
 import { isLocationId, parseBBoxBody, parseRegionCodes } from "./targets-validators.js";
 
 const lifersRoute = new Hono();
 
+// The zone (H3) dataset is large, so it is loaded into memory the first time a
+// zone query arrives (guarded so concurrent requests share one load).
+let zonesReady: Promise<void> | null = null;
+function ensureZonesLoaded(index: LifersIndex): Promise<void> {
+  if (index.zonesLoaded) return Promise.resolve();
+  if (!zonesReady) {
+    zonesReady = new Promise<void>((resolve, reject) => {
+      setImmediate(() => {
+        try {
+          const start = Date.now();
+          index.loadZones();
+          console.log(`Lifers zone index loaded in ${Date.now() - start} ms`);
+          resolve();
+        } catch (err) {
+          zonesReady = null;
+          reject(err);
+        }
+      });
+    });
+  }
+  return zonesReady;
+}
+
 const MAX_SPECIES = 40000; // generous cap for large world life lists
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
-// Begin loading the in-memory index as soon as this module is mounted.
+// Begin loading the in-memory index as soon as this module is mounted, then
+// warm the (larger) zone dataset in the background so users never wait for it.
 warmLifersIndex();
+getLifersIndex()
+  .then((index) => ensureZonesLoaded(index))
+  .catch(() => {});
 
 function parseSpeciesInput(value: unknown): SpeciesInput[] {
   if (!Array.isArray(value) || value.length === 0) {
@@ -84,6 +113,7 @@ lifersRoute.get("/status", async (c) => {
       minChecklistsFloor: index.minChecklistsFloor,
       version: `${index.versionMonth} ${index.versionYear}`,
       locations: index.numLocs,
+      zonesLoaded: index.zonesLoaded,
     });
   } catch (err) {
     return c.json({ ready: false, available: true, error: err instanceof Error ? err.message : String(err) });
@@ -176,6 +206,107 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
 
   return c.json({
     locationId,
+    lifers,
+    liferCount: lifers.length,
+    frequency: threshold,
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
+  });
+});
+
+// Hot Zones: H3 hexagons ranked by how many new species you could find there.
+lifersRoute.post("/zones", async (c) => {
+  const startTime = performance.now();
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+
+  const speciesInputs = parseSpeciesInput(body.species);
+  const frequency = parseFrequency(body.frequency);
+  const minChecklists = parseMinChecklists(body.minChecklists);
+  const limit = parseLimit(body.limit);
+  const regionCodes = body.region ? parseRegionCodes(String(body.region)) : null;
+  const bbox = parseBBoxBody(body.bbox);
+
+  const index = await getLifersIndex();
+  await ensureZonesLoaded(index);
+  const { ids: seenIds, matched, unmatched } = index.resolveSpecies(speciesInputs);
+  const bucket = index.bucketForFrequency(frequency);
+
+  const items = index.queryZones({ seenIds, bucket, minChecklists, regionCodes, bbox, limit });
+
+  return c.json({
+    items,
+    meta: {
+      seenMatched: matched,
+      seenUnmatched: unmatched.length,
+      frequency: index.buckets[bucket],
+      frequencyPct: Math.round(index.buckets[bucket] * 100 * 10) / 10,
+      minChecklists: Math.max(minChecklists, index.minChecklistsFloor),
+      version: `${index.versionMonth} ${index.versionYear}`,
+    },
+    citation: await withTargetsDb((db) => getEbdCitation(db)).catch(() => undefined),
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
+  });
+});
+
+// Detail: which new species you'd get in one H3 zone, most-likely first.
+lifersRoute.post("/zone/:cellRef", async (c) => {
+  const startTime = performance.now();
+  const cellRef = Number(c.req.param("cellRef"));
+  if (!Number.isInteger(cellRef) || cellRef < 0) {
+    throw new HTTPException(400, { message: "cellRef must be a non-negative integer" });
+  }
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+  const speciesInputs = parseSpeciesInput(body.species);
+  const frequency = parseFrequency(body.frequency);
+
+  const index = await getLifersIndex();
+  const { ids: seenIds } = index.resolveSpecies(speciesInputs);
+  const bucket = index.bucketForFrequency(frequency);
+  const threshold = index.buckets[bucket];
+
+  const result = await withTargetsDb(async (db) => {
+    const samplesRow = await sql<{ samples: number }>`
+      SELECT SUM(samples) AS samples FROM h3_cell_samples WHERE cell_ref = ${cellRef}
+    `.execute(db);
+    const samples = samplesRow.rows[0]?.samples ?? 0;
+    if (!samples) return { samples: 0, rows: [] as any[] };
+
+    const rows = await sql<{
+      id: number;
+      code: string;
+      name: string;
+      sciName: string;
+      taxonOrder: number;
+      obs: number;
+    }>`
+      SELECT s.id AS id, s.code AS code, s.name AS name, s.sci_name AS sciName,
+             s.taxon_order AS taxonOrder, SUM(o.obs) AS obs
+      FROM h3_cell_obs o
+      JOIN species s ON s.id = o.species_id
+      WHERE o.cell_ref = ${cellRef}
+      GROUP BY o.species_id
+    `.execute(db);
+    return { samples, rows: rows.rows };
+  });
+
+  const lifers = result.rows
+    .map((r) => ({ ...r, frequency: r.obs / result.samples }))
+    .filter((r) => r.frequency >= threshold && !seenIds.has(r.id))
+    .map((r) => ({
+      code: r.code,
+      name: r.name,
+      sciName: r.sciName,
+      score: Math.round(r.frequency * 1000) / 10,
+      taxonOrder: r.taxonOrder,
+    }))
+    .sort((a, b) => b.score - a.score || a.taxonOrder - b.taxonOrder);
+
+  return c.json({
+    cellRef,
+    checklists: result.samples,
     lifers,
     liferCount: lifers.length,
     frequency: threshold,

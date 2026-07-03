@@ -14,6 +14,7 @@ import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { LIFERS_DB_FILENAME } from "./config.js";
+import { topByLifers, type GeoArrays } from "./geo-query.js";
 
 export type SpeciesInput = {
   sciName?: string | null;
@@ -32,7 +33,18 @@ export type LiferHotspot = {
   checklists: number;
 };
 
-export type HotspotQuery = {
+export type LiferZone = {
+  cellRef: number;
+  h3: string;
+  lat: number;
+  lng: number;
+  regionCode: string;
+  lifers: number;
+  totalSpecies: number;
+  checklists: number;
+};
+
+export type GeoTargetQuery = {
   seenIds: Set<number>;
   bucket: number;
   minChecklists: number;
@@ -76,7 +88,18 @@ class LifersIndex {
   // Scratch buffer reused across (synchronous) queries.
   private readonly counter: Int32Array;
 
+  private readonly dbPath: string;
+
+  // Zone (H3) dataset — loaded lazily on first zone query.
+  private zones: {
+    numRefs: number;
+    h3: BigInt64Array;
+    geo: GeoArrays;
+    qCount: Int32Array[];
+  } | null = null;
+
   constructor(dbPath: string) {
+    this.dbPath = dbPath;
     const db = new Database(dbPath, { readonly: true });
     db.pragma("cache_size = -500000");
 
@@ -183,97 +206,139 @@ class LifersIndex {
     return { ids, matched: ids.size, unmatched: unmatched.filter(Boolean) };
   }
 
-  private regionMatches(rc: string, codes: string[]): boolean {
-    for (const code of codes) {
-      if (rc === code || rc.startsWith(code + "-")) return true;
-    }
-    return false;
+  private get hotspotGeo(): GeoArrays {
+    return {
+      numRefs: this.numLocs,
+      samples: this.samples,
+      lat: this.lat,
+      lng: this.lng,
+      regionCode: this.regionCode,
+      spOff: this.spOff,
+      csrRef: this.csrLoc,
+      csrLvl: this.csrLvl,
+      counter: this.counter,
+    };
   }
 
-  queryHotspots(q: HotspotQuery): LiferHotspot[] {
-    const { seenIds, bucket, regionCodes, bbox, limit } = q;
+  queryHotspots(q: GeoTargetQuery): LiferHotspot[] {
     const minChecklists = Math.max(q.minChecklists, this.minChecklistsFloor);
-    const counter = this.counter;
-    counter.fill(0);
+    const q0 = this.qCount[q.bucket];
+    const top = topByLifers(this.hotspotGeo, {
+      seenIds: q.seenIds,
+      bucket: q.bucket,
+      qCountForBucket: q0,
+      minChecklists,
+      regionCodes: q.regionCodes,
+      bbox: q.bbox,
+      limit: q.limit,
+    });
+    return top.map(({ ref, lifers }) => ({
+      id: this.locId[ref],
+      name: this.locName[ref],
+      lat: this.lat[ref],
+      lng: this.lng[ref],
+      regionCode: this.regionCode[ref],
+      lifers,
+      totalSpecies: q0[ref],
+      checklists: this.samples[ref],
+    }));
+  }
 
-    // Tally seen quality species per location (only walks the user's species).
-    for (const sid of seenIds) {
-      if (sid + 1 >= this.spOff.length) continue;
-      const start = this.spOff[sid];
-      const end = this.spOff[sid + 1];
-      for (let i = start; i < end; i++) {
-        if (this.csrLvl[i] >= bucket) counter[this.csrLoc[i]]++;
-      }
+  /** Load the zone (H3) dataset into memory (idempotent). */
+  loadZones(): void {
+    if (this.zones) return;
+    const db = new Database(this.dbPath, { readonly: true });
+    db.pragma("cache_size = -500000");
+
+    const numRefs = (db.prepare("SELECT COUNT(*) c FROM zone_meta").get() as any).c as number;
+    const maxCellRef = (db.prepare("SELECT MAX(cell_ref) m FROM zone_meta").get() as any).m as number;
+    const maxSid = (db.prepare("SELECT MAX(species_id) m FROM zone_species").get() as any).m as number;
+    const totalRows = (db.prepare("SELECT COUNT(*) c FROM zone_species").get() as any).c as number;
+
+    // cell_ref is a sparse integer; index arrays by cell_ref directly.
+    const size = maxCellRef + 1;
+    const samples = new Int32Array(size);
+    const lat = new Float32Array(size);
+    const lng = new Float32Array(size);
+    const h3 = new BigInt64Array(size);
+    const regionCode: string[] = new Array(size).fill("");
+
+    // h3 is a full 64-bit integer, so read this statement in safe-integer (BigInt)
+    // mode and coerce the small columns back to numbers.
+    for (const [ref, hh, la, ln, rc, s] of db
+      .prepare("SELECT cell_ref, h3, lat, lng, region_code, samples FROM zone_meta")
+      .raw()
+      .safeIntegers()
+      .iterate() as Iterable<any[]>) {
+      const r = Number(ref);
+      samples[r] = Number(s);
+      lat[r] = Number(la);
+      lng[r] = Number(ln);
+      h3[r] = typeof hh === "bigint" ? hh : BigInt(hh);
+      regionCode[r] = rc ?? "";
     }
 
-    const q0 = this.qCount[bucket];
-    // Bounded selection: min-heap of size `limit` keyed by lifer count.
-    const heapRef = new Int32Array(limit);
-    const heapVal = new Int32Array(limit);
-    let heapSize = 0;
+    const qCount = this.buckets.map(() => new Int32Array(size));
+    for (const [bucket, ref, q] of db
+      .prepare("SELECT bucket, cell_ref, q_count FROM zone_qcount")
+      .raw()
+      .iterate() as Iterable<any[]>) {
+      qCount[bucket][ref] = q;
+    }
 
-    const siftUp = (i: number) => {
-      while (i > 0) {
-        const parent = (i - 1) >> 1;
-        if (heapVal[parent] <= heapVal[i]) break;
-        [heapVal[parent], heapVal[i]] = [heapVal[i], heapVal[parent]];
-        [heapRef[parent], heapRef[i]] = [heapRef[i], heapRef[parent]];
-        i = parent;
-      }
+    const spOff = new Int32Array(maxSid + 2);
+    for (const [sid] of db.prepare("SELECT species_id FROM zone_species").raw().iterate() as Iterable<any[]>) {
+      spOff[sid + 1]++;
+    }
+    for (let i = 1; i < spOff.length; i++) spOff[i] += spOff[i - 1];
+    const csrRef = new Int32Array(totalRows);
+    const csrLvl = new Uint8Array(totalRows);
+    const cursor = spOff.slice();
+    for (const [sid, ref, lvl] of db
+      .prepare("SELECT species_id, cell_ref, bucket_level FROM zone_species")
+      .raw()
+      .iterate() as Iterable<any[]>) {
+      const p = cursor[sid]++;
+      csrRef[p] = ref;
+      csrLvl[p] = lvl;
+    }
+    db.close();
+
+    this.zones = {
+      numRefs: size,
+      h3,
+      qCount,
+      geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
     };
-    const siftDown = (i: number) => {
-      for (;;) {
-        const l = 2 * i + 1;
-        const r = l + 1;
-        let smallest = i;
-        if (l < heapSize && heapVal[l] < heapVal[smallest]) smallest = l;
-        if (r < heapSize && heapVal[r] < heapVal[smallest]) smallest = r;
-        if (smallest === i) break;
-        [heapVal[smallest], heapVal[i]] = [heapVal[i], heapVal[smallest]];
-        [heapRef[smallest], heapRef[i]] = [heapRef[i], heapRef[smallest]];
-        i = smallest;
-      }
-    };
+  }
 
-    for (let ref = 0; ref < this.numLocs; ref++) {
-      if (this.samples[ref] < minChecklists) continue;
-      if (regionCodes && !this.regionMatches(this.regionCode[ref], regionCodes)) continue;
-      if (bbox) {
-        const la = this.lat[ref];
-        const ln = this.lng[ref];
-        if (la < bbox.minLat || la > bbox.maxLat || ln < bbox.minLng || ln > bbox.maxLng) continue;
-      }
-      const lifers = q0[ref] - counter[ref];
-      if (lifers <= 0) continue;
+  get zonesLoaded(): boolean {
+    return this.zones != null;
+  }
 
-      if (heapSize < limit) {
-        heapRef[heapSize] = ref;
-        heapVal[heapSize] = lifers;
-        heapSize++;
-        siftUp(heapSize - 1);
-      } else if (lifers > heapVal[0]) {
-        heapRef[0] = ref;
-        heapVal[0] = lifers;
-        siftDown(0);
-      }
-    }
-
-    const out: LiferHotspot[] = [];
-    for (let i = 0; i < heapSize; i++) {
-      const ref = heapRef[i];
-      out.push({
-        id: this.locId[ref],
-        name: this.locName[ref],
-        lat: this.lat[ref],
-        lng: this.lng[ref],
-        regionCode: this.regionCode[ref],
-        lifers: heapVal[i],
-        totalSpecies: q0[ref],
-        checklists: this.samples[ref],
-      });
-    }
-    out.sort((a, b) => b.lifers - a.lifers || b.checklists - a.checklists);
-    return out;
+  queryZones(q: GeoTargetQuery): LiferZone[] {
+    if (!this.zones) throw new Error("Zones not loaded");
+    const minChecklists = Math.max(q.minChecklists, this.minChecklistsFloor);
+    const q0 = this.zones.qCount[q.bucket];
+    const top = topByLifers(this.zones.geo, {
+      seenIds: q.seenIds,
+      bucket: q.bucket,
+      qCountForBucket: q0,
+      minChecklists,
+      regionCodes: q.regionCodes,
+      bbox: q.bbox,
+      limit: q.limit,
+    });
+    return top.map(({ ref, lifers }) => ({
+      cellRef: ref,
+      h3: BigInt.asUintN(64, this.zones!.h3[ref]).toString(16),
+      lat: this.zones!.geo.lat[ref],
+      lng: this.zones!.geo.lng[ref],
+      regionCode: this.zones!.geo.regionCode[ref],
+      lifers,
+      totalSpecies: q0[ref],
+      checklists: this.zones!.geo.samples[ref],
+    }));
   }
 
   getSpeciesMeta(id: number): SpeciesMeta | undefined {

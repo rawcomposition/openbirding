@@ -109,6 +109,30 @@ db.exec(`
     q_count INTEGER NOT NULL,
     PRIMARY KEY (bucket, loc_ref)
   ) WITHOUT ROWID;
+
+  -- Zone (H3 hexagon) tables mirror the location tables but aggregate eBird's
+  -- month-partitioned H3 data to a single year-level frequency per cell.
+  CREATE TABLE zone_meta (
+    cell_ref INTEGER PRIMARY KEY,
+    h3 INTEGER,
+    lat REAL, lng REAL,
+    region_code TEXT,
+    samples INTEGER NOT NULL
+  );
+
+  CREATE TABLE zone_species (
+    species_id INTEGER NOT NULL,
+    cell_ref INTEGER NOT NULL,
+    bucket_level INTEGER NOT NULL,
+    PRIMARY KEY (species_id, cell_ref)
+  ) WITHOUT ROWID;
+
+  CREATE TABLE zone_qcount (
+    bucket INTEGER NOT NULL,
+    cell_ref INTEGER NOT NULL,
+    q_count INTEGER NOT NULL,
+    PRIMARY KEY (bucket, cell_ref)
+  ) WITHOUT ROWID;
 `);
 
 // --- metadata ---------------------------------------------------------------
@@ -152,13 +176,13 @@ db.exec(`
   INSERT INTO loc_meta
     (loc_ref, location_id, name, lat, lng, country_code, subnational1_code, subnational2_code, region_code, samples)
   SELECT
-    ROW_NUMBER() OVER (ORDER BY ls.samples DESC, ls.location_id) - 1,
-    h.id, h.name, h.lat, h.lng, h.country_code, h.subnational1_code, h.subnational2_code, h.region_code, ls.samples
+    ROW_NUMBER() OVER (ORDER BY ls.total_samples DESC, ls.location_id) - 1,
+    h.id, h.name, h.lat, h.lng, h.country_code, h.subnational1_code, h.subnational2_code, h.region_code, ls.total_samples
   FROM (
-    SELECT location_id, MAX(samples) AS samples
+    SELECT location_id, MAX(samples) AS total_samples
     FROM t.year_obs
     GROUP BY location_id
-    HAVING samples >= ${MIN_CHECKLISTS}
+    HAVING total_samples >= ${MIN_CHECKLISTS}
   ) ls
   JOIN t.hotspots h ON h.id = ls.location_id;
 `);
@@ -192,6 +216,51 @@ const insertQ = db.prepare(
 FREQUENCY_BUCKETS.forEach((threshold, bucket) => {
   const info = insertQ.run(bucket, bucket);
   log(`  bucket ${bucket} (>=${threshold}): ${info.changes} locations`);
+});
+
+// --- zone_meta --------------------------------------------------------------
+// Year-level total checklists per H3 cell (sum across months).
+log("Building zone_meta...");
+db.exec(`
+  INSERT INTO zone_meta (cell_ref, h3, lat, lng, region_code, samples)
+  SELECT c.cell_ref, c.h3, c.lat, c.lng, c.region_code, cs.total_samples
+  FROM (
+    SELECT cell_ref, SUM(samples) AS total_samples
+    FROM t.h3_cell_samples
+    GROUP BY cell_ref
+    HAVING total_samples >= ${MIN_CHECKLISTS}
+  ) cs
+  JOIN t.h3_cells c ON c.cell_ref = cs.cell_ref;
+`);
+db.exec(`CREATE INDEX idx_zone_meta_region ON zone_meta(region_code);`);
+db.exec(`CREATE INDEX idx_zone_meta_samples ON zone_meta(samples);`);
+log(`  zone_meta: ${(db.prepare("SELECT COUNT(*) c FROM zone_meta").get() as any).c}`);
+
+// --- zone_species -----------------------------------------------------------
+// Aggregate month-partitioned obs to a year-level frequency per (cell, species).
+log("Building zone_species (aggregating H3 months — the slow one)...");
+db.exec(`
+  INSERT INTO zone_species (species_id, cell_ref, bucket_level)
+  SELECT o.species_id, o.cell_ref, ${bucketLevelExpr.replace(/score/g, "(SUM(o.obs) * 1.0 / z.samples)")}
+  FROM t.h3_cell_obs o
+  JOIN zone_meta z ON z.cell_ref = o.cell_ref
+  GROUP BY o.cell_ref, o.species_id
+  HAVING (SUM(o.obs) * 1.0 / z.samples) >= ${MIN_SCORE};
+`);
+log(`  zone_species: ${(db.prepare("SELECT COUNT(*) c FROM zone_species").get() as any).c}`);
+
+// --- zone_qcount ------------------------------------------------------------
+log("Building zone_qcount...");
+const insertZoneQ = db.prepare(
+  `INSERT INTO zone_qcount (bucket, cell_ref, q_count)
+   SELECT ?, cell_ref, COUNT(*)
+   FROM zone_species
+   WHERE bucket_level >= ?
+   GROUP BY cell_ref`
+);
+FREQUENCY_BUCKETS.forEach((threshold, bucket) => {
+  const info = insertZoneQ.run(bucket, bucket);
+  log(`  bucket ${bucket} (>=${threshold}): ${info.changes} zones`);
 });
 
 log("Finalizing (analyze)...");
