@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Binoculars, Upload, MapPin, ChevronDown, ChevronRight, X, Info } from "lucide-react";
+import { Binoculars, Upload, MapPin, ChevronDown, ChevronRight, X, Info, Hexagon, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,9 @@ import {
   MIN_CHECKLIST_PRESETS,
 } from "@/stores/liferTargetsStore";
 
-type LiferHotspot = {
+type Mode = "hotspots" | "zones";
+
+type HotspotItem = {
   id: string;
   name: string;
   lat: number;
@@ -25,12 +27,23 @@ type LiferHotspot = {
   checklists: number;
 };
 
-type HotspotsResponse = {
-  items: LiferHotspot[];
+type ZoneItem = {
+  cellRef: number;
+  h3: string;
+  lat: number;
+  lng: number;
+  regionCode: string;
+  lifers: number;
+  totalSpecies: number;
+  checklists: number;
+};
+
+type ApiResponse<T> = {
+  items: T[];
   meta: {
     seenMatched: number;
     seenUnmatched: number;
-    unmatchedSample: string[];
+    unmatchedSample?: string[];
     frequencyPct: number;
     minChecklists: number;
     version: string;
@@ -39,7 +52,21 @@ type HotspotsResponse = {
   queryTime: string;
 };
 
-type LiferSpecies = { code: string; name: string; sciName: string; frequency: number; score: number };
+// Normalized result shared by both modes.
+type ResultItem = {
+  key: string;
+  title: string;
+  regionCode: string;
+  lat: number;
+  lng: number;
+  lifers: number;
+  totalSpecies: number;
+  checklists: number;
+  externalUrl: string;
+  detailPath: string;
+};
+
+type LiferSpecies = { code: string; name: string; sciName: string; score: number };
 
 const LiferTargets = () => {
   useEffect(() => {
@@ -59,16 +86,18 @@ const LiferTargets = () => {
     setRegion,
   } = useLiferTargetsStore();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("hotspots");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const speciesPayload = useMemo(
     () => (lifeList ? lifeList.map((e) => ({ sciName: e.sciName, commonName: e.commonName })) : []),
     [lifeList]
   );
 
-  const { data, isFetching, error } = useQuery<HotspotsResponse>({
+  const { data, isFetching, error } = useQuery<ApiResponse<HotspotItem | ZoneItem>>({
     queryKey: [
-      "lifer-hotspots",
+      "lifer-targets",
+      mode,
       lifeList?.length ?? 0,
       fileName,
       frequency,
@@ -78,21 +107,51 @@ const LiferTargets = () => {
     enabled: !!lifeList && lifeList.length > 0,
     refetchOnWindowFocus: false,
     queryFn: () =>
-      mutate("POST", "/lifers/hotspots", {
+      mutate("POST", mode === "hotspots" ? "/lifers/hotspots" : "/lifers/zones", {
         species: speciesPayload,
         frequency,
         minChecklists,
         region: region?.regionCode || undefined,
         limit: 100,
-      }) as Promise<HotspotsResponse>,
+      }) as Promise<ApiResponse<HotspotItem | ZoneItem>>,
   });
+
+  const results: ResultItem[] = useMemo(() => {
+    if (!data?.items) return [];
+    if (mode === "hotspots") {
+      return (data.items as HotspotItem[]).map((h) => ({
+        key: h.id,
+        title: h.name,
+        regionCode: h.regionCode,
+        lat: h.lat,
+        lng: h.lng,
+        lifers: h.lifers,
+        totalSpecies: h.totalSpecies,
+        checklists: h.checklists,
+        externalUrl: `https://ebird.org/hotspot/${h.id}`,
+        detailPath: `/lifers/hotspot/${h.id}`,
+      }));
+    }
+    return (data.items as ZoneItem[]).map((z) => ({
+      key: `z${z.cellRef}`,
+      title: `Zone near ${z.regionCode}`,
+      regionCode: z.regionCode,
+      lat: z.lat,
+      lng: z.lng,
+      lifers: z.lifers,
+      totalSpecies: z.totalSpecies,
+      checklists: z.checklists,
+      externalUrl: `https://www.google.com/maps/@${z.lat},${z.lng},11z`,
+      detailPath: `/lifers/zone/${z.cellRef}`,
+    }));
+  }, [data, mode]);
 
   const handleFile = async (file: File) => {
     try {
       const text = await file.text();
       const parsed = parseEbirdCsv(text);
       setLifeList(parsed.entries, file.name);
-      setSelectedId(null);
+      setSelectedKey(null);
       toast.success(`Loaded ${parsed.entries.length.toLocaleString()} species from ${file.name}`);
     } catch (err) {
       const message = err instanceof EbirdCsvError ? err.message : "Could not read that file.";
@@ -100,10 +159,9 @@ const LiferTargets = () => {
     }
   };
 
-  const items = data?.items ?? [];
   const mapPoints = useMemo(
-    () => items.map((h) => ({ id: h.id, name: h.name, lat: h.lat, lng: h.lng, lifers: h.lifers })),
-    [items]
+    () => results.map((r) => ({ id: r.key, name: r.title, lat: r.lat, lng: r.lng, lifers: r.lifers })),
+    [results]
   );
 
   return (
@@ -117,8 +175,8 @@ const LiferTargets = () => {
           </Badge>
         </div>
         <p className="text-slate-600 max-w-2xl">
-          Upload your eBird life list and discover the hotspots — anywhere in the world — where you can see the most
-          species you haven't recorded yet.
+          Upload your eBird life list and discover where — anywhere in the world — you can see the most species you
+          haven't recorded yet.
         </p>
       </div>
 
@@ -134,7 +192,14 @@ const LiferTargets = () => {
               onReplace={handleFile}
               onClear={() => {
                 clearLifeList();
-                setSelectedId(null);
+                setSelectedKey(null);
+              }}
+            />
+            <ModeToggle
+              mode={mode}
+              onChange={(m) => {
+                setMode(m);
+                setSelectedKey(null);
               }}
             />
           </div>
@@ -175,10 +240,11 @@ const LiferTargets = () => {
           ) : (
             <div className="grid lg:grid-cols-[1fr_minmax(360px,42%)] gap-6 items-start">
               <ResultsList
-                items={items}
+                mode={mode}
+                items={results}
                 isLoading={isFetching}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
+                selectedKey={selectedKey}
+                onSelect={setSelectedKey}
                 frequency={frequency}
                 species={speciesPayload}
                 meta={data?.meta}
@@ -186,10 +252,10 @@ const LiferTargets = () => {
               />
               <div className="lg:sticky lg:top-20 h-[420px] lg:h-[600px] rounded-lg overflow-hidden border border-slate-200 shadow-sm">
                 {mapPoints.length > 0 ? (
-                  <LiferMap points={mapPoints} selectedId={selectedId} onSelect={setSelectedId} />
+                  <LiferMap points={mapPoints} selectedId={selectedKey} onSelect={setSelectedKey} />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
-                    {isFetching ? "Finding hotspots…" : "No hotspots to map"}
+                    {isFetching ? "Finding the best spots…" : "Nothing to map"}
                   </div>
                 )}
               </div>
@@ -202,6 +268,28 @@ const LiferTargets = () => {
     </div>
   );
 };
+
+// --- Mode toggle ------------------------------------------------------------
+
+function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  const base = "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors";
+  return (
+    <div className="inline-flex bg-slate-100 rounded-lg p-1">
+      <button
+        className={`${base} ${mode === "hotspots" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+        onClick={() => onChange("hotspots")}
+      >
+        <MapPin className="h-4 w-4" /> Hotspots
+      </button>
+      <button
+        className={`${base} ${mode === "zones" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+        onClick={() => onChange("zones")}
+      >
+        <Hexagon className="h-4 w-4" /> Zones
+      </button>
+    </div>
+  );
+}
 
 // --- Upload panel -----------------------------------------------------------
 
@@ -344,22 +432,24 @@ function PresetSelect({
 // --- Results ----------------------------------------------------------------
 
 function ResultsList({
+  mode,
   items,
   isLoading,
-  selectedId,
+  selectedKey,
   onSelect,
   frequency,
   species,
   meta,
   queryTime,
 }: {
-  items: LiferHotspot[];
+  mode: Mode;
+  items: ResultItem[];
   isLoading: boolean;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
   frequency: number;
   species: { sciName: string; commonName: string }[];
-  meta?: HotspotsResponse["meta"];
+  meta?: ApiResponse<unknown>["meta"];
   queryTime?: string;
 }) {
   if (isLoading && items.length === 0) {
@@ -377,7 +467,8 @@ function ResultsList({
       <Card className="bg-slate-50 border-slate-200">
         <CardContent>
           <p className="text-slate-700 text-center">
-            No hotspots match these filters. Try a lower minimum frequency or fewer required checklists.
+            No {mode === "hotspots" ? "hotspots" : "zones"} match these filters. Try a lower minimum frequency or fewer
+            required checklists.
           </p>
         </CardContent>
       </Card>
@@ -388,7 +479,7 @@ function ResultsList({
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-xl font-bold text-slate-900">
-          Top {items.length} hotspots for new lifers
+          Top {items.length} {mode === "hotspots" ? "hotspots" : "zones"} for new lifers
         </h2>
         {queryTime && meta && (
           <span className="text-xs text-slate-400">
@@ -397,13 +488,14 @@ function ResultsList({
         )}
       </div>
       <div className="space-y-2">
-        {items.map((h, i) => (
-          <HotspotRow
-            key={h.id}
+        {items.map((item, i) => (
+          <ResultRow
+            key={item.key}
+            mode={mode}
             rank={i + 1}
-            hotspot={h}
-            selected={h.id === selectedId}
-            onSelect={() => onSelect(h.id)}
+            item={item}
+            selected={item.key === selectedKey}
+            onSelect={() => onSelect(item.key)}
             frequency={frequency}
             species={species}
           />
@@ -413,16 +505,18 @@ function ResultsList({
   );
 }
 
-function HotspotRow({
+function ResultRow({
+  mode,
   rank,
-  hotspot,
+  item,
   selected,
   onSelect,
   frequency,
   species,
 }: {
+  mode: Mode;
   rank: number;
-  hotspot: LiferHotspot;
+  item: ResultItem;
   selected: boolean;
   onSelect: () => void;
   frequency: number;
@@ -431,12 +525,12 @@ function HotspotRow({
   const [expanded, setExpanded] = useState(false);
 
   const { data: detail, isFetching } = useQuery<{ lifers: LiferSpecies[]; liferCount: number }>({
-    queryKey: ["lifer-detail", hotspot.id, frequency, species.length],
+    queryKey: ["lifer-detail", item.detailPath, frequency, species.length],
     enabled: expanded,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: () =>
-      mutate("POST", `/lifers/hotspot/${hotspot.id}`, { species, frequency }) as Promise<{
+      mutate("POST", item.detailPath, { species, frequency }) as Promise<{
         lifers: LiferSpecies[];
         liferCount: number;
       }>,
@@ -452,21 +546,22 @@ function HotspotRow({
         <span className="w-6 text-center font-bold text-slate-400 tabular-nums">{rank}</span>
         <div className="flex-1 min-w-0 cursor-pointer" onClick={onSelect}>
           <a
-            href={`https://ebird.org/hotspot/${hotspot.id}`}
+            href={item.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-slate-900 hover:text-emerald-700 truncate block"
+            className="font-medium text-slate-900 hover:text-emerald-700 truncate flex items-center gap-1"
             onClick={(e) => e.stopPropagation()}
           >
-            {hotspot.name}
+            <span className="truncate">{item.title}</span>
+            <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
           </a>
           <div className="text-xs text-slate-500 flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {hotspot.regionCode} · {hotspot.checklists.toLocaleString()} checklists
+            {mode === "hotspots" ? <MapPin className="h-3 w-3" /> : <Hexagon className="h-3 w-3" />}
+            {item.regionCode} · {item.checklists.toLocaleString()} checklists
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-emerald-600 leading-none tabular-nums">{hotspot.lifers}</div>
+          <div className="text-2xl font-bold text-emerald-600 leading-none tabular-nums">{item.lifers}</div>
           <div className="text-[11px] text-slate-400">lifers</div>
         </div>
         <button
@@ -492,7 +587,7 @@ function HotspotRow({
                   <span
                     key={s.code}
                     className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2 py-0.5 text-xs text-slate-700"
-                    title={`${s.sciName} — seen on ~${s.score}% of checklists`}
+                    title={`${s.sciName} — recorded on ~${s.score}% of checklists`}
                   >
                     {s.name}
                     <span className="text-emerald-600 font-medium">{s.score}%</span>
