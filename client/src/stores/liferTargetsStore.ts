@@ -21,17 +21,21 @@ export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[]
 
 export const MIN_CHECKLIST_PRESETS = [10, 25, 50, 100, 250, 500];
 
+export type LiferMode = "hotspots" | "zones";
+
 type LiferTargetsState = {
   lifeList: LifeListEntry[] | null;
   fileName: string | null;
   uploadedAt: number | null;
 
+  mode: LiferMode;
   frequency: number;
   minChecklists: number;
   region: LiferRegionFilter | null;
 
   setLifeList: (entries: LifeListEntry[], fileName: string) => void;
   clearLifeList: () => void;
+  setMode: (mode: LiferMode) => void;
   setFrequency: (frequency: number) => void;
   setMinChecklists: (minChecklists: number) => void;
   setRegion: (region: LiferRegionFilter | null) => void;
@@ -44,12 +48,14 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
       fileName: null,
       uploadedAt: null,
 
+      mode: "hotspots",
       frequency: 0.05,
       minChecklists: 50,
       region: null,
 
       setLifeList: (entries, fileName) => set({ lifeList: entries, fileName, uploadedAt: Date.now() }),
       clearLifeList: () => set({ lifeList: null, fileName: null, uploadedAt: null }),
+      setMode: (mode) => set({ mode }),
       setFrequency: (frequency) => set({ frequency }),
       setMinChecklists: (minChecklists) => set({ minChecklists }),
       setRegion: (region) => set({ region }),
