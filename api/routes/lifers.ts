@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
-import { withTargetsDb } from "../db/index.js";
+import { db, withTargetsDb } from "../db/index.js";
 import { getEbdCitation } from "../lib/ebird.js";
 import {
   getLifersIndex,
@@ -47,6 +47,41 @@ warmLifersIndex();
 getLifersIndex()
   .then((index) => ensureZonesLoaded(index))
   .catch(() => {});
+
+// Region code -> human-readable name ("PE-MDD" -> "Madre de Dios, Peru"),
+// loaded once from the regions table.
+let regionNamesPromise: Promise<Map<string, string>> | null = null;
+function getRegionNames(): Promise<Map<string, string>> {
+  if (!regionNamesPromise) {
+    regionNamesPromise = db
+      .selectFrom("regions")
+      .select(["id", "name", "longName"])
+      .execute()
+      .then((rows) => {
+        const map = new Map<string, string>();
+        for (const r of rows) map.set(r.id, r.longName ?? r.name);
+        return map;
+      })
+      .catch((err) => {
+        regionNamesPromise = null;
+        throw err;
+      });
+  }
+  return regionNamesPromise;
+}
+
+/** Resolve a region code to a name, walking up the hierarchy (BR-MT-003 -> BR-MT -> BR). */
+function regionNameFor(code: string, names: Map<string, string>): string | null {
+  let c = code;
+  while (c) {
+    const hit = names.get(c);
+    if (hit) return hit;
+    const i = c.lastIndexOf("-");
+    if (i < 0) return null;
+    c = c.slice(0, i);
+  }
+  return null;
+}
 
 function parseSpeciesInput(value: unknown): SpeciesInput[] {
   if (!Array.isArray(value) || value.length === 0) {
@@ -138,9 +173,10 @@ lifersRoute.post("/hotspots", async (c) => {
   const bucket = index.bucketForFrequency(frequency);
 
   const items = index.queryHotspots({ seenIds, bucket, minChecklists, regionCodes, bbox, limit });
+  const regionNames = await getRegionNames().catch(() => new Map<string, string>());
 
   return c.json({
-    items,
+    items: items.map((it) => ({ ...it, regionName: regionNameFor(it.regionCode, regionNames) })),
     meta: {
       seenMatched: matched,
       seenUnmatched: unmatched.length,
@@ -233,9 +269,10 @@ lifersRoute.post("/zones", async (c) => {
   const bucket = index.bucketForFrequency(frequency);
 
   const items = index.queryZones({ seenIds, bucket, minChecklists, regionCodes, bbox, limit });
+  const regionNames = await getRegionNames().catch(() => new Map<string, string>());
 
   return c.json({
-    items,
+    items: items.map((it) => ({ ...it, regionName: regionNameFor(it.regionCode, regionNames) })),
     meta: {
       seenMatched: matched,
       seenUnmatched: unmatched.length,

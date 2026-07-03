@@ -39,6 +39,8 @@ export type LiferZone = {
   lat: number;
   lng: number;
   regionCode: string;
+  /** Name of the best-known hotspot inside the cell (for labelling), if any. */
+  anchorHotspot: { id: string; name: string } | null;
   lifers: number;
   totalSpecies: number;
   checklists: number;
@@ -54,6 +56,13 @@ export type GeoTargetQuery = {
 };
 
 type SpeciesMeta = { id: number; code: string; name: string; sciName: string; taxonOrder: number };
+
+// 0.5°-bin key for the hotspot spatial grid (720 lng bins per lat row).
+function gridKey(lat: number, lng: number): number {
+  const la = Math.min(359, Math.max(0, Math.floor((lat + 90) * 2)));
+  const ln = Math.min(719, Math.max(0, Math.floor((lng + 180) * 2)));
+  return la * 720 + ln;
+}
 
 class LifersIndex {
   readonly buckets: number[];
@@ -87,6 +96,10 @@ class LifersIndex {
 
   // Scratch buffer reused across (synchronous) queries.
   private readonly counter: Int32Array;
+
+  // Coarse spatial grid over hotspots (0.5° bins) for "best hotspot near a
+  // point" lookups, used to give zones human-friendly names.
+  private readonly gridBins = new Map<number, number[]>();
 
   private readonly dbPath: string;
 
@@ -133,6 +146,10 @@ class LifersIndex {
       this.locId[ref] = id;
       this.locName[ref] = name ?? id;
       this.regionCode[ref] = rc ?? "";
+      const key = gridKey(la, ln);
+      const bin = this.gridBins.get(key);
+      if (bin) bin.push(ref);
+      else this.gridBins.set(key, [ref]);
     }
 
     this.qCount = this.buckets.map(() => new Int32Array(n));
@@ -204,6 +221,41 @@ class LifersIndex {
       else unmatched.push(input.sciName || input.commonName || input.code || "");
     }
     return { ids, matched: ids.size, unmatched: unmatched.filter(Boolean) };
+  }
+
+  /**
+   * The most-birded hotspot within `radiusKm` of a point, or null. Used to
+   * label H3 zones with a recognizable place name.
+   */
+  bestHotspotNear(lat: number, lng: number, radiusKm: number): { id: string; name: string } | null {
+    const kmPerDegLat = 111.32;
+    const kmPerDegLng = Math.max(1e-6, 111.32 * Math.cos((lat * Math.PI) / 180));
+    const binSpan = Math.ceil(radiusKm / (kmPerDegLat * 0.5)); // grid bins are 0.5°
+    const laBin = Math.floor((lat + 90) * 2);
+    const lnBin = Math.floor((lng + 180) * 2);
+    let best = -1;
+    let bestSamples = 0;
+    for (let dla = -binSpan; dla <= binSpan; dla++) {
+      const row = laBin + dla;
+      if (row < 0 || row > 359) continue;
+      // Longitude bins near the poles get wide; clamp the sweep to the full ring.
+      const lnSpan = Math.min(360, Math.ceil(radiusKm / (kmPerDegLng * 0.5)));
+      for (let dln = -lnSpan; dln <= lnSpan; dln++) {
+        const refs = this.gridBins.get(row * 720 + ((lnBin + dln + 720) % 720));
+        if (!refs) continue;
+        for (const ref of refs) {
+          if (this.samples[ref] <= bestSamples) continue;
+          let dLng = Math.abs(this.lng[ref] - lng);
+          if (dLng > 180) dLng = 360 - dLng;
+          const dKm = Math.hypot((this.lat[ref] - lat) * kmPerDegLat, dLng * kmPerDegLng);
+          if (dKm <= radiusKm) {
+            best = ref;
+            bestSamples = this.samples[ref];
+          }
+        }
+      }
+    }
+    return best >= 0 ? { id: this.locId[best], name: this.locName[best] } : null;
   }
 
   private get hotspotGeo(): GeoArrays {
@@ -329,16 +381,22 @@ class LifersIndex {
       bbox: q.bbox,
       limit: q.limit,
     });
-    return top.map(({ ref, lifers }) => ({
-      cellRef: ref,
-      h3: BigInt.asUintN(64, this.zones!.h3[ref]).toString(16),
-      lat: this.zones!.geo.lat[ref],
-      lng: this.zones!.geo.lng[ref],
-      regionCode: this.zones!.geo.regionCode[ref],
-      lifers,
-      totalSpecies: q0[ref],
-      checklists: this.zones!.geo.samples[ref],
-    }));
+    return top.map(({ ref, lifers }) => {
+      const lat = this.zones!.geo.lat[ref];
+      const lng = this.zones!.geo.lng[ref];
+      return {
+        cellRef: ref,
+        h3: BigInt.asUintN(64, this.zones!.h3[ref]).toString(16),
+        lat,
+        lng,
+        regionCode: this.zones!.geo.regionCode[ref],
+        // Res-6 hexes have a ~3.7 km circumradius; 4 km catches the cell's hotspots.
+        anchorHotspot: this.bestHotspotNear(lat, lng, 4),
+        lifers,
+        totalSpecies: q0[ref],
+        checklists: this.zones!.geo.samples[ref],
+      };
+    });
   }
 
   getSpeciesMeta(id: number): SpeciesMeta | undefined {
