@@ -12,8 +12,18 @@ const Header2 = () => {
             <span className="text-xl font-bold text-slate-900">OpenBirding</span>
           </Link>
 
-          <div className="flex items-center">
+          <div className="flex items-center gap-1">
             <Button asChild variant="ghost" className="text-slate-700 hover:text-emerald-700 hover:bg-emerald-50">
+              <Link to="/bird-finder">Bird Finder</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-slate-700 hover:text-emerald-700 hover:bg-emerald-50">
+              <Link to="/lifer-targets">Lifer Targets</Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              className="hidden sm:inline-flex text-slate-700 hover:text-emerald-700 hover:bg-emerald-50"
+            >
               <a href="https://apps.apple.com/us/app/openbirding/id6755897167">Download App</a>
             </Button>
           </div>
