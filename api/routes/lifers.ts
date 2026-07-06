@@ -134,6 +134,14 @@ function parseLimit(value: unknown): number {
   return n;
 }
 
+function parseResolution(value: unknown, allowed: number[]): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || !allowed.includes(n)) {
+    throw new HTTPException(400, { message: `resolution must be one of ${allowed.join(", ")}` });
+  }
+  return n;
+}
+
 lifersRoute.get("/status", async (c) => {
   const status = lifersIndexStatus();
   if (!status.available) {
@@ -149,6 +157,7 @@ lifersRoute.get("/status", async (c) => {
       version: `${index.versionMonth} ${index.versionYear}`,
       locations: index.numLocs,
       zonesLoaded: index.zonesLoaded,
+      resolutions: index.resolutions,
     });
   } catch (err) {
     return c.json({ ready: false, available: true, error: err instanceof Error ? err.message : String(err) });
@@ -247,6 +256,49 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
     frequency: threshold,
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   });
+});
+
+// Grid: lifer count for every H3 cell of a resolution inside a viewport bbox.
+// This is the always-on choropleth; the user's frequency/checklist filters do
+// NOT apply here (they scope hotspot results only). Called on every settled
+// pan/zoom, so it stays lean: no region-name enrichment, no citation.
+lifersRoute.post("/grid", async (c) => {
+  const startTime = performance.now();
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+
+  const speciesInputs = parseSpeciesInput(body.species);
+  const bbox = parseBBoxBody(body.bbox);
+  if (!bbox) {
+    throw new HTTPException(400, { message: "bbox is required for grid queries" });
+  }
+
+  const index = await getLifersIndex();
+  await ensureZonesLoaded(index);
+  const resolution = parseResolution(body.resolution, index.resolutions);
+  const { ids: seenIds } = index.resolveSpecies(speciesInputs);
+  const { cells, maxLifers } = index.gridCells(seenIds, resolution, bbox);
+
+  return c.json({
+    resolution,
+    cells,
+    maxLifers,
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
+  });
+});
+
+// Bounding box over a region's hotspots, for framing the map on selection.
+lifersRoute.post("/region-bounds", async (c) => {
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+  if (!body.region) {
+    throw new HTTPException(400, { message: "region is required" });
+  }
+  const regionCodes = parseRegionCodes(String(body.region));
+  const index = await getLifersIndex();
+  return c.json({ bbox: index.regionBounds(regionCodes) });
 });
 
 // Hot Zones: H3 hexagons ranked by how many new species you could find there.

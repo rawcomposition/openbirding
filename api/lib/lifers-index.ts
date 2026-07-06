@@ -14,7 +14,17 @@ import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { LIFERS_DB_FILENAME } from "./config.js";
-import { topByLifers, type GeoArrays } from "./geo-query.js";
+import { topByLifers, allInBbox, regionMatches, type GeoArrays } from "./geo-query.js";
+
+export type GridCell = { h3: string; lifers: number };
+export type Bbox = { minLng: number; minLat: number; maxLng: number; maxLat: number };
+type ZoneDataset = {
+  res: number;
+  numRefs: number;
+  h3: BigInt64Array;
+  geo: GeoArrays;
+  qCount: Int32Array[];
+};
 
 export type SpeciesInput = {
   sciName?: string | null;
@@ -103,13 +113,10 @@ class LifersIndex {
 
   private readonly dbPath: string;
 
-  // Zone (H3) dataset — loaded lazily on first zone query.
-  private zones: {
-    numRefs: number;
-    h3: BigInt64Array;
-    geo: GeoArrays;
-    qCount: Int32Array[];
-  } | null = null;
+  // Zone (H3) datasets, one per resolution (res 3..6) — loaded lazily together
+  // on first zone/grid query. Coarse resolutions colour the map when zoomed out,
+  // finer ones as you zoom in.
+  private zonesByRes: Map<number, ZoneDataset> | null = null;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -296,83 +303,128 @@ class LifersIndex {
     }));
   }
 
-  /** Load the zone (H3) dataset into memory (idempotent). */
+  /** Load every H3 resolution into memory (idempotent). */
   loadZones(): void {
-    if (this.zones) return;
+    if (this.zonesByRes) return;
     const db = new Database(this.dbPath, { readonly: true });
     db.pragma("cache_size = -500000");
 
-    const numRefs = (db.prepare("SELECT COUNT(*) c FROM zone_meta").get() as any).c as number;
-    const maxCellRef = (db.prepare("SELECT MAX(cell_ref) m FROM zone_meta").get() as any).m as number;
-    const maxSid = (db.prepare("SELECT MAX(species_id) m FROM zone_species").get() as any).m as number;
-    const totalRows = (db.prepare("SELECT COUNT(*) c FROM zone_species").get() as any).c as number;
+    const resList = (db.prepare("SELECT DISTINCT res FROM zone_meta ORDER BY res").all() as any[]).map(
+      (r) => r.res as number
+    );
+    const byRes = new Map<number, ZoneDataset>();
 
-    // cell_ref is a sparse integer; index arrays by cell_ref directly.
-    const size = maxCellRef + 1;
-    const samples = new Int32Array(size);
-    const lat = new Float32Array(size);
-    const lng = new Float32Array(size);
-    const h3 = new BigInt64Array(size);
-    const regionCode: string[] = new Array(size).fill("");
+    for (const res of resList) {
+      const maxCellRef = (db.prepare("SELECT MAX(cell_ref) m FROM zone_meta WHERE res = ?").get(res) as any)
+        .m as number;
+      const maxSid = (db.prepare("SELECT MAX(species_id) m FROM zone_species WHERE res = ?").get(res) as any)
+        .m as number;
+      const totalRows = (db.prepare("SELECT COUNT(*) c FROM zone_species WHERE res = ?").get(res) as any)
+        .c as number;
 
-    // h3 is a full 64-bit integer, so read this statement in safe-integer (BigInt)
-    // mode and coerce the small columns back to numbers.
-    for (const [ref, hh, la, ln, rc, s] of db
-      .prepare("SELECT cell_ref, h3, lat, lng, region_code, samples FROM zone_meta")
-      .raw()
-      .safeIntegers()
-      .iterate() as Iterable<any[]>) {
-      const r = Number(ref);
-      samples[r] = Number(s);
-      lat[r] = Number(la);
-      lng[r] = Number(ln);
-      h3[r] = typeof hh === "bigint" ? hh : BigInt(hh);
-      regionCode[r] = rc ?? "";
+      // cell_ref is a dense integer per resolution; index arrays by it directly.
+      const size = maxCellRef + 1;
+      const samples = new Int32Array(size);
+      const lat = new Float32Array(size);
+      const lng = new Float32Array(size);
+      const h3 = new BigInt64Array(size);
+      const regionCode: string[] = new Array(size).fill("");
+
+      // h3 is a full 64-bit integer, so read in safe-integer (BigInt) mode and
+      // coerce the small columns back to numbers.
+      for (const [ref, hh, la, ln, rc, s] of db
+        .prepare("SELECT cell_ref, h3, lat, lng, region_code, samples FROM zone_meta WHERE res = ?")
+        .raw()
+        .safeIntegers()
+        .iterate(res) as Iterable<any[]>) {
+        const r = Number(ref);
+        samples[r] = Number(s);
+        lat[r] = Number(la);
+        lng[r] = Number(ln);
+        h3[r] = typeof hh === "bigint" ? hh : BigInt(hh);
+        regionCode[r] = rc ?? "";
+      }
+
+      const qCount = this.buckets.map(() => new Int32Array(size));
+      for (const [bucket, ref, q] of db
+        .prepare("SELECT bucket, cell_ref, q_count FROM zone_qcount WHERE res = ?")
+        .raw()
+        .iterate(res) as Iterable<any[]>) {
+        qCount[bucket][ref] = q;
+      }
+
+      const spOff = new Int32Array(maxSid + 2);
+      for (const [sid] of db
+        .prepare("SELECT species_id FROM zone_species WHERE res = ?")
+        .raw()
+        .iterate(res) as Iterable<any[]>) {
+        spOff[sid + 1]++;
+      }
+      for (let i = 1; i < spOff.length; i++) spOff[i] += spOff[i - 1];
+      const csrRef = new Int32Array(totalRows);
+      const csrLvl = new Uint8Array(totalRows);
+      const cursor = spOff.slice();
+      for (const [sid, ref, lvl] of db
+        .prepare("SELECT species_id, cell_ref, bucket_level FROM zone_species WHERE res = ?")
+        .raw()
+        .iterate(res) as Iterable<any[]>) {
+        const p = cursor[sid]++;
+        csrRef[p] = ref;
+        csrLvl[p] = lvl;
+      }
+
+      byRes.set(res, {
+        res,
+        numRefs: size,
+        h3,
+        qCount,
+        geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
+      });
     }
 
-    const qCount = this.buckets.map(() => new Int32Array(size));
-    for (const [bucket, ref, q] of db
-      .prepare("SELECT bucket, cell_ref, q_count FROM zone_qcount")
-      .raw()
-      .iterate() as Iterable<any[]>) {
-      qCount[bucket][ref] = q;
-    }
-
-    const spOff = new Int32Array(maxSid + 2);
-    for (const [sid] of db.prepare("SELECT species_id FROM zone_species").raw().iterate() as Iterable<any[]>) {
-      spOff[sid + 1]++;
-    }
-    for (let i = 1; i < spOff.length; i++) spOff[i] += spOff[i - 1];
-    const csrRef = new Int32Array(totalRows);
-    const csrLvl = new Uint8Array(totalRows);
-    const cursor = spOff.slice();
-    for (const [sid, ref, lvl] of db
-      .prepare("SELECT species_id, cell_ref, bucket_level FROM zone_species")
-      .raw()
-      .iterate() as Iterable<any[]>) {
-      const p = cursor[sid]++;
-      csrRef[p] = ref;
-      csrLvl[p] = lvl;
-    }
     db.close();
-
-    this.zones = {
-      numRefs: size,
-      h3,
-      qCount,
-      geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
-    };
+    this.zonesByRes = byRes;
   }
 
   get zonesLoaded(): boolean {
-    return this.zones != null;
+    return this.zonesByRes != null;
   }
 
-  queryZones(q: GeoTargetQuery): LiferZone[] {
-    if (!this.zones) throw new Error("Zones not loaded");
+  /** Resolutions available in the loaded zone data (ascending; coarse → fine). */
+  get resolutions(): number[] {
+    return this.zonesByRes ? [...this.zonesByRes.keys()].sort((a, b) => a - b) : [];
+  }
+
+  /**
+   * Lifer count for every H3 cell of `res` inside `bbox` — the data behind the
+   * always-on choropleth. Unfiltered by the user's frequency/checklist controls
+   * (those apply only to hotspot results); uses bucket 0 (the >=1% floor baked
+   * into the data) purely to strip one-off vagrant records.
+   */
+  gridCells(seenIds: Set<number>, res: number, bbox: Bbox): { cells: GridCell[]; maxLifers: number } {
+    if (!this.zonesByRes) throw new Error("Zones not loaded");
+    const zs = this.zonesByRes.get(res);
+    if (!zs) return { cells: [], maxLifers: 0 };
+    const q0 = zs.qCount[0];
+    const found = allInBbox(zs.geo, { seenIds, qCountForBucket: q0, bucket: 0, bbox });
+    let maxLifers = 0;
+    const cells: GridCell[] = new Array(found.length);
+    for (let i = 0; i < found.length; i++) {
+      const { ref, lifers } = found[i];
+      if (lifers > maxLifers) maxLifers = lifers;
+      cells[i] = { h3: BigInt.asUintN(64, zs.h3[ref]).toString(16), lifers };
+    }
+    return { cells, maxLifers };
+  }
+
+  queryZones(q: GeoTargetQuery, res?: number): LiferZone[] {
+    if (!this.zonesByRes) throw new Error("Zones not loaded");
+    const useRes = res ?? Math.max(...this.zonesByRes.keys()); // finest by default
+    const zs = this.zonesByRes.get(useRes);
+    if (!zs) return [];
     const minChecklists = Math.max(q.minChecklists, this.minChecklistsFloor);
-    const q0 = this.zones.qCount[q.bucket];
-    const top = topByLifers(this.zones.geo, {
+    const q0 = zs.qCount[q.bucket];
+    const top = topByLifers(zs.geo, {
       seenIds: q.seenIds,
       bucket: q.bucket,
       qCountForBucket: q0,
@@ -382,21 +434,44 @@ class LifersIndex {
       limit: q.limit,
     });
     return top.map(({ ref, lifers }) => {
-      const lat = this.zones!.geo.lat[ref];
-      const lng = this.zones!.geo.lng[ref];
+      const lat = zs.geo.lat[ref];
+      const lng = zs.geo.lng[ref];
       return {
         cellRef: ref,
-        h3: BigInt.asUintN(64, this.zones!.h3[ref]).toString(16),
+        h3: BigInt.asUintN(64, zs.h3[ref]).toString(16),
         lat,
         lng,
-        regionCode: this.zones!.geo.regionCode[ref],
+        regionCode: zs.geo.regionCode[ref],
         // Res-6 hexes have a ~3.7 km circumradius; 4 km catches the cell's hotspots.
         anchorHotspot: this.bestHotspotNear(lat, lng, 4),
         lifers,
         totalSpecies: q0[ref],
-        checklists: this.zones!.geo.samples[ref],
+        checklists: zs.geo.samples[ref],
       };
     });
+  }
+
+  /**
+   * Bounding box over all hotspots whose region matches one of `codes`
+   * (used to frame the map when a region is selected). Null if none match.
+   */
+  regionBounds(codes: string[]): Bbox | null {
+    let minLat = Infinity;
+    let minLng = Infinity;
+    let maxLat = -Infinity;
+    let maxLng = -Infinity;
+    let found = false;
+    for (let ref = 0; ref < this.numLocs; ref++) {
+      if (!regionMatches(this.regionCode[ref], codes)) continue;
+      found = true;
+      const la = this.lat[ref];
+      const ln = this.lng[ref];
+      if (la < minLat) minLat = la;
+      if (la > maxLat) maxLat = la;
+      if (ln < minLng) minLng = ln;
+      if (ln > maxLng) maxLng = ln;
+    }
+    return found ? { minLat, minLng, maxLat, maxLng } : null;
   }
 
   getSpeciesMeta(id: number): SpeciesMeta | undefined {

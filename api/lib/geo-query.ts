@@ -32,11 +32,48 @@ export type GeoQuery = {
   limit: number;
 };
 
-function regionMatches(rc: string, codes: string[]): boolean {
+export function regionMatches(rc: string, codes: string[]): boolean {
   for (const code of codes) {
     if (rc === code || rc.startsWith(code + "-")) return true;
   }
   return false;
+}
+
+/**
+ * Every ref inside a bbox with its lifer count (>= 0), unranked. Used to colour
+ * the H3 grid: we need *all* visible cells, not just the top-K, and we keep
+ * cells with zero lifers so the map can render them subtly.
+ */
+export function allInBbox(
+  a: GeoArrays,
+  q: { seenIds: Set<number>; qCountForBucket: Int32Array; bucket: number; bbox: GeoQuery["bbox"] }
+): { ref: number; lifers: number }[] {
+  const { seenIds, qCountForBucket, bucket, bbox } = q;
+  const counter = a.counter;
+  counter.fill(0);
+
+  for (const sid of seenIds) {
+    if (sid + 1 >= a.spOff.length) continue;
+    const start = a.spOff[sid];
+    const end = a.spOff[sid + 1];
+    for (let i = start; i < end; i++) {
+      if (a.csrLvl[i] >= bucket) counter[a.csrRef[i]]++;
+    }
+  }
+
+  const out: { ref: number; lifers: number }[] = [];
+  for (let ref = 0; ref < a.numRefs; ref++) {
+    const q0 = qCountForBucket[ref];
+    if (q0 <= 0) continue; // cell has no quality species at all → nothing to draw
+    if (bbox) {
+      const la = a.lat[ref];
+      const ln = a.lng[ref];
+      if (la < bbox.minLat || la > bbox.maxLat || ln < bbox.minLng || ln > bbox.maxLng) continue;
+    }
+    const lifers = q0 - counter[ref];
+    out.push({ ref, lifers: lifers > 0 ? lifers : 0 });
+  }
+  return out;
 }
 
 export function topByLifers(a: GeoArrays, q: GeoQuery): { ref: number; lifers: number }[] {
