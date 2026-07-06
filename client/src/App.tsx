@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Header from "./components/Header";
 import Home from "./pages/Home";
@@ -8,7 +8,7 @@ import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { get } from "./lib/utils";
 import BirdFinder from "@/pages/BirdFinder";
-import LiferTargets from "@/pages/LiferTargets";
+import BestHotspots from "@/pages/BestHotspots";
 import Android from "@/pages/Android";
 
 const queryClient = new QueryClient({
@@ -36,7 +36,8 @@ function AppContent() {
             <Route path="/" element={<Home />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/bird-finder" element={<BirdFinder />} />
-            <Route path="/lifer-targets" element={<LiferTargets />} />
+            <Route path="/best-hotspots" element={<BestHotspots />} />
+            <Route path="/lifer-targets" element={<Navigate to="/best-hotspots" replace />} />
             <Route path="/android" element={<Android />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

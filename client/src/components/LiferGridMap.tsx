@@ -24,6 +24,8 @@ type Props = {
   onResolutionChange: (resolution: number) => void;
   /** Fired on every settled pan/zoom — the page scopes hotspot results to it. */
   onViewportChange: (bbox: Bbox, resolution: number) => void;
+  /** Location of the selected hotspot, shown as a single map marker. */
+  markerAt: { lng: number; lat: number } | null;
 };
 
 export type GridMapHandle = {
@@ -60,7 +62,7 @@ function emptyFc(): GeoJSON.FeatureCollection {
 }
 
 const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
-  { listToken, resolutions, breaksByRes, selectedCells, onToggleCell, onResolutionChange, onViewportChange },
+  { listToken, resolutions, breaksByRes, selectedCells, onToggleCell, onResolutionChange, onViewportChange, markerAt },
   handleRef
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,12 +92,16 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     if (!map || !loadedRef.current) return;
 
     const b = map.getBounds();
-    const bbox: Bbox = {
-      minLng: Math.max(-180, b.getWest()),
-      minLat: Math.max(-90, b.getSouth()),
-      maxLng: Math.min(180, b.getEast()),
-      maxLat: Math.min(90, b.getNorth()),
-    };
+    const minLat = Math.max(-90, b.getSouth());
+    const maxLat = Math.min(90, b.getNorth());
+    // MapLibre unwraps longitudes past ±180 near the antimeridian. Re-wrap each
+    // edge into [-180, 180]; a resulting minLng > maxLng means the view crosses
+    // the seam, which the server's bbox filter understands.
+    const wrapLng = (l: number) => ((((l + 180) % 360) + 360) % 360) - 180;
+    const bbox: Bbox =
+      b.getEast() - b.getWest() >= 360
+        ? { minLng: -180, minLat, maxLng: 180, maxLat }
+        : { minLng: wrapLng(b.getWest()), minLat, maxLng: wrapLng(b.getEast()), maxLat };
     const resolution = resForZoom(map.getZoom(), resolutionsRef.current);
     if (resolution !== currentResRef.current) {
       currentResRef.current = resolution;
@@ -275,6 +281,20 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     if (map && loadedRef.current) syncSelectedCells(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCells]);
+
+  // Marker for the selected hotspot.
+  const markerRef = useRef<maplibregl.Marker | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    markerRef.current?.remove();
+    markerRef.current = null;
+    if (markerAt) {
+      markerRef.current = new maplibregl.Marker({ color: "#f59e0b" })
+        .setLngLat([markerAt.lng, markerAt.lat])
+        .addTo(map);
+    }
+  }, [markerAt]);
 
   useImperativeHandle(handleRef, () => ({
     fitBounds(bbox: Bbox) {

@@ -10,11 +10,10 @@ export type HexSelection = {
 };
 
 // Frequency presets (fraction of checklists) must match the buckets baked into
-// occurrences.db (see api/scripts/build-occurrences-db.ts). These scope hotspot results
+// occurrences.db (see the aggregator repo, generate_occurrences.py). These scope hotspot results
 // only — never the grid colour.
 export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[] = [
   { value: 0.01, label: "1%", hint: "Rare — includes scarce & seasonal birds" },
-  { value: 0.03, label: "3%", hint: "Uncommon" },
   { value: 0.05, label: "5%", hint: "Reasonable chance (default)" },
   { value: 0.1, label: "10%", hint: "Fairly reliable" },
   { value: 0.2, label: "20%", hint: "Likely on a visit" },
@@ -91,7 +90,7 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
     }),
     {
       name: "openbirding-lifer-targets",
-      version: 3,
+      version: 4,
       // Persist the list token and filters — but not the transient hex
       // selection, which is tied to a specific map resolution.
       partialize: (state) => ({
@@ -121,6 +120,10 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
         // v2 -> v3 dropped region scoping (results scope to the viewport now).
         if (version <= 2) {
           old = { ...old, regions: undefined, region: undefined, mode: undefined };
+        }
+        // v3 -> v4 dropped the 3% frequency preset; snap to the 5% default.
+        if (version <= 3 && old.frequency === 0.03) {
+          old = { ...old, frequency: 0.05 };
         }
         return old as never;
       },

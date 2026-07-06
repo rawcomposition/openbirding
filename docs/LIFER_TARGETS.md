@@ -82,9 +82,11 @@ thresholds; at query time we only walk the user's seen species.
 
 ### The companion database: `occurrences.db`
 
-Built from the 12 GB read-only `targets.db` by
-`api/scripts/build-occurrences-db.ts`. It is **never** modified in place — the source
-is attached read-only and a fresh `occurrences.db` (~760 MB) is written. Tables:
+Built from the read-only `targets.db` by **the aggregator repo's
+`generate_occurrences.py`** — a step in its CLI pipeline ("Build Occurrences
+DB", also part of "All"), run at the same cadence as the targets build and
+uploaded alongside targets.db by its Upload SQLite step. The source is
+attached read-only and a fresh `occurrences.db` is written. Tables:
 
 | Table          | Rows   | Purpose |
 |----------------|--------|---------|
@@ -106,12 +108,14 @@ resolution and the map colours whichever fits the current zoom.
 `bucket_level` is the frequency threshold quantized to an integer 0–6, so the
 in-memory index needs no float math.
 
-A `blob_cache` table (written by `api/scripts/pack-occurrences-blobs.ts`, invoked
-automatically at the end of the build) holds the same data pre-packed as
-typed-array BLOBs. The API loads those with a few memcpy-speed reads (~1.5 s
-total) instead of iterating ~66M rows through the JS statement cursor (~60 s,
-which blocked the whole event loop). The row tables remain the source of truth;
-the loader falls back to iterating them if `blob_cache` is absent.
+A `blob_cache` table (written at the end of the same build) holds the same
+data pre-packed as little-endian typed-array BLOBs. The API loads those with a
+few memcpy-speed reads (~0.5 s total) instead of iterating tens of millions of
+rows through the JS statement cursor (~60 s, which blocked the whole event
+loop). The exact blob layout is documented in `generate_occurrences.py` and
+consumed by `api/lib/lifers-index.ts` — **keep the two in sync**. The row
+tables remain the source of truth; the loader falls back to iterating them if
+`blob_cache` is absent.
 
 ### The in-memory index
 
@@ -248,10 +252,10 @@ nearest bucket.
   per-month buckets (bigger `occurrences.db`) or an on-the-fly path.
 - **"Trip" aggregation.** Combine several nearby zones into a route and show the
   combined lifer total.
-- **Rebuild cadence.** `occurrences.db` must be rebuilt whenever `targets.db` is
-  refreshed. Wire `npx tsx api/scripts/build-occurrences-db.ts` into the same
-  pipeline that regenerates `targets.db`, then hot-swap (mirror the existing
-  `swapTargetsDb` retire-on-idle pattern if zero-downtime swap is needed).
+- ~~**Rebuild cadence.**~~ Done — `occurrences.db` is built and uploaded by the
+  aggregator pipeline whenever `targets.db` is refreshed; the API picks up the
+  new file on its next restart (a `swapTargetsDb`-style hot reload of the
+  lifers index is possible if zero-downtime refresh is ever needed).
 - **Very large life lists** (10k+ species) persist to `localStorage`; if it
   exceeds quota the tool still works for the session but won't remember the list.
   Consider IndexedDB if this becomes common.
@@ -260,11 +264,11 @@ nearest bucket.
 
 ## Deploying
 
-1. Build the companion DB next to `targets.db`:
-   `cd api && npx tsx scripts/build-occurrences-db.ts`
-   (honors `TARGETS_DB` / `OCCURRENCES_DB` env overrides; defaults to the web root).
-   To add the blob cache to an already-built `occurrences.db` without a full
-   rebuild: `npx tsx scripts/pack-occurrences-blobs.ts`.
-2. Ensure `occurrences.db` sits in `SQLITE_DIR` (same dir as `targets.db`).
-3. Start the API — the index warms automatically. `GET /api/v1/lifers/status`
-   reports readiness.
+1. Build via the aggregator CLI ("Build Occurrences DB", or as part of "All"):
+   `python3 generate_occurrences.py <targets.db> <occurrences.db>`.
+2. The aggregator's "Upload SQLite" step ships `occurrences.db` to the VPS
+   data volume alongside `targets.db`; the API reads it only at startup, so it
+   loads on the next API restart. (Manual alternative: place it in
+   `SQLITE_DIR`, same dir as `targets.db`.)
+3. Start the API — the index warms automatically (~0.5 s hotspots + ~0.1 s
+   zones from the blob cache). `GET /api/v1/lifers/status` reports readiness.

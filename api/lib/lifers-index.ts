@@ -1,7 +1,7 @@
 /**
  * In-memory index for the Lifer Targets / Hot Zones tools.
  *
- * Loads occurrences.db (built by scripts/build-occurrences-db.ts) into compact typed
+ * Loads occurrences.db (built by the aggregator repo's generate_occurrences.py) into compact typed
  * arrays once at startup, then answers "where can I see the most new species?"
  * queries in tens of milliseconds using pure array arithmetic:
  *
@@ -81,7 +81,7 @@ type SpeciesMeta = { id: number; code: string; name: string; sciName: string; ta
 
 /**
  * Reader over the optional `blob_cache` table (written by
- * scripts/pack-occurrences-blobs.ts): the big row tables pre-packed as typed-array
+ * aggregator/generate_occurrences.py): the big row tables pre-packed as typed-array
  * blobs so the index loads with a few memcpy-speed reads (~1s) instead of
  * iterating ~66M rows through the JS statement cursor (~60s, blocking the
  * event loop). Returns null when the DB hasn't been packed — callers fall
@@ -349,10 +349,10 @@ class LifersIndex {
     };
   }
 
-  queryHotspots(q: GeoTargetQuery): LiferHotspot[] {
+  queryHotspots(q: GeoTargetQuery): { items: LiferHotspot[]; candidates: number } {
     const minChecklists = Math.max(q.minChecklists, this.minChecklistsFloor);
     const q0 = this.qCount[q.bucket];
-    const top = topByLifers(this.hotspotGeo, {
+    const { top, candidates } = topByLifers(this.hotspotGeo, {
       seenIds: q.seenIds,
       bucket: q.bucket,
       qCountForBucket: q0,
@@ -361,7 +361,7 @@ class LifersIndex {
       bbox: q.bbox,
       limit: q.limit,
     });
-    return top.map(({ ref, lifers }) => ({
+    const items = top.map(({ ref, lifers }) => ({
       id: this.locId[ref],
       name: this.locName[ref],
       lat: this.lat[ref],
@@ -371,6 +371,7 @@ class LifersIndex {
       totalSpecies: q0[ref],
       checklists: this.samples[ref],
     }));
+    return { items, candidates };
   }
 
   /** Load every H3 resolution into memory (idempotent). */
@@ -623,7 +624,7 @@ class LifersIndex {
     if (!zs) return [];
     const minChecklists = Math.max(q.minChecklists, this.minChecklistsFloor);
     const q0 = zs.qCount[q.bucket];
-    const top = topByLifers(zs.geo, {
+    const { top } = topByLifers(zs.geo, {
       seenIds: q.seenIds,
       bucket: q.bucket,
       qCountForBucket: q0,

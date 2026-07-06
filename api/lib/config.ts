@@ -3,7 +3,7 @@ export const TARGETS_DB_FILENAME = "targets.db";
 
 /**
  * Compact companion DB of species-occurrence frequencies per hotspot and per
- * H3 cell (built from targets.db by api/scripts/build-occurrences-db.ts).
+ * H3 cell (built from targets.db by the aggregator repo, generate_occurrences.py).
  * Currently powers Lifer Targets, but the data is tool-agnostic.
  */
 export const OCCURRENCES_DB_FILENAME = "occurrences.db";

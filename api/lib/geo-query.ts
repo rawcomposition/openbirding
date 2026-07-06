@@ -40,6 +40,15 @@ export function regionMatches(rc: string, codes: string[]): boolean {
 }
 
 /**
+ * Longitude-in-range test that supports antimeridian-crossing boxes: when
+ * minLng > maxLng the box wraps through 180° (e.g. Fiji/NZ views), so a point
+ * matches on either side of the seam.
+ */
+function lngInBbox(ln: number, minLng: number, maxLng: number): boolean {
+  return minLng <= maxLng ? ln >= minLng && ln <= maxLng : ln >= minLng || ln <= maxLng;
+}
+
+/**
  * Every ref inside a bbox with its lifer count (>= 0), unranked. Used to colour
  * the H3 grid: we need *all* visible cells, not just the top-K, and we keep
  * cells with zero lifers so the map can render them subtly.
@@ -67,8 +76,7 @@ export function allInBbox(
     if (q0 <= 0) continue; // cell has no quality species at all → nothing to draw
     if (bbox) {
       const la = a.lat[ref];
-      const ln = a.lng[ref];
-      if (la < bbox.minLat || la > bbox.maxLat || ln < bbox.minLng || ln > bbox.maxLng) continue;
+      if (la < bbox.minLat || la > bbox.maxLat || !lngInBbox(a.lng[ref], bbox.minLng, bbox.maxLng)) continue;
     }
     const lifers = q0 - counter[ref];
     out.push({ ref, lifers: lifers > 0 ? lifers : 0 });
@@ -76,7 +84,10 @@ export function allInBbox(
   return out;
 }
 
-export function topByLifers(a: GeoArrays, q: GeoQuery): { ref: number; lifers: number }[] {
+export function topByLifers(
+  a: GeoArrays,
+  q: GeoQuery
+): { top: { ref: number; lifers: number }[]; candidates: number } {
   const { seenIds, bucket, qCountForBucket, regionCodes, bbox, minChecklists, limit } = q;
   const counter = a.counter;
   counter.fill(0);
@@ -124,14 +135,15 @@ export function topByLifers(a: GeoArrays, q: GeoQuery): { ref: number; lifers: n
     heapRef[y] = tr;
   };
 
+  let candidates = 0; // hotspots in scope before the user's filters — lets the UI explain empty results
   for (let ref = 0; ref < a.numRefs; ref++) {
-    if (a.samples[ref] < minChecklists) continue;
     if (regionCodes && !regionMatches(a.regionCode[ref], regionCodes)) continue;
     if (bbox) {
       const la = a.lat[ref];
-      const ln = a.lng[ref];
-      if (la < bbox.minLat || la > bbox.maxLat || ln < bbox.minLng || ln > bbox.maxLng) continue;
+      if (la < bbox.minLat || la > bbox.maxLat || !lngInBbox(a.lng[ref], bbox.minLng, bbox.maxLng)) continue;
     }
+    candidates++;
+    if (a.samples[ref] < minChecklists) continue;
     const lifers = qCountForBucket[ref] - counter[ref];
     if (lifers <= 0) continue;
 
@@ -150,5 +162,5 @@ export function topByLifers(a: GeoArrays, q: GeoQuery): { ref: number; lifers: n
   const out: { ref: number; lifers: number }[] = [];
   for (let i = 0; i < heapSize; i++) out.push({ ref: heapRef[i], lifers: heapVal[i] });
   out.sort((x, y) => y.lifers - x.lifers || a.samples[y.ref] - a.samples[x.ref]);
-  return out;
+  return { top: out, candidates };
 }

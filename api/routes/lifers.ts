@@ -267,12 +267,15 @@ lifersRoute.post("/hotspots", async (c) => {
   const { ids: seenIds, matched, unmatched } = index.resolveSpecies(speciesInputs);
   const bucket = index.bucketForFrequency(frequency);
 
-  const items = index.queryHotspots({ seenIds, bucket, minChecklists, regionCodes, bbox, limit });
+  const { items, candidates } = index.queryHotspots({ seenIds, bucket, minChecklists, regionCodes, bbox, limit });
   const regionNames = await getRegionNames().catch(() => new Map<string, string>());
 
   return c.json({
     items: items.map((it) => ({ ...it, regionName: regionNameFor(it.regionCode, regionNames) })),
     meta: {
+      // Hotspots in scope before frequency/checklist filtering — 0 means the
+      // area simply has no eBird hotspots, so relaxing filters won't help.
+      hotspotsInScope: candidates,
       seenMatched: matched,
       seenUnmatched: unmatched.length,
       unmatchedSample: unmatched.slice(0, 25),
