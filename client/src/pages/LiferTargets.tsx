@@ -46,6 +46,16 @@ type CellInfo = {
 
 const HOTSPOT_LIMIT = 50;
 
+/**
+ * eBird's "targets" page for a hotspot — the species you still need there,
+ * measured against your worldwide life list (r2=world, t2=life), all months.
+ * Opens live on eBird so a logged-in user sees their own up-to-date targets.
+ */
+function ebirdTargetsUrl(hotspotId: string): string {
+  const p = new URLSearchParams({ r1: hotspotId, bmo: "1", emo: "12", r2: "world", t2: "life", mediaType: "" });
+  return `https://ebird.org/targets?${p.toString()}`;
+}
+
 /** Union bounding box over a set of H3 cells (skips antimeridian-straddling sets). */
 function cellsBbox(cells: string[]): Bbox | null {
   let minLng = Infinity;
@@ -492,10 +502,11 @@ function HotspotResults({
               <span className="w-4 shrink-0 text-center text-xs font-bold tabular-nums text-slate-400">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <a
-                  href={`https://ebird.org/hotspot/${h.id}`}
+                  href={ebirdTargetsUrl(h.id)}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
+                  title="See your remaining targets here on eBird"
                   className="block truncate text-sm font-medium text-slate-800 hover:text-emerald-700"
                 >
                   {h.name}
