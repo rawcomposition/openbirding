@@ -288,6 +288,42 @@ lifersRoute.post("/grid", async (c) => {
   });
 });
 
+// Worldwide max lifer count per resolution — the fixed colour scale for this
+// life list, fetched once so panning never recolours the grid.
+lifersRoute.post("/grid-scale", async (c) => {
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+  const speciesInputs = parseSpeciesInput(body.species);
+  const index = await getLifersIndex();
+  await ensureZonesLoaded(index);
+  const { ids: seenIds } = index.resolveSpecies(speciesInputs);
+  return c.json({ maxByRes: index.gridScale(seenIds) });
+});
+
+// Per-cell detail for selected hexes: checklist samples, species, lifers.
+lifersRoute.post("/cells", async (c) => {
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+  const speciesInputs = parseSpeciesInput(body.species);
+  if (!Array.isArray(body.cells) || body.cells.length === 0 || body.cells.length > 500) {
+    throw new HTTPException(400, { message: "cells must be a non-empty array of at most 500 h3 strings" });
+  }
+  const cells = body.cells.map((h: unknown) => {
+    if (typeof h !== "string" || !/^[0-9a-f]{15}$/.test(h)) {
+      throw new HTTPException(400, { message: "each cell must be a 15-char hex h3 index" });
+    }
+    return h;
+  });
+
+  const index = await getLifersIndex();
+  await ensureZonesLoaded(index);
+  const resolution = parseResolution(body.resolution, index.resolutions);
+  const { ids: seenIds } = index.resolveSpecies(speciesInputs);
+  return c.json({ resolution, cells: index.cellsInfo(seenIds, resolution, cells) });
+});
+
 // Bounding box over a region's hotspots, for framing the map on selection.
 lifersRoute.post("/region-bounds", async (c) => {
   const body = await c.req.json().catch(() => {

@@ -17,6 +17,7 @@ import { LIFERS_DB_FILENAME } from "./config.js";
 import { topByLifers, allInBbox, regionMatches, type GeoArrays } from "./geo-query.js";
 
 export type GridCell = { h3: string; lifers: number };
+export type CellInfo = { h3: string; samples: number; totalSpecies: number; lifers: number };
 export type Bbox = { minLng: number; minLat: number; maxLng: number; maxLat: number };
 type ZoneDataset = {
   res: number;
@@ -24,6 +25,7 @@ type ZoneDataset = {
   h3: BigInt64Array;
   geo: GeoArrays;
   qCount: Int32Array[];
+  byH3: Map<string, number>; // h3 hex string -> cell_ref, for reverse lookups
 };
 
 export type SpeciesInput = {
@@ -329,6 +331,7 @@ class LifersIndex {
       const lng = new Float32Array(size);
       const h3 = new BigInt64Array(size);
       const regionCode: string[] = new Array(size).fill("");
+      const byH3 = new Map<string, number>();
 
       // h3 is a full 64-bit integer, so read in safe-integer (BigInt) mode and
       // coerce the small columns back to numbers.
@@ -341,8 +344,10 @@ class LifersIndex {
         samples[r] = Number(s);
         lat[r] = Number(la);
         lng[r] = Number(ln);
-        h3[r] = typeof hh === "bigint" ? hh : BigInt(hh);
+        const hb = typeof hh === "bigint" ? hh : BigInt(hh);
+        h3[r] = hb;
         regionCode[r] = rc ?? "";
+        byH3.set(BigInt.asUintN(64, hb).toString(16), r);
       }
 
       const qCount = this.buckets.map(() => new Int32Array(size));
@@ -378,6 +383,7 @@ class LifersIndex {
         numRefs: size,
         h3,
         qCount,
+        byH3,
         geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
       });
     }
@@ -415,6 +421,55 @@ class LifersIndex {
       cells[i] = { h3: BigInt.asUintN(64, zs.h3[ref]).toString(16), lifers };
     }
     return { cells, maxLifers };
+  }
+
+  /** Tally the user's seen species into a zone dataset's scratch counter (bucket 0). */
+  private walkSeen(zs: ZoneDataset, seenIds: Set<number>): Int32Array {
+    const { spOff, csrRef, counter } = zs.geo;
+    counter.fill(0);
+    for (const sid of seenIds) {
+      if (sid + 1 >= spOff.length) continue;
+      const start = spOff[sid];
+      const end = spOff[sid + 1];
+      for (let i = start; i < end; i++) counter[csrRef[i]]++;
+    }
+    return counter;
+  }
+
+  /**
+   * Worldwide maximum lifer count per resolution for this user — the fixed,
+   * personalised scale the map normalises colour to, so panning never recolours
+   * (only zooming, which changes resolution, rescales).
+   */
+  gridScale(seenIds: Set<number>): Record<number, number> {
+    if (!this.zonesByRes) throw new Error("Zones not loaded");
+    const out: Record<number, number> = {};
+    for (const [res, zs] of this.zonesByRes) {
+      const counter = this.walkSeen(zs, seenIds);
+      const q0 = zs.qCount[0];
+      let max = 0;
+      for (let ref = 0; ref < zs.numRefs; ref++) {
+        const l = q0[ref] - counter[ref];
+        if (l > max) max = l;
+      }
+      out[res] = max;
+    }
+    return out;
+  }
+
+  /** Debug/detail for specific cells: checklist samples, total quality species, lifers. */
+  cellsInfo(seenIds: Set<number>, res: number, h3s: string[]): CellInfo[] {
+    if (!this.zonesByRes) throw new Error("Zones not loaded");
+    const zs = this.zonesByRes.get(res);
+    if (!zs) return h3s.map((h3) => ({ h3, samples: 0, totalSpecies: 0, lifers: 0 }));
+    const counter = this.walkSeen(zs, seenIds);
+    const q0 = zs.qCount[0];
+    return h3s.map((h3) => {
+      const ref = zs.byH3.get(h3);
+      if (ref == null) return { h3, samples: 0, totalSpecies: 0, lifers: 0 };
+      const totalSpecies = q0[ref];
+      return { h3, samples: zs.geo.samples[ref], totalSpecies, lifers: Math.max(0, totalSpecies - counter[ref]) };
+    });
   }
 
   queryZones(q: GeoTargetQuery, res?: number): LiferZone[] {

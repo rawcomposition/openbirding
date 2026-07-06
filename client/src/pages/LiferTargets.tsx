@@ -4,7 +4,7 @@ import { cellToBoundary, latLngToCell } from "h3-js";
 import { Binoculars, Upload, MapPin, X, Loader2, Hexagon, Eraser, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import RegionSearch from "@/components/RegionSearch";
-import LiferGridMap, { type GridMapHandle, type GridHotspot, type Bbox } from "@/components/LiferGridMap";
+import LiferGridMap, { type GridMapHandle, type Bbox } from "@/components/LiferGridMap";
 import { cn, mutate } from "@/lib/utils";
 import { MARKER_COLORS } from "@/lib/liferColors";
 import { parseEbirdCsv, EbirdCsvError } from "@/lib/ebirdCsv";
@@ -35,6 +35,7 @@ type HotspotResponse = {
 
 type StatusResponse = { ready: boolean; resolutions?: number[] };
 type SpeciesPayload = { sciName: string; commonName: string }[];
+type CellInfo = { h3: string; samples: number; totalSpecies: number; lifers: number };
 
 const HOTSPOT_LIMIT = 50;
 
@@ -97,6 +98,17 @@ const LiferTargets = () => {
   });
   const resolutions = status?.resolutions ?? [3, 4, 5, 6];
 
+  // Fixed, personalised colour scale: worldwide max lifers per resolution, so
+  // panning never recolours the grid (only zooming, which changes resolution).
+  const { data: scaleData } = useQuery<{ maxByRes: Record<number, number> }>({
+    queryKey: ["lifer-grid-scale", species.length, fileName],
+    enabled: !!lifeList && lifeList.length > 0,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    queryFn: () => mutate("POST", "/lifers/grid-scale", { species }) as Promise<{ maxByRes: Record<number, number> }>,
+  });
+  const maxByRes = scaleData?.maxByRes ?? null;
+
   // Result scope: a hex selection takes priority; otherwise the chosen regions.
   const scope: { kind: "hex"; bbox: Bbox | null } | { kind: "region"; codes: string } | null = useMemo(() => {
     if (selection && selection.cells.length) return { kind: "hex", bbox: cellsBbox(selection.cells) };
@@ -130,18 +142,18 @@ const LiferTargets = () => {
     return items;
   }, [results, scope, selection]);
 
-  const mapHotspots: GridHotspot[] = useMemo(
-    () =>
-      hotspots.map((h) => ({
-        id: h.id,
-        name: h.name,
-        subtitle: h.regionName ?? h.regionCode,
-        lat: h.lat,
-        lng: h.lng,
-        lifers: h.lifers,
-      })),
-    [hotspots]
-  );
+  // Per-cell debug for the current hex selection (checklist samples etc.).
+  const { data: cellsData } = useQuery<{ cells: CellInfo[] }>({
+    queryKey: ["lifer-cells", selection?.resolution, selection?.cells.join(","), species.length],
+    enabled: !!lifeList && !!selection && selection.cells.length > 0,
+    refetchOnWindowFocus: false,
+    queryFn: () =>
+      mutate("POST", "/lifers/cells", {
+        species,
+        resolution: selection!.resolution,
+        cells: selection!.cells,
+      }) as Promise<{ cells: CellInfo[] }>,
+  });
 
   // Frame the map on a region when the region set changes (unless hexes are active).
   const regionKey = regions.map((r) => r.regionCode).join(",");
@@ -175,15 +187,10 @@ const LiferTargets = () => {
     if (sel && sel.resolution !== res) clearSelection();
   };
 
-  const selectHotspotFromMap = (id: string | null) => {
-    setSelectedHotspotId(id);
-    if (id) requestAnimationFrame(() => rowRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
-  };
-
-  const selectHotspotFromList = (id: string) => {
-    const next = selectedHotspotId === id ? null : id;
+  const selectHotspotFromList = (h: HotspotItem) => {
+    const next = selectedHotspotId === h.id ? null : h.id;
     setSelectedHotspotId(next);
-    if (next) mapHandle.current?.flyToHotspot(next);
+    if (next) mapHandle.current?.flyTo(h.lng, h.lat);
   };
 
   const selectedCells = selection?.cells ?? [];
@@ -194,14 +201,10 @@ const LiferTargets = () => {
         ref={mapHandle}
         species={species}
         resolutions={resolutions}
+        maxByRes={maxByRes}
         selectedCells={selectedCells}
-        hotspots={mapHotspots}
-        selectedHotspotId={selectedHotspotId}
-        hoveredHotspotId={hoveredHotspotId}
         onToggleCell={toggleCell}
         onResolutionChange={handleResolutionChange}
-        onSelectHotspot={selectHotspotFromMap}
-        onHoverHotspot={setHoveredHotspotId}
       />
 
       <ControlPanel
@@ -221,6 +224,7 @@ const LiferTargets = () => {
         minChecklists={minChecklists}
         onMinChecklists={setMinChecklists}
         selectedCells={selectedCells}
+        cellsInfo={cellsData?.cells ?? null}
         onClearSelection={clearSelection}
         scopeKind={scope?.kind ?? null}
         hotspots={hotspots}
@@ -251,13 +255,14 @@ function ControlPanel(props: {
   minChecklists: number;
   onMinChecklists: (v: number) => void;
   selectedCells: string[];
+  cellsInfo: CellInfo[] | null;
   onClearSelection: () => void;
   scopeKind: "hex" | "region" | null;
   hotspots: HotspotItem[];
   isFetching: boolean;
   selectedHotspotId: string | null;
   hoveredHotspotId: string | null;
-  onSelectHotspot: (id: string) => void;
+  onSelectHotspot: (h: HotspotItem) => void;
   onHoverHotspot: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
 }) {
@@ -325,17 +330,31 @@ function ControlPanel(props: {
               </div>
 
               {props.selectedCells.length > 0 && (
-                <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <span className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
-                    <Hexagon className="h-4 w-4" />
-                    {props.selectedCells.length} cell{props.selectedCells.length > 1 ? "s" : ""} selected
-                  </span>
-                  <button
-                    onClick={props.onClearSelection}
-                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
-                  >
-                    <Eraser className="h-3.5 w-3.5" /> Clear
-                  </button>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+                      <Hexagon className="h-4 w-4" />
+                      {props.selectedCells.length} cell{props.selectedCells.length > 1 ? "s" : ""} selected
+                    </span>
+                    <button
+                      onClick={props.onClearSelection}
+                      className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
+                    >
+                      <Eraser className="h-3.5 w-3.5" /> Clear
+                    </button>
+                  </div>
+                  {props.cellsInfo && props.cellsInfo.length > 0 && (
+                    <div className="mt-1.5 space-y-0.5 border-t border-amber-200/70 pt-1.5 font-mono text-[10.5px] text-amber-800/90">
+                      {props.cellsInfo.map((c, i) => (
+                        <div key={c.h3} className="flex items-center justify-between gap-2">
+                          <span className="text-amber-700/70">#{i + 1}</span>
+                          <span>{c.samples.toLocaleString()} checklists</span>
+                          <span>{c.totalSpecies} spp.</span>
+                          <span className="font-semibold text-amber-900">{c.lifers} lifers</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -353,9 +372,6 @@ function ControlPanel(props: {
                   options={MIN_CHECKLIST_PRESETS.map((n) => ({ value: n, label: `${n}+` }))}
                 />
               </div>
-              <p className="-mt-1 text-[11px] leading-tight text-slate-400">
-                Frequency &amp; checklists filter the hotspot results below — not the grid colour.
-              </p>
 
               <HotspotResults
                 scopeKind={props.scopeKind}
@@ -386,9 +402,6 @@ function Legend() {
         className="h-2 w-full rounded-full"
         style={{ background: `linear-gradient(to right, ${MARKER_COLORS.join(", ")})` }}
       />
-      <p className="mt-1.5 text-[11px] leading-tight text-slate-400">
-        Every hex shows how many of your lifers occur there, scaled to your busiest cell in view. Zoom for finer hexes.
-      </p>
     </div>
   );
 }
@@ -408,7 +421,7 @@ function HotspotResults({
   isFetching: boolean;
   selectedHotspotId: string | null;
   hoveredHotspotId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (h: HotspotItem) => void;
   onHover: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
 }) {
@@ -443,7 +456,7 @@ function HotspotResults({
               }}
               onMouseEnter={() => onHover(h.id)}
               onMouseLeave={() => onHover(null)}
-              onClick={() => onSelect(h.id)}
+              onClick={() => onSelect(h)}
               className={cn(
                 "flex cursor-pointer items-center gap-2 rounded-lg border bg-white px-2.5 py-2 scroll-mt-2 transition-colors",
                 h.id === selectedHotspotId

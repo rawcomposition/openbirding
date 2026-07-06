@@ -18,12 +18,13 @@ milliseconds.
 1. Upload an eBird life-list CSV (parsed entirely in the browser — never stored
    server-side).
 2. The whole world is shown as a **full-page H3 hexagon choropleth**: every cell
-   is coloured by how many of your lifers occur there, on a 10-stop ramp
-   normalised to your busiest cell *in the current view* — so a 40-species and a
-   4,000-species list both use the full spectrum. Zoom in and the hexes get
-   finer (coarse res 3 at world scale → fine res 6 up close); the grid refetches
-   for each settled viewport and re-normalises. Cells with none of your lifers
-   render subtly.
+   is coloured by how many of your lifers occur there, on a 10-stop ramp. The
+   scale is **fixed and personalised** — normalised to your worldwide busiest
+   cell for the current resolution (`POST /grid-scale`, fetched once) — so a
+   40-species and a 4,000-species list both use the full spectrum, and panning
+   never recolours; only zooming (which changes resolution) rescales. Zoom in and
+   the hexes get finer (coarse res 3 held across a wide zoom range → fine res 6
+   only when zoomed right in). Cells with none of your lifers render subtly.
 3. To get **hotspot results**, scope the map: pick one or more eBird **regions**
    (the map frames to their bounds) *or* click one or more **hex cells** (with an
    obvious Clear button). Hex selection takes priority over regions; clearing it
@@ -152,6 +153,11 @@ common name → base-binomial fallback.
   [{h3, lifers}], maxLifers }`. The always-on choropleth; unfiltered by
   frequency/checklists. Called on every settled pan/zoom, so it is lean (no
   region-name enrichment, no citation).
+- `POST /grid-scale` — `{ species }` → `{ maxByRes }`, the worldwide max lifer
+  count per resolution. Fetched once per life list to fix the colour scale.
+- `POST /cells` — `{ species, resolution, cells: [h3] }` → per-cell
+  `{ h3, samples, totalSpecies, lifers }`. Backs the selected-hex debug readout
+  (why a data-rich cell may still surface no hotspots under the filters).
 - `POST /region-bounds` — `{ region }` → `{ bbox }` over the region's hotspots,
   for framing the map on selection.
 - `POST /hotspots` — `{ species: [{sciName, commonName, code}], frequency,
