@@ -2,11 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { LifeListEntry } from "@/lib/ebirdCsv";
 
-export type LiferRegionFilter = {
-  regionCode: string;
-  regionName: string;
-};
-
 /** A hex-cell selection is always tagged with the resolution it was made at, so
  * it can be cleared automatically when the map's resolution changes. */
 export type HexSelection = {
@@ -15,7 +10,7 @@ export type HexSelection = {
 };
 
 // Frequency presets (fraction of checklists) must match the buckets baked into
-// lifers.db (see api/scripts/build-lifers-db.ts). These scope hotspot results
+// occurrences.db (see api/scripts/build-occurrences-db.ts). These scope hotspot results
 // only — never the grid colour.
 export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[] = [
   { value: 0.01, label: "1%", hint: "Rare — includes scarce & seasonal birds" },
@@ -30,27 +25,30 @@ export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[]
 export const MIN_CHECKLIST_PRESETS = [10, 25, 50, 100, 250, 500];
 
 type LiferTargetsState = {
-  lifeList: LifeListEntry[] | null;
+  // The life list itself lives server-side (POST /lifers/list); the client
+  // keeps only this anonymous token, so revisits restore instantly and every
+  // query sends ~40 bytes instead of the full species payload.
+  listToken: string | null;
   fileName: string | null;
+  speciesCount: number | null;
   uploadedAt: number | null;
+
+  // v1 persisted the raw parsed entries in localStorage. Kept after migration
+  // until they've been uploaded once to mint a token, then cleared.
+  legacyLifeList: LifeListEntry[] | null;
 
   // Filters — apply to hotspot RESULTS only, not the grid colour.
   frequency: number;
   minChecklists: number;
 
-  // Scope for hotspot results: one or more regions, OR a hex-cell selection.
-  // Hex selection takes priority when present; clearing it reverts to regions.
-  regions: LiferRegionFilter[];
+  // Optional narrowing of the hotspot results: a hex-cell selection. Without
+  // one, results are scoped to the current map viewport.
   selection: HexSelection | null;
 
-  setLifeList: (entries: LifeListEntry[], fileName: string) => void;
+  setListInfo: (info: { token: string; fileName: string | null; count: number }) => void;
   clearLifeList: () => void;
   setFrequency: (frequency: number) => void;
   setMinChecklists: (minChecklists: number) => void;
-
-  addRegion: (region: LiferRegionFilter) => void;
-  removeRegion: (regionCode: string) => void;
-  clearRegions: () => void;
 
   toggleCell: (h3: string, resolution: number) => void;
   clearSelection: () => void;
@@ -59,30 +57,23 @@ type LiferTargetsState = {
 export const useLiferTargetsStore = create<LiferTargetsState>()(
   persist(
     (set) => ({
-      lifeList: null,
+      listToken: null,
       fileName: null,
+      speciesCount: null,
       uploadedAt: null,
+      legacyLifeList: null,
 
       frequency: 0.05,
       minChecklists: 50,
 
-      regions: [],
       selection: null,
 
-      setLifeList: (entries, fileName) => set({ lifeList: entries, fileName, uploadedAt: Date.now() }),
-      clearLifeList: () => set({ lifeList: null, fileName: null, uploadedAt: null }),
+      setListInfo: ({ token, fileName, count }) =>
+        set({ listToken: token, fileName, speciesCount: count, uploadedAt: Date.now(), legacyLifeList: null }),
+      clearLifeList: () =>
+        set({ listToken: null, fileName: null, speciesCount: null, uploadedAt: null, legacyLifeList: null }),
       setFrequency: (frequency) => set({ frequency }),
       setMinChecklists: (minChecklists) => set({ minChecklists }),
-
-      addRegion: (region) =>
-        set((s) =>
-          s.regions.some((r) => r.regionCode === region.regionCode)
-            ? s
-            : { regions: [...s.regions, region] }
-        ),
-      removeRegion: (regionCode) =>
-        set((s) => ({ regions: s.regions.filter((r) => r.regionCode !== regionCode) })),
-      clearRegions: () => set({ regions: [] }),
 
       toggleCell: (h3, resolution) =>
         set((s) => {
@@ -100,25 +91,38 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
     }),
     {
       name: "openbirding-lifer-targets",
-      version: 1,
-      // Persist the life list, filters and region scope — but not the transient
-      // hex selection, which is tied to a specific map resolution.
+      version: 3,
+      // Persist the list token and filters — but not the transient hex
+      // selection, which is tied to a specific map resolution.
       partialize: (state) => ({
-        lifeList: state.lifeList,
+        listToken: state.listToken,
         fileName: state.fileName,
+        speciesCount: state.speciesCount,
         uploadedAt: state.uploadedAt,
+        legacyLifeList: state.legacyLifeList,
         frequency: state.frequency,
         minChecklists: state.minChecklists,
-        regions: state.regions,
       }),
       migrate: (persisted: unknown, version: number) => {
-        // v0 stored a single `region` and a `mode`; carry the region across.
-        if (version === 0 && persisted && typeof persisted === "object") {
-          const old = persisted as Record<string, unknown>;
-          const region = old.region as LiferRegionFilter | null;
-          return { ...old, regions: region ? [region] : [], region: undefined, mode: undefined };
+        if (!persisted || typeof persisted !== "object") return persisted as never;
+        let old = persisted as Record<string, unknown>;
+        // v1 stored the raw entries; stash them so the page can upload them
+        // once to mint a server-side token.
+        if (version <= 1) {
+          const entries = (old.lifeList as LifeListEntry[] | null) ?? null;
+          old = {
+            ...old,
+            listToken: null,
+            speciesCount: entries?.length ?? null,
+            legacyLifeList: entries,
+            lifeList: undefined,
+          };
         }
-        return persisted as never;
+        // v2 -> v3 dropped region scoping (results scope to the viewport now).
+        if (version <= 2) {
+          old = { ...old, regions: undefined, region: undefined, mode: undefined };
+        }
+        return old as never;
       },
     }
   )

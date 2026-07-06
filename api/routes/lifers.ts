@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
@@ -106,6 +107,37 @@ function parseSpeciesInput(value: unknown): SpeciesInput[] {
   });
 }
 
+const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function parseToken(value: unknown): string {
+  if (typeof value !== "string" || !TOKEN_RE.test(value)) {
+    throw new HTTPException(400, { message: "listToken must be a UUID" });
+  }
+  return value;
+}
+
+/**
+ * Species inputs for a query: either a stored life list referenced by
+ * `listToken` (the normal path — the client uploads once via POST /list and
+ * sends the ~40-byte token on every query instead of the full ~100 KB list),
+ * or an inline `species` array.
+ */
+async function speciesInputsFor(body: Record<string, unknown>): Promise<SpeciesInput[]> {
+  if (body.listToken != null) {
+    const token = parseToken(body.listToken);
+    const row = await db
+      .selectFrom("lifeLists")
+      .select(["species"])
+      .where("token", "=", token)
+      .executeTakeFirst();
+    if (!row) {
+      throw new HTTPException(404, { message: "Life list not found — please upload it again" });
+    }
+    return parseSpeciesInput(JSON.parse(row.species));
+  }
+  return parseSpeciesInput(body.species);
+}
+
 /** Accepts frequency as a fraction (0-1) or a percent (>1); returns a fraction. */
 function parseFrequency(value: unknown): number {
   if (value == null) return 0.05;
@@ -164,13 +196,67 @@ lifersRoute.get("/status", async (c) => {
   }
 });
 
+// Store (or replace) a life list server-side under an anonymous token the
+// client keeps in localStorage, so revisits restore instantly and queries send
+// a tiny token instead of the full species payload.
+lifersRoute.post("/list", async (c) => {
+  const body = await c.req.json().catch(() => {
+    throw new HTTPException(400, { message: "Request body must be JSON" });
+  });
+  const speciesInputs = parseSpeciesInput(body.species); // /list stores a real list, never a token
+  const fileName = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
+
+  const index = await getLifersIndex();
+  const { matched, unmatched } = index.resolveSpecies(speciesInputs);
+
+  const species = JSON.stringify(speciesInputs);
+  const speciesCount = speciesInputs.length;
+
+  // Reuse the caller's token when it still exists (a "Replace" keeps the same
+  // identity); otherwise mint a fresh one.
+  let token = typeof body.token === "string" && TOKEN_RE.test(body.token) ? body.token : null;
+  if (token) {
+    const res = await db
+      .updateTable("lifeLists")
+      .set({ species, fileName, speciesCount, updatedAt: new Date().toISOString() })
+      .where("token", "=", token)
+      .executeTakeFirst();
+    if (Number(res.numUpdatedRows) === 0) token = null;
+  }
+  if (!token) {
+    token = randomUUID();
+    await db.insertInto("lifeLists").values({ token, species, fileName, speciesCount }).execute();
+  }
+
+  return c.json({ token, count: speciesCount, matched, unmatchedCount: unmatched.length });
+});
+
+// Metadata for a stored list — lets a returning client confirm its token is
+// still valid (404 => prompt a re-upload).
+lifersRoute.get("/list/:token", async (c) => {
+  const token = parseToken(c.req.param("token"));
+  const row = await db
+    .selectFrom("lifeLists")
+    .select(["fileName", "speciesCount", "createdAt", "updatedAt"])
+    .where("token", "=", token)
+    .executeTakeFirst();
+  if (!row) throw new HTTPException(404, { message: "Life list not found" });
+  return c.json({ token, ...row });
+});
+
+lifersRoute.delete("/list/:token", async (c) => {
+  const token = parseToken(c.req.param("token"));
+  await db.deleteFrom("lifeLists").where("token", "=", token).execute();
+  return c.json({ ok: true });
+});
+
 lifersRoute.post("/hotspots", async (c) => {
   const startTime = performance.now();
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
 
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   const frequency = parseFrequency(body.frequency);
   const minChecklists = parseMinChecklists(body.minChecklists);
   const limit = parseLimit(body.limit);
@@ -210,7 +296,7 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   const frequency = parseFrequency(body.frequency);
 
   const index = await getLifersIndex();
@@ -268,7 +354,7 @@ lifersRoute.post("/grid", async (c) => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
 
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   const bbox = parseBBoxBody(body.bbox);
   if (!bbox) {
     throw new HTTPException(400, { message: "bbox is required for grid queries" });
@@ -295,7 +381,7 @@ lifersRoute.post("/grid-scale", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   const index = await getLifersIndex();
   await ensureZonesLoaded(index);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
@@ -307,7 +393,7 @@ lifersRoute.post("/cells", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   if (!Array.isArray(body.cells) || body.cells.length === 0 || body.cells.length > 500) {
     throw new HTTPException(400, { message: "cells must be a non-empty array of at most 500 h3 strings" });
   }
@@ -325,19 +411,6 @@ lifersRoute.post("/cells", async (c) => {
   return c.json({ resolution, cells: index.cellsInfo(seenIds, resolution, cells) });
 });
 
-// Bounding box over a region's hotspots, for framing the map on selection.
-lifersRoute.post("/region-bounds", async (c) => {
-  const body = await c.req.json().catch(() => {
-    throw new HTTPException(400, { message: "Request body must be JSON" });
-  });
-  if (!body.region) {
-    throw new HTTPException(400, { message: "region is required" });
-  }
-  const regionCodes = parseRegionCodes(String(body.region));
-  const index = await getLifersIndex();
-  return c.json({ bbox: index.regionBounds(regionCodes) });
-});
-
 // Hot Zones: H3 hexagons ranked by how many new species you could find there.
 lifersRoute.post("/zones", async (c) => {
   const startTime = performance.now();
@@ -345,7 +418,7 @@ lifersRoute.post("/zones", async (c) => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
 
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   const frequency = parseFrequency(body.frequency);
   const minChecklists = parseMinChecklists(body.minChecklists);
   const limit = parseLimit(body.limit);
@@ -385,7 +458,7 @@ lifersRoute.post("/zone/:cellRef", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
-  const speciesInputs = parseSpeciesInput(body.species);
+  const speciesInputs = await speciesInputsFor(body);
   const frequency = parseFrequency(body.frequency);
 
   const index = await getLifersIndex();

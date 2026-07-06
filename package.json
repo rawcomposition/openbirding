@@ -19,7 +19,8 @@
     "sync-regions": "cd api && npx tsx scripts/sync-regions.ts",
     "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts",
     "init-db": "cd api && npx tsx scripts/init-db.ts",
-    "system-health": "cd api && npx tsx scripts/system-health-check.ts"
+    "system-health": "cd api && npx tsx scripts/system-health-check.ts",
+    "build-lifers": "cd api && npx tsx scripts/build-lifers-db.ts"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

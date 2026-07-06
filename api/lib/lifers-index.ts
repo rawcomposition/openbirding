@@ -1,7 +1,7 @@
 /**
  * In-memory index for the Lifer Targets / Hot Zones tools.
  *
- * Loads lifers.db (built by scripts/build-lifers-db.ts) into compact typed
+ * Loads occurrences.db (built by scripts/build-occurrences-db.ts) into compact typed
  * arrays once at startup, then answers "where can I see the most new species?"
  * queries in tens of milliseconds using pure array arithmetic:
  *
@@ -14,8 +14,8 @@ import Database from "better-sqlite3";
 import { latLngToCell } from "h3-js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { LIFERS_DB_FILENAME } from "./config.js";
-import { topByLifers, allInBbox, regionMatches, type GeoArrays } from "./geo-query.js";
+import { OCCURRENCES_DB_FILENAME, OCCURRENCES_MAX_ZONE_RES } from "./config.js";
+import { topByLifers, allInBbox, type GeoArrays } from "./geo-query.js";
 
 export type GridCell = { h3: string; lifers: number };
 export type CellInfo = {
@@ -78,6 +78,34 @@ export type GeoTargetQuery = {
 };
 
 type SpeciesMeta = { id: number; code: string; name: string; sciName: string; taxonOrder: number };
+
+/**
+ * Reader over the optional `blob_cache` table (written by
+ * scripts/pack-occurrences-blobs.ts): the big row tables pre-packed as typed-array
+ * blobs so the index loads with a few memcpy-speed reads (~1s) instead of
+ * iterating ~66M rows through the JS statement cursor (~60s, blocking the
+ * event loop). Returns null when the DB hasn't been packed — callers fall
+ * back to row iteration.
+ */
+function blobReader(db: Database.Database): ((key: string) => Buffer) | null {
+  const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'blob_cache'").get();
+  if (!has) return null;
+  const stmt = db.prepare("SELECT data FROM blob_cache WHERE key = ?");
+  return (key: string) => {
+    const row = stmt.get(key) as { data: Buffer } | undefined;
+    if (!row) throw new Error(`blob_cache missing key ${key}`);
+    return row.data;
+  };
+}
+
+type TypedArrayCtor<T> = new (buffer: ArrayBuffer) => T;
+
+/** Copy a SQLite blob into an aligned buffer and view it as a typed array. */
+function blobToArray<T>(buf: Buffer, Ctor: TypedArrayCtor<T>): T {
+  const ab = new ArrayBuffer(buf.byteLength);
+  new Uint8Array(ab).set(buf);
+  return new Ctor(ab);
+}
 
 // 0.5°-bin key for the hotspot spatial grid (720 lng bins per lat row).
 function gridKey(lat: number, lng: number): number {
@@ -143,58 +171,88 @@ class LifersIndex {
     this.generatedAt = meta.generated_at;
 
     this.numLocs = (db.prepare("SELECT COUNT(*) c FROM loc_meta").get() as any).c;
-    const maxSid = (db.prepare("SELECT MAX(species_id) m FROM loc_species").get() as any).m as number;
-    const totalRows = (db.prepare("SELECT COUNT(*) c FROM loc_species").get() as any).c as number;
 
     const n = this.numLocs;
-    this.samples = new Int32Array(n);
-    this.lat = new Float32Array(n);
-    this.lng = new Float32Array(n);
     this.locId = new Array(n);
     this.locName = new Array(n);
     this.regionCode = new Array(n);
     this.counter = new Int32Array(n);
 
-    for (const [ref, id, name, la, ln, rc, s] of db
-      .prepare("SELECT loc_ref, location_id, name, lat, lng, region_code, samples FROM loc_meta")
-      .raw()
-      .iterate() as Iterable<any[]>) {
-      this.samples[ref] = s;
-      this.lat[ref] = la;
-      this.lng[ref] = ln;
-      this.locId[ref] = id;
-      this.locName[ref] = name ?? id;
-      this.regionCode[ref] = rc ?? "";
-      const key = gridKey(la, ln);
-      const bin = this.gridBins.get(key);
-      if (bin) bin.push(ref);
-      else this.gridBins.set(key, [ref]);
-    }
+    const getBlob = blobReader(db);
+    if (getBlob) {
+      // Fast path: numeric arrays come straight from packed blobs; only the
+      // string columns (and the spatial grid) still walk loc_meta rows.
+      this.samples = blobToArray(getBlob("loc:samples"), Int32Array);
+      this.lat = blobToArray(getBlob("loc:lat"), Float32Array);
+      this.lng = blobToArray(getBlob("loc:lng"), Float32Array);
+      const qAll = blobToArray(getBlob("loc:qcount"), Int32Array);
+      this.qCount = this.buckets.map((_, b) => qAll.subarray(b * n, (b + 1) * n));
+      this.spOff = blobToArray(getBlob("loc:spOff"), Int32Array);
+      this.csrLoc = blobToArray(getBlob("loc:csrRef"), Int32Array);
+      this.csrLvl = blobToArray(getBlob("loc:csrLvl"), Uint8Array);
 
-    this.qCount = this.buckets.map(() => new Int32Array(n));
-    for (const [bucket, ref, q] of db
-      .prepare("SELECT bucket, loc_ref, q_count FROM loc_qcount")
-      .raw()
-      .iterate() as Iterable<any[]>) {
-      this.qCount[bucket][ref] = q;
-    }
+      for (const [ref, id, name, rc] of db
+        .prepare("SELECT loc_ref, location_id, name, region_code FROM loc_meta")
+        .raw()
+        .iterate() as Iterable<any[]>) {
+        this.locId[ref] = id;
+        this.locName[ref] = name ?? id;
+        this.regionCode[ref] = rc ?? "";
+        const key = gridKey(this.lat[ref], this.lng[ref]);
+        const bin = this.gridBins.get(key);
+        if (bin) bin.push(ref);
+        else this.gridBins.set(key, [ref]);
+      }
+    } else {
+      // Fallback for an unpacked occurrences.db: iterate the row tables (slow).
+      const maxSid = (db.prepare("SELECT MAX(species_id) m FROM loc_species").get() as any).m as number;
+      const totalRows = (db.prepare("SELECT COUNT(*) c FROM loc_species").get() as any).c as number;
 
-    // Build CSR: count per species, prefix-sum into offsets, then fill.
-    this.spOff = new Int32Array(maxSid + 2);
-    for (const [sid] of db.prepare("SELECT species_id FROM loc_species").raw().iterate() as Iterable<any[]>) {
-      this.spOff[sid + 1]++;
-    }
-    for (let i = 1; i < this.spOff.length; i++) this.spOff[i] += this.spOff[i - 1];
-    this.csrLoc = new Int32Array(totalRows);
-    this.csrLvl = new Uint8Array(totalRows);
-    const cursor = this.spOff.slice();
-    for (const [sid, ref, lvl] of db
-      .prepare("SELECT species_id, loc_ref, bucket_level FROM loc_species")
-      .raw()
-      .iterate() as Iterable<any[]>) {
-      const p = cursor[sid]++;
-      this.csrLoc[p] = ref;
-      this.csrLvl[p] = lvl;
+      this.samples = new Int32Array(n);
+      this.lat = new Float32Array(n);
+      this.lng = new Float32Array(n);
+
+      for (const [ref, id, name, la, ln, rc, s] of db
+        .prepare("SELECT loc_ref, location_id, name, lat, lng, region_code, samples FROM loc_meta")
+        .raw()
+        .iterate() as Iterable<any[]>) {
+        this.samples[ref] = s;
+        this.lat[ref] = la;
+        this.lng[ref] = ln;
+        this.locId[ref] = id;
+        this.locName[ref] = name ?? id;
+        this.regionCode[ref] = rc ?? "";
+        const key = gridKey(la, ln);
+        const bin = this.gridBins.get(key);
+        if (bin) bin.push(ref);
+        else this.gridBins.set(key, [ref]);
+      }
+
+      this.qCount = this.buckets.map(() => new Int32Array(n));
+      for (const [bucket, ref, q] of db
+        .prepare("SELECT bucket, loc_ref, q_count FROM loc_qcount")
+        .raw()
+        .iterate() as Iterable<any[]>) {
+        this.qCount[bucket][ref] = q;
+      }
+
+      // Build CSR: count per species, prefix-sum into offsets, then fill.
+      this.spOff = new Int32Array(maxSid + 2);
+      for (const [sid] of db.prepare("SELECT species_id FROM loc_species").raw().iterate() as Iterable<any[]>) {
+        this.spOff[sid + 1]++;
+      }
+      for (let i = 1; i < this.spOff.length; i++) this.spOff[i] += this.spOff[i - 1];
+      this.csrLoc = new Int32Array(totalRows);
+      this.csrLvl = new Uint8Array(totalRows);
+      const cursor = this.spOff.slice();
+      for (const [sid, ref, lvl] of db
+        .prepare("SELECT species_id, loc_ref, bucket_level FROM loc_species")
+        .raw()
+        .iterate() as Iterable<any[]>) {
+        const p = cursor[sid]++;
+        this.csrLoc[p] = ref;
+        this.csrLvl[p] = lvl;
+      }
     }
 
     for (const [id, code, name, sciName, sciLower, nameLower, taxonOrder] of db
@@ -321,12 +379,48 @@ class LifersIndex {
     const db = new Database(this.dbPath, { readonly: true });
     db.pragma("cache_size = -500000");
 
-    const resList = (db.prepare("SELECT DISTINCT res FROM zone_meta ORDER BY res").all() as any[]).map(
-      (r) => r.res as number
-    );
+    const resList = (db.prepare("SELECT DISTINCT res FROM zone_meta ORDER BY res").all() as any[])
+      .map((r) => r.res as number)
+      .filter((res) => res <= OCCURRENCES_MAX_ZONE_RES);
     const byRes = new Map<number, ZoneDataset>();
+    const getBlob = blobReader(db);
 
     for (const res of resList) {
+      if (getBlob) {
+        // Fast path: numeric arrays from packed blobs; only region-code
+        // strings still walk zone_meta rows.
+        const samples = blobToArray(getBlob(`zone:${res}:samples`), Int32Array);
+        const size = samples.length;
+        const lat = blobToArray(getBlob(`zone:${res}:lat`), Float32Array);
+        const lng = blobToArray(getBlob(`zone:${res}:lng`), Float32Array);
+        const h3 = blobToArray(getBlob(`zone:${res}:h3`), BigInt64Array);
+        const qAll = blobToArray(getBlob(`zone:${res}:qcount`), Int32Array);
+        const qCount = this.buckets.map((_, b) => qAll.subarray(b * size, (b + 1) * size));
+        const spOff = blobToArray(getBlob(`zone:${res}:spOff`), Int32Array);
+        const csrRef = blobToArray(getBlob(`zone:${res}:csrRef`), Int32Array);
+        const csrLvl = blobToArray(getBlob(`zone:${res}:csrLvl`), Uint8Array);
+
+        const regionCode: string[] = new Array(size).fill("");
+        const byH3 = new Map<string, number>();
+        for (const [ref, rc] of db
+          .prepare("SELECT cell_ref, region_code FROM zone_meta WHERE res = ?")
+          .raw()
+          .iterate(res) as Iterable<any[]>) {
+          regionCode[ref] = rc ?? "";
+          byH3.set(BigInt.asUintN(64, h3[ref]).toString(16), ref);
+        }
+
+        byRes.set(res, {
+          res,
+          numRefs: size,
+          h3,
+          qCount,
+          byH3,
+          geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
+        });
+        continue;
+      }
+
       const maxCellRef = (db.prepare("SELECT MAX(cell_ref) m FROM zone_meta WHERE res = ?").get(res) as any)
         .m as number;
       const maxSid = (db.prepare("SELECT MAX(species_id) m FROM zone_species WHERE res = ?").get(res) as any)
@@ -556,29 +650,6 @@ class LifersIndex {
     });
   }
 
-  /**
-   * Bounding box over all hotspots whose region matches one of `codes`
-   * (used to frame the map when a region is selected). Null if none match.
-   */
-  regionBounds(codes: string[]): Bbox | null {
-    let minLat = Infinity;
-    let minLng = Infinity;
-    let maxLat = -Infinity;
-    let maxLng = -Infinity;
-    let found = false;
-    for (let ref = 0; ref < this.numLocs; ref++) {
-      if (!regionMatches(this.regionCode[ref], codes)) continue;
-      found = true;
-      const la = this.lat[ref];
-      const ln = this.lng[ref];
-      if (la < minLat) minLat = la;
-      if (la > maxLat) maxLat = la;
-      if (ln < minLng) minLng = ln;
-      if (ln > maxLng) maxLng = ln;
-    }
-    return found ? { minLat, minLng, maxLat, maxLng } : null;
-  }
-
   getSpeciesMeta(id: number): SpeciesMeta | undefined {
     return this.speciesById.get(id);
   }
@@ -587,7 +658,7 @@ class LifersIndex {
 // --- singleton, loaded lazily in the background -----------------------------
 
 function lifersDbPath(): string {
-  return join(process.env.SQLITE_DIR ?? "/data", LIFERS_DB_FILENAME);
+  return join(process.env.SQLITE_DIR ?? "/data", OCCURRENCES_DB_FILENAME);
 }
 
 let loadPromise: Promise<LifersIndex> | null = null;
@@ -596,7 +667,7 @@ let loadError: string | null = null;
 function startLoad(): Promise<LifersIndex> {
   const path = lifersDbPath();
   if (!existsSync(path)) {
-    loadError = `lifers.db not found at ${path}`;
+    loadError = `occurrences.db not found at ${path}`;
     return Promise.reject(new Error(loadError));
   }
   // Building the index is CPU-bound and synchronous; defer a tick so import

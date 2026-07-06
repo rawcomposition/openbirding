@@ -118,7 +118,8 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
         input: () => "text-slate-900",
         placeholder: () => "text-slate-400 text-left",
         indicatorsContainer: () => "h-[34px]",
-        menu: () => "mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50",
+        menu: () => "mt-1 bg-white border border-slate-200 rounded-md shadow-lg",
+        menuPortal: () => "z-50",
         menuList: () => "p-1",
         option: (state) =>
           `text-left text-slate-900 px-3 py-2 rounded cursor-pointer ${
@@ -129,6 +130,9 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
       }}
       inputId="region-search"
       instanceId="region-search"
+      // Render the menu in a portal so the sidebar's overflow doesn't clip it.
+      menuPortalTarget={document.body}
+      menuPosition="fixed"
       value={selectValue}
       inputValue={inputValue}
       onInputChange={(val) => setInputValue(val)}

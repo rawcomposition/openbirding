@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin, sql } from "kysely";
-import type { Pack, Region, Cluster, PackDownload, AndroidNotifySignup } from "../lib/types.js";
+import type { Pack, Region, Cluster, PackDownload, AndroidNotifySignup, LifeList } from "../lib/types.js";
 
 export type DatabaseSchema = {
   packs: Pack;
@@ -8,6 +8,7 @@ export type DatabaseSchema = {
   regions: Region;
   packDownloads: PackDownload;
   android: AndroidNotifySignup;
+  lifeLists: LifeList;
 };
 
 const mainSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${process.env.SQLITE_FILENAME}`);
@@ -85,6 +86,25 @@ export async function setupDatabase() {
     .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
     .addColumn("email", "text", (c) => c.notNull().unique())
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .execute();
+
+  // Briefly shipped as "lifer_lists"; rename in place to keep any stored lists.
+  const hasOldName = await sql<{ n: number }>`
+    SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'lifer_lists'
+  `.execute(db);
+  if (hasOldName.rows[0]?.n) {
+    await sql`ALTER TABLE lifer_lists RENAME TO life_lists`.execute(db);
+  }
+
+  await db.schema
+    .createTable("life_lists")
+    .ifNotExists()
+    .addColumn("token", "text", (c) => c.primaryKey())
+    .addColumn("file_name", "text")
+    .addColumn("species", "text", (c) => c.notNull())
+    .addColumn("species_count", "integer", (c) => c.notNull())
+    .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("updated_at", "text")
     .execute();
 
   // Setup FTS5 for regions search

@@ -1,19 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { cellToBoundary, latLngToCell } from "h3-js";
-import { Binoculars, Upload, MapPin, X, Loader2, Hexagon, Eraser, ChevronDown, ChevronUp } from "lucide-react";
+import { Binoculars, Upload, X, Loader2, Hexagon, Eraser, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import toast from "react-hot-toast";
-import RegionSearch from "@/components/RegionSearch";
 import LiferGridMap, { type GridMapHandle, type Bbox } from "@/components/LiferGridMap";
 import { cn, mutate } from "@/lib/utils";
 import { MARKER_COLORS } from "@/lib/liferColors";
 import { parseEbirdCsv, EbirdCsvError } from "@/lib/ebirdCsv";
-import {
-  useLiferTargetsStore,
-  FREQUENCY_PRESETS,
-  MIN_CHECKLIST_PRESETS,
-  type LiferRegionFilter,
-} from "@/stores/liferTargetsStore";
+import { useLiferTargetsStore, FREQUENCY_PRESETS, MIN_CHECKLIST_PRESETS } from "@/stores/liferTargetsStore";
 
 type HotspotItem = {
   id: string;
@@ -34,7 +28,7 @@ type HotspotResponse = {
 };
 
 type StatusResponse = { ready: boolean; resolutions?: number[] };
-type SpeciesPayload = { sciName: string; commonName: string }[];
+type ListResponse = { token: string; count: number; matched: number; unmatchedCount: number };
 type CellInfo = {
   h3: string;
   samples: number;
@@ -44,7 +38,7 @@ type CellInfo = {
   hotspotChecklists: number;
 };
 
-const HOTSPOT_LIMIT = 50;
+const HOTSPOT_LIMIT = 100;
 
 /**
  * eBird's "targets" page for a hotspot — the species you still need there,
@@ -82,73 +76,121 @@ const LiferTargets = () => {
   }, []);
 
   const {
-    lifeList,
+    listToken,
     fileName,
+    speciesCount,
+    legacyLifeList,
     frequency,
     minChecklists,
-    regions,
     selection,
-    setLifeList,
+    setListInfo,
     clearLifeList,
     setFrequency,
     setMinChecklists,
-    addRegion,
-    removeRegion,
     toggleCell,
     clearSelection,
   } = useLiferTargetsStore();
 
   const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
+  // The map's settled viewport — the default scope for hotspot results.
+  const [viewport, setViewport] = useState<{ bbox: Bbox; resolution: number } | null>(null);
   const mapHandle = useRef<GridMapHandle>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
-  const species: SpeciesPayload = useMemo(
-    () => (lifeList ? lifeList.map((e) => ({ sciName: e.sciName, commonName: e.commonName })) : []),
-    [lifeList]
-  );
+  const onViewportChange = useCallback((bbox: Bbox, resolution: number) => {
+    setViewport({ bbox, resolution });
+  }, []);
+
+  /** Store a parsed list server-side under our (possibly new) anonymous token. */
+  const uploadList = async (entries: { sciName: string; commonName: string }[], name: string | null) => {
+    const token = useLiferTargetsStore.getState().listToken;
+    const res = (await mutate("POST", "/lifers/list", {
+      species: entries,
+      fileName: name,
+      token: token ?? undefined,
+    })) as ListResponse;
+    setListInfo({ token: res.token, fileName: name, count: res.count });
+    return res;
+  };
+
+  // One-time migration: v1 kept the raw entries in localStorage; upload them
+  // once to mint a token, then drop them.
+  const migratingRef = useRef(false);
+  useEffect(() => {
+    if (!legacyLifeList || listToken || migratingRef.current) return;
+    migratingRef.current = true;
+    uploadList(legacyLifeList, fileName).catch(() => {
+      migratingRef.current = false; // transient failure — retry next visit
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legacyLifeList, listToken]);
+
+  // Confirm a persisted token still exists server-side; if not, prompt a fresh upload.
+  const { error: listError } = useQuery({
+    queryKey: [`/lifers/list/${listToken}`],
+    enabled: !!listToken,
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+  useEffect(() => {
+    if (listError && /not found/i.test(listError.message)) {
+      clearLifeList();
+      toast.error("Your saved life list has expired — please upload it again.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listError]);
 
   const { data: status } = useQuery<StatusResponse>({
     queryKey: ["/lifers/status"],
     refetchOnWindowFocus: false,
     staleTime: Infinity,
   });
-  const resolutions = status?.resolutions ?? [3, 4, 5, 6];
+  const resolutions = status?.resolutions ?? [3, 4];
 
   // Fixed, personalised colour scale: worldwide quantile breakpoints per
   // resolution, so panning never recolours the grid (only zooming, which
   // changes resolution) and the full spectrum spreads across the distribution.
   const { data: scaleData } = useQuery<{ breaksByRes: Record<number, number[]> }>({
-    queryKey: ["lifer-grid-scale", species.length, fileName],
-    enabled: !!lifeList && lifeList.length > 0,
+    queryKey: ["lifer-grid-scale", listToken],
+    enabled: !!listToken,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     queryFn: () =>
-      mutate("POST", "/lifers/grid-scale", { species }) as Promise<{ breaksByRes: Record<number, number[]> }>,
+      mutate("POST", "/lifers/grid-scale", { listToken }) as Promise<{ breaksByRes: Record<number, number[]> }>,
   });
   const breaksByRes = scaleData?.breaksByRes ?? null;
 
-  // Result scope: a hex selection takes priority; otherwise the chosen regions.
-  const scope: { kind: "hex"; bbox: Bbox | null } | { kind: "region"; codes: string } | null = useMemo(() => {
+  // Result scope: a hex selection narrows; otherwise the current viewport.
+  const scope: { kind: "hex" | "view"; bbox: Bbox | null } | null = useMemo(() => {
     if (selection && selection.cells.length) return { kind: "hex", bbox: cellsBbox(selection.cells) };
-    if (regions.length) return { kind: "region", codes: regions.map((r) => r.regionCode).join(",") };
+    if (viewport) return { kind: "view", bbox: viewport.bbox };
     return null;
-  }, [selection, regions]);
+  }, [selection, viewport]);
 
+  const bboxKey = (b: Bbox) =>
+    [b.minLng, b.minLat, b.maxLng, b.maxLat].map((v) => v.toFixed(3)).join(",");
   const scopeKey =
-    scope?.kind === "hex" ? `hex:${selection?.cells.join(",")}` : scope?.kind === "region" ? `region:${scope.codes}` : "none";
+    scope?.kind === "hex"
+      ? `hex:${selection?.cells.join(",")}`
+      : scope?.bbox
+        ? `view:${bboxKey(scope.bbox)}`
+        : "none";
 
   const { data: results, isFetching } = useQuery<HotspotResponse>({
-    queryKey: ["lifer-hotspots", scopeKey, frequency, minChecklists, species.length, fileName],
-    enabled: !!lifeList && lifeList.length > 0 && !!scope,
+    queryKey: ["lifer-hotspots", scopeKey, frequency, minChecklists, listToken],
+    enabled: !!listToken && !!scope?.bbox,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
-    queryFn: () => {
-      const body: Record<string, unknown> = { species, frequency, minChecklists, limit: HOTSPOT_LIMIT };
-      if (scope?.kind === "hex") body.bbox = scope.bbox;
-      else if (scope?.kind === "region") body.region = scope.codes;
-      return mutate("POST", "/lifers/hotspots", body) as Promise<HotspotResponse>;
-    },
+    queryFn: () =>
+      mutate("POST", "/lifers/hotspots", {
+        listToken,
+        frequency,
+        minChecklists,
+        limit: HOTSPOT_LIMIT,
+        bbox: scope!.bbox,
+      }) as Promise<HotspotResponse>,
   });
 
   // For a hex scope, keep only hotspots that actually fall inside a selected cell.
@@ -163,39 +205,24 @@ const LiferTargets = () => {
 
   // Per-cell debug for the current hex selection (checklist samples etc.).
   const { data: cellsData } = useQuery<{ cells: CellInfo[] }>({
-    queryKey: ["lifer-cells", selection?.resolution, selection?.cells.join(","), species.length],
-    enabled: !!lifeList && !!selection && selection.cells.length > 0,
+    queryKey: ["lifer-cells", selection?.resolution, selection?.cells.join(","), listToken],
+    enabled: !!listToken && !!selection && selection.cells.length > 0,
     refetchOnWindowFocus: false,
     queryFn: () =>
       mutate("POST", "/lifers/cells", {
-        species,
+        listToken,
         resolution: selection!.resolution,
         cells: selection!.cells,
       }) as Promise<{ cells: CellInfo[] }>,
   });
 
-  // Frame the map on a region when the region set changes (unless hexes are active).
-  const regionKey = regions.map((r) => r.regionCode).join(",");
-  useEffect(() => {
-    if (!regionKey || (selection && selection.cells.length)) return;
-    let cancelled = false;
-    (async () => {
-      const res = (await mutate("POST", "/lifers/region-bounds", { region: regionKey })) as { bbox: Bbox | null };
-      if (!cancelled && res.bbox) mapHandle.current?.fitBounds(res.bbox);
-    })().catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regionKey]);
-
   const handleFile = async (file: File) => {
     try {
       const text = await file.text();
       const parsed = parseEbirdCsv(text);
-      setLifeList(parsed.entries, file.name);
+      const res = await uploadList(parsed.entries, file.name);
       setSelectedHotspotId(null);
-      toast.success(`Loaded ${parsed.entries.length.toLocaleString()} species from ${file.name}`);
+      toast.success(`Loaded ${res.count.toLocaleString()} species from ${file.name}`);
     } catch (err) {
       toast.error(err instanceof EbirdCsvError ? err.message : "Could not read that file.");
     }
@@ -218,26 +245,26 @@ const LiferTargets = () => {
     <div className="relative h-[calc(100vh_-_4rem)] w-full overflow-hidden">
       <LiferGridMap
         ref={mapHandle}
-        species={species}
+        listToken={listToken}
         resolutions={resolutions}
         breaksByRes={breaksByRes}
         selectedCells={selectedCells}
         onToggleCell={toggleCell}
         onResolutionChange={handleResolutionChange}
+        onViewportChange={onViewportChange}
       />
 
-      <ControlPanel
-        lifeList={lifeList}
+      <Sidebar
+        speciesCount={speciesCount}
+        hasList={!!listToken || !!legacyLifeList}
         fileName={fileName}
         matched={results?.meta.seenMatched}
         onFile={handleFile}
         onClearLifeList={() => {
+          if (listToken) mutate("DELETE", `/lifers/list/${listToken}`).catch(() => {});
           clearLifeList();
           setSelectedHotspotId(null);
         }}
-        regions={regions}
-        onAddRegion={addRegion}
-        onRemoveRegion={removeRegion}
         frequency={frequency}
         onFrequency={setFrequency}
         minChecklists={minChecklists}
@@ -258,17 +285,15 @@ const LiferTargets = () => {
   );
 };
 
-// --- Overlay panel ----------------------------------------------------------
+// --- Docked sidebar ----------------------------------------------------------
 
-function ControlPanel(props: {
-  lifeList: { sciName: string; commonName: string }[] | null;
+function Sidebar(props: {
+  speciesCount: number | null;
+  hasList: boolean;
   fileName: string | null;
   matched?: number;
   onFile: (f: File) => void;
   onClearLifeList: () => void;
-  regions: LiferRegionFilter[];
-  onAddRegion: (r: LiferRegionFilter) => void;
-  onRemoveRegion: (code: string) => void;
   frequency: number;
   onFrequency: (v: number) => void;
   minChecklists: number;
@@ -276,7 +301,7 @@ function ControlPanel(props: {
   selectedCells: string[];
   cellsInfo: CellInfo[] | null;
   onClearSelection: () => void;
-  scopeKind: "hex" | "region" | null;
+  scopeKind: "hex" | "view" | null;
   hotspots: HotspotItem[];
   isFetching: boolean;
   selectedHotspotId: string | null;
@@ -286,69 +311,56 @@ function ControlPanel(props: {
   rowRefs: Map<string, HTMLDivElement>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const hasList = !!props.lifeList;
+  const hasList = props.hasList;
 
-  return (
-    <div className="absolute left-3 top-3 z-10 flex max-h-[calc(100%_-_1.5rem)] w-[calc(100vw_-_1.5rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-lg backdrop-blur sm:w-[23rem]">
+  if (collapsed) {
+    return (
       <button
         type="button"
-        onClick={() => setCollapsed((c) => !c)}
-        className="flex items-center justify-between gap-2 px-4 py-3 text-left"
-        aria-expanded={!collapsed}
+        onClick={() => setCollapsed(false)}
+        className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur hover:border-emerald-300"
+        aria-label="Open Lifer Targets panel"
       >
+        <Binoculars className="h-5 w-5 text-emerald-600" />
+        <span className="text-sm font-bold tracking-tight text-slate-900">Lifer Targets</span>
+        <PanelLeftOpen className="h-4 w-4 text-slate-400" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="absolute inset-y-0 left-0 z-10 flex w-[min(24rem,calc(100vw_-_2.5rem))] flex-col border-r border-slate-200 bg-white/95 shadow-xl backdrop-blur">
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
         <span className="flex items-center gap-2">
           <Binoculars className="h-5 w-5 text-emerald-600" />
           <span className="text-base font-bold tracking-tight text-slate-900">Lifer Targets</span>
         </span>
-        {collapsed ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Collapse panel"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3 px-3">
+        {!hasList ? (
+          <UploadArea onFile={props.onFile} />
         ) : (
-          <ChevronUp className="h-4 w-4 text-slate-400" />
-        )}
-      </button>
+          <>
+            <LifeListChip
+              fileName={props.fileName}
+              count={props.speciesCount ?? 0}
+              matched={props.matched}
+              onReplace={props.onFile}
+              onClear={props.onClearLifeList}
+            />
 
-      {!collapsed && (
-        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 pb-4">
-          {!hasList ? (
-            <UploadArea onFile={props.onFile} />
-          ) : (
-            <>
-              <LifeListChip
-                fileName={props.fileName}
-                count={props.lifeList!.length}
-                matched={props.matched}
-                onReplace={props.onFile}
-                onClear={props.onClearLifeList}
-              />
+            <Legend />
 
-              <Legend />
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Regions</label>
-                <RegionSearch value={null} onChange={(r) => r && props.onAddRegion(r)} />
-                {props.regions.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {props.regions.map((r) => (
-                      <span
-                        key={r.regionCode}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 py-0.5 pl-2 pr-1 text-xs text-slate-700"
-                      >
-                        <MapPin className="h-3 w-3 text-slate-400" />
-                        {r.regionName}
-                        <button
-                          onClick={() => props.onRemoveRegion(r.regionCode)}
-                          className="rounded-full p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-                          aria-label={`Remove ${r.regionName}`}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {props.selectedCells.length > 0 && (
+            {props.selectedCells.length > 0 && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
@@ -391,34 +403,35 @@ function ControlPanel(props: {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <PresetSelect
-                  label="Min. frequency"
-                  value={props.frequency}
-                  onChange={(v) => props.onFrequency(Number(v))}
-                  options={FREQUENCY_PRESETS.map((p) => ({ value: p.value, label: p.label }))}
-                />
-                <PresetSelect
-                  label="Min. checklists"
-                  value={props.minChecklists}
-                  onChange={(v) => props.onMinChecklists(Number(v))}
-                  options={MIN_CHECKLIST_PRESETS.map((n) => ({ value: n, label: `${n}+` }))}
-                />
-              </div>
-
-              <HotspotResults
-                scopeKind={props.scopeKind}
-                hotspots={props.hotspots}
-                isFetching={props.isFetching}
-                selectedHotspotId={props.selectedHotspotId}
-                hoveredHotspotId={props.hoveredHotspotId}
-                onSelect={props.onSelectHotspot}
-                onHover={props.onHoverHotspot}
-                rowRefs={props.rowRefs}
+            <div className="grid grid-cols-2 gap-2">
+              <PresetSelect
+                label="Min. frequency"
+                value={props.frequency}
+                onChange={(v) => props.onFrequency(Number(v))}
+                options={FREQUENCY_PRESETS.map((p) => ({ value: p.value, label: p.label }))}
               />
-            </>
-          )}
-        </div>
+              <PresetSelect
+                label="Min. checklists"
+                value={props.minChecklists}
+                onChange={(v) => props.onMinChecklists(Number(v))}
+                options={MIN_CHECKLIST_PRESETS.map((n) => ({ value: n, label: `${n}+` }))}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      {hasList && (
+        <HotspotResults
+          scopeKind={props.scopeKind}
+          hotspots={props.hotspots}
+          isFetching={props.isFetching}
+          selectedHotspotId={props.selectedHotspotId}
+          hoveredHotspotId={props.hoveredHotspotId}
+          onSelect={props.onSelectHotspot}
+          onHover={props.onHoverHotspot}
+          rowRefs={props.rowRefs}
+        />
       )}
     </div>
   );
@@ -449,7 +462,7 @@ function HotspotResults({
   onHover,
   rowRefs,
 }: {
-  scopeKind: "hex" | "region" | null;
+  scopeKind: "hex" | "view" | null;
   hotspots: HotspotItem[];
   isFetching: boolean;
   selectedHotspotId: string | null;
@@ -458,29 +471,27 @@ function HotspotResults({
   onHover: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
 }) {
-  if (!scopeKind) {
-    return (
-      <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
-        Add a region or tap hexes on the map to see the best hotspots for new lifers there.
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-0">
-      <div className="mb-2 flex items-center justify-between">
+    <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-slate-100">
+      <div className="flex items-center justify-between px-3 py-2">
         <h2 className="text-sm font-semibold text-slate-700">
-          Best hotspots {scopeKind === "hex" ? "in selection" : "in region"}
+          Best hotspots {scopeKind === "hex" ? "in selection" : "in view"}
         </h2>
-        {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
+        {isFetching ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+        ) : (
+          scopeKind === "view" && (
+            <span className="text-[11px] text-slate-400">tap hexes to narrow</span>
+          )
+        )}
       </div>
       {hotspots.length === 0 && !isFetching ? (
-        <p className="rounded-lg bg-slate-50 px-3 py-3 text-center text-xs text-slate-500">
-          No hotspots match these filters. Try a lower frequency or fewer required checklists.
+        <p className="mx-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-xs text-slate-500">
+          No hotspots match here. Pan or zoom the map, or relax the frequency / checklist filters.
         </p>
       ) : (
-        <div className="space-y-1.5">
-          {hotspots.map((h, i) => (
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
+          {hotspots.map((h) => (
             <div
               key={h.id}
               ref={(el) => {
@@ -491,7 +502,7 @@ function HotspotResults({
               onMouseLeave={() => onHover(null)}
               onClick={() => onSelect(h)}
               className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-lg border bg-white px-2.5 py-2 scroll-mt-2 transition-colors",
+                "flex cursor-pointer items-start justify-between gap-3 rounded-md border bg-white px-2 py-1.5 scroll-mt-2 transition-colors",
                 h.id === selectedHotspotId
                   ? "border-amber-400 ring-1 ring-amber-300"
                   : h.id === hoveredHotspotId
@@ -499,7 +510,6 @@ function HotspotResults({
                     : "border-slate-200 hover:border-emerald-300"
               )}
             >
-              <span className="w-4 shrink-0 text-center text-xs font-bold tabular-nums text-slate-400">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <a
                   href={ebirdTargetsUrl(h.id)}
@@ -507,15 +517,18 @@ function HotspotResults({
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   title="See your remaining targets here on eBird"
-                  className="block truncate text-sm font-medium text-slate-800 hover:text-emerald-700"
+                  className="text-[13px] font-medium leading-snug text-slate-800 hover:text-emerald-700"
                 >
                   {h.name}
                 </a>
-                <div className="truncate text-[11px] text-slate-400">
-                  {h.regionName ?? h.regionCode} · {h.checklists.toLocaleString()} lists
-                </div>
+                <div className="truncate text-[11px] leading-tight text-slate-400">{h.regionName ?? h.regionCode}</div>
               </div>
-              <span className="shrink-0 text-lg font-bold tabular-nums text-emerald-600">{h.lifers}</span>
+              <div className="flex shrink-0 flex-col items-end">
+                <span className="text-base font-bold leading-tight tabular-nums text-emerald-600">{h.lifers}</span>
+                <span className="whitespace-nowrap text-[11px] font-medium leading-tight tabular-nums text-slate-500">
+                  {h.checklists.toLocaleString()} lists
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -574,7 +587,8 @@ function UploadArea({ onFile }: { onFile: (f: File) => void }) {
         >
           ebird.org/lifelist
         </a>{" "}
-        (World, Life). It stays in your browser and is never uploaded.
+        (World, Life). Your list is stored under an anonymous ID — no account
+        needed — so it's ready when you come back. Clearing it deletes it.
       </p>
     </div>
   );

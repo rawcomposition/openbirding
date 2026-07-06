@@ -73,6 +73,18 @@ export type AndroidNotifySignup = {
   createdAt: Generated<string>;
 };
 
+/** A stored life list for the Lifer Targets tool, keyed by an anonymous token
+ * the client keeps in localStorage. `species` is the parsed CSV as JSON:
+ * an array of { sciName, commonName }. */
+export type LifeList = {
+  token: string;
+  fileName: string | null;
+  species: string;
+  speciesCount: number;
+  createdAt: Generated<string>;
+  updatedAt: string | null;
+};
+
 export type TargetMetadata = {
   version: string;
   versionMonth: string;

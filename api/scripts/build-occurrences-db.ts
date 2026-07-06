@@ -1,9 +1,9 @@
 /**
- * Build lifers.db — a compact companion database that powers the "Lifer Targets"
+ * Build occurrences.db — a compact companion database that powers the "Lifer Targets"
  * and "Hot Zones" tools.
  *
  * Source: targets.db (read-only, ~12 GB).
- * Output: lifers.db (self-contained; opened read-only by the API).
+ * Output: occurrences.db (self-contained; opened read-only by the API).
  *
  * Strategy
  * --------
@@ -19,18 +19,19 @@
  * just those species. This turns a full 36M-row group-by into two small indexed
  * scans, making worldwide queries fast and exact.
  *
- * Run: npx tsx scripts/build-lifers-db.ts
+ * Run: npx tsx scripts/build-occurrences-db.ts
  */
 import Database from "better-sqlite3";
 import { existsSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { packOccurrencesBlobs } from "./pack-occurrences-blobs.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = join(__dirname, "../.."); // api/scripts -> web
 
 const SRC = process.env.TARGETS_DB ?? join(WEB_DIR, "targets.db");
-const OUT = process.env.LIFERS_DB ?? join(WEB_DIR, "lifers.db");
+const OUT = process.env.OCCURRENCES_DB ?? join(WEB_DIR, "occurrences.db");
 
 // Rows below these floors are noise and are dropped from the companion DB.
 const MIN_SCORE = 0.01; // 1% adjusted frequency
@@ -40,8 +41,13 @@ const MIN_CHECKLISTS = 10; // per-location total checklists
 // qCount is precomputed per location for each of these.
 export const FREQUENCY_BUCKETS = [0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5];
 
+// Finest H3 resolution to carry (must match OCCURRENCES_MAX_ZONE_RES in
+// api/lib/config.ts). targets.db has res 3-6, but res 5/6 are ~85% of the
+// zone rows and this app's UI doesn't use them.
+const MAX_ZONE_RES = Number(process.env.OCCURRENCES_MAX_ZONE_RES ?? 4);
+
 function log(msg: string) {
-  console.log(`[build-lifers] ${new Date().toISOString()} ${msg}`);
+  console.log(`[build-occurrences] ${new Date().toISOString()} ${msg}`);
 }
 
 if (!existsSync(SRC)) {
@@ -55,7 +61,7 @@ for (const f of [OUT, `${OUT}-wal`, `${OUT}-shm`]) {
 log(`Source: ${SRC}`);
 log(`Output: ${OUT}`);
 
-// Open lifers.db as the writable main database; attach targets.db read-only
+// Open occurrences.db as the writable main database; attach targets.db read-only
 // (immutable=1 => SQLite treats the file as never-changing and never locks/writes it).
 const db = new Database(OUT);
 db.pragma("journal_mode = OFF");
@@ -234,6 +240,7 @@ db.exec(`
   FROM (
     SELECT res, cell_ref, SUM(samples) AS total_samples
     FROM t.h3_cell_samples
+    WHERE res <= ${MAX_ZONE_RES}
     GROUP BY res, cell_ref
     HAVING total_samples >= ${MIN_CHECKLISTS}
   ) cs
@@ -255,6 +262,7 @@ db.exec(`
   SELECT o.res, o.species_id, o.cell_ref, ${bucketLevelExpr.replace(/score/g, "(SUM(o.obs) * 1.0 / z.samples)")}
   FROM t.h3_cell_obs o
   JOIN zone_meta z ON z.res = o.res AND z.cell_ref = o.cell_ref
+  WHERE o.res <= ${MAX_ZONE_RES}
   GROUP BY o.res, o.cell_ref, o.species_id
   HAVING (SUM(o.obs) * 1.0 / z.samples) >= ${MIN_SCORE};
 `);
@@ -277,4 +285,9 @@ FREQUENCY_BUCKETS.forEach((threshold, bucket) => {
 log("Finalizing (analyze)...");
 db.exec("ANALYZE;");
 db.close();
-log("Done. lifers.db built.");
+
+// Pack the big tables into typed-array blobs so the API's in-memory index
+// loads in ~1s instead of iterating 66M rows (see pack-occurrences-blobs.ts).
+log("Packing blob cache...");
+packOccurrencesBlobs(OUT, (m) => log(`  ${m}`));
+log("Done. occurrences.db built.");
