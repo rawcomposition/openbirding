@@ -112,26 +112,33 @@ db.exec(`
 
   -- Zone (H3 hexagon) tables mirror the location tables but aggregate eBird's
   -- month-partitioned H3 data to a single year-level frequency per cell.
+  -- targets.db carries several H3 resolutions (coarse res 3 .. fine res 6);
+  -- cell_ref is only unique WITHIN a resolution, so every zone table is keyed
+  -- by (res, cell_ref). The map colours a different resolution at each zoom.
   CREATE TABLE zone_meta (
-    cell_ref INTEGER PRIMARY KEY,
+    res INTEGER NOT NULL,
+    cell_ref INTEGER NOT NULL,
     h3 INTEGER,
     lat REAL, lng REAL,
     region_code TEXT,
-    samples INTEGER NOT NULL
-  );
+    samples INTEGER NOT NULL,
+    PRIMARY KEY (res, cell_ref)
+  ) WITHOUT ROWID;
 
   CREATE TABLE zone_species (
+    res INTEGER NOT NULL,
     species_id INTEGER NOT NULL,
     cell_ref INTEGER NOT NULL,
     bucket_level INTEGER NOT NULL,
-    PRIMARY KEY (species_id, cell_ref)
+    PRIMARY KEY (res, species_id, cell_ref)
   ) WITHOUT ROWID;
 
   CREATE TABLE zone_qcount (
+    res INTEGER NOT NULL,
     bucket INTEGER NOT NULL,
     cell_ref INTEGER NOT NULL,
     q_count INTEGER NOT NULL,
-    PRIMARY KEY (bucket, cell_ref)
+    PRIMARY KEY (res, bucket, cell_ref)
   ) WITHOUT ROWID;
 `);
 
@@ -219,32 +226,36 @@ FREQUENCY_BUCKETS.forEach((threshold, bucket) => {
 });
 
 // --- zone_meta --------------------------------------------------------------
-// Year-level total checklists per H3 cell (sum across months).
+// Year-level total checklists per H3 cell (sum across months), per resolution.
 log("Building zone_meta...");
 db.exec(`
-  INSERT INTO zone_meta (cell_ref, h3, lat, lng, region_code, samples)
-  SELECT c.cell_ref, c.h3, c.lat, c.lng, c.region_code, cs.total_samples
+  INSERT INTO zone_meta (res, cell_ref, h3, lat, lng, region_code, samples)
+  SELECT c.res, c.cell_ref, c.h3, c.lat, c.lng, c.region_code, cs.total_samples
   FROM (
-    SELECT cell_ref, SUM(samples) AS total_samples
+    SELECT res, cell_ref, SUM(samples) AS total_samples
     FROM t.h3_cell_samples
-    GROUP BY cell_ref
+    GROUP BY res, cell_ref
     HAVING total_samples >= ${MIN_CHECKLISTS}
   ) cs
-  JOIN t.h3_cells c ON c.cell_ref = cs.cell_ref;
+  JOIN t.h3_cells c ON c.res = cs.res AND c.cell_ref = cs.cell_ref;
 `);
-db.exec(`CREATE INDEX idx_zone_meta_region ON zone_meta(region_code);`);
-db.exec(`CREATE INDEX idx_zone_meta_samples ON zone_meta(samples);`);
+db.exec(`CREATE INDEX idx_zone_meta_region ON zone_meta(res, region_code);`);
 log(`  zone_meta: ${(db.prepare("SELECT COUNT(*) c FROM zone_meta").get() as any).c}`);
+for (const { res, c } of db
+  .prepare("SELECT res, COUNT(*) c FROM zone_meta GROUP BY res ORDER BY res")
+  .all() as any[]) {
+  log(`  res ${res}: ${c} cells`);
+}
 
 // --- zone_species -----------------------------------------------------------
-// Aggregate month-partitioned obs to a year-level frequency per (cell, species).
+// Aggregate month-partitioned obs to a year-level frequency per (res, cell, species).
 log("Building zone_species (aggregating H3 months — the slow one)...");
 db.exec(`
-  INSERT INTO zone_species (species_id, cell_ref, bucket_level)
-  SELECT o.species_id, o.cell_ref, ${bucketLevelExpr.replace(/score/g, "(SUM(o.obs) * 1.0 / z.samples)")}
+  INSERT INTO zone_species (res, species_id, cell_ref, bucket_level)
+  SELECT o.res, o.species_id, o.cell_ref, ${bucketLevelExpr.replace(/score/g, "(SUM(o.obs) * 1.0 / z.samples)")}
   FROM t.h3_cell_obs o
-  JOIN zone_meta z ON z.cell_ref = o.cell_ref
-  GROUP BY o.cell_ref, o.species_id
+  JOIN zone_meta z ON z.res = o.res AND z.cell_ref = o.cell_ref
+  GROUP BY o.res, o.cell_ref, o.species_id
   HAVING (SUM(o.obs) * 1.0 / z.samples) >= ${MIN_SCORE};
 `);
 log(`  zone_species: ${(db.prepare("SELECT COUNT(*) c FROM zone_species").get() as any).c}`);
@@ -252,11 +263,11 @@ log(`  zone_species: ${(db.prepare("SELECT COUNT(*) c FROM zone_species").get() 
 // --- zone_qcount ------------------------------------------------------------
 log("Building zone_qcount...");
 const insertZoneQ = db.prepare(
-  `INSERT INTO zone_qcount (bucket, cell_ref, q_count)
-   SELECT ?, cell_ref, COUNT(*)
+  `INSERT INTO zone_qcount (res, bucket, cell_ref, q_count)
+   SELECT res, ?, cell_ref, COUNT(*)
    FROM zone_species
    WHERE bucket_level >= ?
-   GROUP BY cell_ref`
+   GROUP BY res, cell_ref`
 );
 FREQUENCY_BUCKETS.forEach((threshold, bucket) => {
   const info = insertZoneQ.run(bucket, bucket);
