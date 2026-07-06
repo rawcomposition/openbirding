@@ -7,8 +7,16 @@ export type LiferRegionFilter = {
   regionName: string;
 };
 
+/** A hex-cell selection is always tagged with the resolution it was made at, so
+ * it can be cleared automatically when the map's resolution changes. */
+export type HexSelection = {
+  resolution: number;
+  cells: string[]; // h3 index strings (hex)
+};
+
 // Frequency presets (fraction of checklists) must match the buckets baked into
-// lifers.db (see api/scripts/build-lifers-db.ts).
+// lifers.db (see api/scripts/build-lifers-db.ts). These scope hotspot results
+// only — never the grid colour.
 export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[] = [
   { value: 0.01, label: "1%", hint: "Rare — includes scarce & seasonal birds" },
   { value: 0.03, label: "3%", hint: "Uncommon" },
@@ -21,24 +29,31 @@ export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[]
 
 export const MIN_CHECKLIST_PRESETS = [10, 25, 50, 100, 250, 500];
 
-export type LiferMode = "hotspots" | "zones";
-
 type LiferTargetsState = {
   lifeList: LifeListEntry[] | null;
   fileName: string | null;
   uploadedAt: number | null;
 
-  mode: LiferMode;
+  // Filters — apply to hotspot RESULTS only, not the grid colour.
   frequency: number;
   minChecklists: number;
-  region: LiferRegionFilter | null;
+
+  // Scope for hotspot results: one or more regions, OR a hex-cell selection.
+  // Hex selection takes priority when present; clearing it reverts to regions.
+  regions: LiferRegionFilter[];
+  selection: HexSelection | null;
 
   setLifeList: (entries: LifeListEntry[], fileName: string) => void;
   clearLifeList: () => void;
-  setMode: (mode: LiferMode) => void;
   setFrequency: (frequency: number) => void;
   setMinChecklists: (minChecklists: number) => void;
-  setRegion: (region: LiferRegionFilter | null) => void;
+
+  addRegion: (region: LiferRegionFilter) => void;
+  removeRegion: (regionCode: string) => void;
+  clearRegions: () => void;
+
+  toggleCell: (h3: string, resolution: number) => void;
+  clearSelection: () => void;
 };
 
 export const useLiferTargetsStore = create<LiferTargetsState>()(
@@ -48,23 +63,63 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
       fileName: null,
       uploadedAt: null,
 
-      mode: "hotspots",
       frequency: 0.05,
       minChecklists: 50,
-      region: null,
+
+      regions: [],
+      selection: null,
 
       setLifeList: (entries, fileName) => set({ lifeList: entries, fileName, uploadedAt: Date.now() }),
       clearLifeList: () => set({ lifeList: null, fileName: null, uploadedAt: null }),
-      setMode: (mode) => set({ mode }),
       setFrequency: (frequency) => set({ frequency }),
       setMinChecklists: (minChecklists) => set({ minChecklists }),
-      setRegion: (region) => set({ region }),
+
+      addRegion: (region) =>
+        set((s) =>
+          s.regions.some((r) => r.regionCode === region.regionCode)
+            ? s
+            : { regions: [...s.regions, region] }
+        ),
+      removeRegion: (regionCode) =>
+        set((s) => ({ regions: s.regions.filter((r) => r.regionCode !== regionCode) })),
+      clearRegions: () => set({ regions: [] }),
+
+      toggleCell: (h3, resolution) =>
+        set((s) => {
+          // A selection at a different resolution is stale — start fresh.
+          if (!s.selection || s.selection.resolution !== resolution) {
+            return { selection: { resolution, cells: [h3] } };
+          }
+          const has = s.selection.cells.includes(h3);
+          const cells = has
+            ? s.selection.cells.filter((c) => c !== h3)
+            : [...s.selection.cells, h3];
+          return { selection: cells.length ? { resolution, cells } : null };
+        }),
+      clearSelection: () => set({ selection: null }),
     }),
     {
       name: "openbirding-lifer-targets",
-      // The life list can be large; if it exceeds the storage quota we still
-      // keep the tool working in-memory for the session.
-      partialize: (state) => state,
+      version: 1,
+      // Persist the life list, filters and region scope — but not the transient
+      // hex selection, which is tied to a specific map resolution.
+      partialize: (state) => ({
+        lifeList: state.lifeList,
+        fileName: state.fileName,
+        uploadedAt: state.uploadedAt,
+        frequency: state.frequency,
+        minChecklists: state.minChecklists,
+        regions: state.regions,
+      }),
+      migrate: (persisted: unknown, version: number) => {
+        // v0 stored a single `region` and a `mode`; carry the region across.
+        if (version === 0 && persisted && typeof persisted === "object") {
+          const old = persisted as Record<string, unknown>;
+          const region = old.region as LiferRegionFilter | null;
+          return { ...old, regions: region ? [region] : [], region: undefined, mode: undefined };
+        }
+        return persisted as never;
+      },
     }
   )
 );
