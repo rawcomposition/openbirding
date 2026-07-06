@@ -19,9 +19,13 @@ milliseconds.
    server-side).
 2. The whole world is shown as a **full-page H3 hexagon choropleth**: every cell
    is coloured by how many of your lifers occur there, on a 10-stop ramp. The
-   scale is **fixed and personalised** — normalised to your worldwide busiest
-   cell for the current resolution (`POST /grid-scale`, fetched once) — so a
-   40-species and a 4,000-species list both use the full spectrum, and panning
+   scale is **fixed and personalised** — mapped through worldwide **quantile
+   breakpoints** for the current resolution (`POST /grid-scale`, fetched once),
+   so each colour band holds roughly the same share of cells. Lifer counts are
+   heavy-tailed (a handful of hyper-rich tropical cells, a long tail of modest
+   ones), so a plain linear max would wash everything but the hottest cells to
+   grey; equal-count bins spread the full spectrum across the real distribution.
+   A 40-species and a 4,000-species list both use the whole ramp, and panning
    never recolours; only zooming (which changes resolution) rescales. Zoom in and
    the hexes get finer (coarse res 3 held across a wide zoom range → fine res 6
    only when zoomed right in). Cells with none of your lifers render subtly.
@@ -45,8 +49,9 @@ a cell's frequency is diluted by however much *other* birding happened inside it
 (effort, not bird quality), and that dilution grows with cell size, so the same
 "20%" is not portable and shifts as you zoom. So the grid answers "how many of
 your lifers occur here at all" (a fixed >=1% floor strips one-off vagrants) and
-is normalised per view; the frequency/checklist knobs live with the hotspot
-drill-down, where a percentage cleanly means "your odds on a visit".
+is normalised to a fixed worldwide quantile scale; the frequency/checklist knobs
+live with the hotspot drill-down, where a percentage cleanly means "your odds on
+a visit".
 
 ---
 
@@ -153,11 +158,15 @@ common name → base-binomial fallback.
   [{h3, lifers}], maxLifers }`. The always-on choropleth; unfiltered by
   frequency/checklists. Called on every settled pan/zoom, so it is lean (no
   region-name enrichment, no citation).
-- `POST /grid-scale` — `{ species }` → `{ maxByRes }`, the worldwide max lifer
-  count per resolution. Fetched once per life list to fix the colour scale.
+- `POST /grid-scale` — `{ species }` → `{ breaksByRes }`, ten ascending
+  worldwide quantile breakpoints of lifer counts per resolution. Fetched once
+  per life list to fix the colour scale (equal-count colour bands).
 - `POST /cells` — `{ species, resolution, cells: [h3] }` → per-cell
-  `{ h3, samples, totalSpecies, lifers }`. Backs the selected-hex debug readout
-  (why a data-rich cell may still surface no hotspots under the filters).
+  `{ h3, samples, totalSpecies, lifers, namedHotspots, hotspotChecklists }`.
+  Backs the selected-hex debug readout. `samples`/`lifers` count **all** eBird
+  effort in the cell; `namedHotspots`/`hotspotChecklists` count only named
+  hotspots inside it — the gap explains why a data-rich, colourful cell can
+  still surface no hotspots (effort dispersed across personal locations).
 - `POST /region-bounds` — `{ region }` → `{ bbox }` over the region's hotspots,
   for framing the map on selection.
 - `POST /hotspots` — `{ species: [{sciName, commonName, code}], frequency,
