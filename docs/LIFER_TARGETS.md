@@ -17,24 +17,35 @@ milliseconds.
 
 1. Upload an eBird life-list CSV (parsed entirely in the browser — never stored
    server-side).
-2. Pick a **minimum frequency** (how likely a species is at a place) and a
-   **minimum number of checklists** (to ignore under-sampled "nonsense"
-   locations), optionally scoped to an eBird **region**.
-3. Get a ranked, mapped list of either:
-   - **Hotspots** — individual eBird hotspots, or
-   - **Zones** — ~36 km² H3 hexagons ("if I bird this whole area…"), better for
-     trip planning. Zones are named after the most-birded hotspot inside them
-     ("Amazon Manú Lodge area") and render as real hexagons on the map (as
-     graduated circles when zoomed out, crossfading to hexes around z8).
-4. Select any result to see the exact potential lifers, most-likely first
-   (each links to its eBird species page). Selected zones also list the best
-   hotspots inside them (a bbox query over the hotspot index), bridging
-   "this area is rich" to "go to this exact spot".
+2. The whole world is shown as a **full-page H3 hexagon choropleth**: every cell
+   is coloured by how many of your lifers occur there, on a 10-stop ramp
+   normalised to your busiest cell *in the current view* — so a 40-species and a
+   4,000-species list both use the full spectrum. Zoom in and the hexes get
+   finer (coarse res 3 at world scale → fine res 6 up close); the grid refetches
+   for each settled viewport and re-normalises. Cells with none of your lifers
+   render subtly.
+3. To get **hotspot results**, scope the map: pick one or more eBird **regions**
+   (the map frames to their bounds) *or* click one or more **hex cells** (with an
+   obvious Clear button). Hex selection takes priority over regions; clearing it
+   reverts to the regions; changing zoom resolution drops a stale hex selection.
+   There are no worldwide hotspot results — a scope is required.
+4. Within that scope, the panel ranks the best hotspots for new lifers, filtered
+   by a **minimum frequency** and **minimum checklists**. Those two filters scope
+   the hotspot results *only* — never the grid colour (see the note below).
 
-The list and map are two views of one selection: hovering a row highlights its
-feature, clicking a row flies the map to it, clicking a feature scrolls its row
-into view, and clicking empty map clears the selection. Filter changes keep the
-previous results on screen (dimmed) instead of flashing to skeletons.
+The panel and map are two views of one selection: hovering a hotspot row
+highlights its map marker and vice-versa, clicking a row flies to it, clicking a
+marker scrolls its row into view.
+
+### Why the filters don't touch the grid colour
+
+A frequency threshold means different things at a hotspot vs. across a hex cell:
+a cell's frequency is diluted by however much *other* birding happened inside it
+(effort, not bird quality), and that dilution grows with cell size, so the same
+"20%" is not portable and shifts as you zoom. So the grid answers "how many of
+your lifers occur here at all" (a fixed >=1% floor strips one-off vagrants) and
+is normalised per view; the frequency/checklist knobs live with the hotspot
+drill-down, where a percentage cleanly means "your odds on a visit".
 
 ---
 
@@ -70,9 +81,14 @@ is attached read-only and a fresh `lifers.db` (~760 MB) is written. Tables:
 | `loc_meta`     | 293 k  | hotspot metadata + total checklists, keyed by dense `loc_ref` |
 | `loc_species`  | 20 M   | `(species_id, loc_ref, bucket_level)` — species→location index |
 | `loc_qcount`   | 2 M    | precomputed `qCount` per (bucket, location) |
-| `zone_meta`    | 305 k  | H3 cell metadata + total checklists |
-| `zone_species` | 28 M   | `(species_id, cell_ref, bucket_level)` for zones |
-| `zone_qcount`  | 2 M    | precomputed `qCount` per (bucket, cell) |
+| `zone_meta`    | 469 k  | H3 cell metadata + total checklists, keyed by `(res, cell_ref)` |
+| `zone_species` | 46 M   | `(res, species_id, cell_ref, bucket_level)` for zones |
+| `zone_qcount`  | 3 M    | precomputed `qCount` per `(res, bucket, cell)` |
+
+The zone tables carry **every H3 resolution** (coarse res 3 → fine res 6) that
+`targets.db` provides; `cell_ref` is only unique within a resolution, so all
+three zone tables are keyed by `(res, cell_ref)`. The in-memory index loads one
+dataset per resolution and the map colours whichever fits the current zoom.
 
 `bucket_level` is the frequency threshold quantized to an integer 0–6, so the
 in-memory index needs no float math.
@@ -130,12 +146,21 @@ Memory: hotspots ~100 MB + zones ~140 MB resident, comfortably within the
 All under `/api/v1/lifers`. Species are matched by code → scientific name →
 common name → base-binomial fallback.
 
-- `GET  /status` — index readiness, buckets, version, `zonesLoaded`.
+- `GET  /status` — index readiness, buckets, version, `zonesLoaded`, and the
+  available `resolutions` (e.g. `[3,4,5,6]`).
+- `POST /grid` — `{ species, bbox, resolution }` → `{ resolution, cells:
+  [{h3, lifers}], maxLifers }`. The always-on choropleth; unfiltered by
+  frequency/checklists. Called on every settled pan/zoom, so it is lean (no
+  region-name enrichment, no citation).
+- `POST /region-bounds` — `{ region }` → `{ bbox }` over the region's hotspots,
+  for framing the map on selection.
 - `POST /hotspots` — `{ species: [{sciName, commonName, code}], frequency,
   minChecklists, region?, bbox?, limit? }` → ranked hotspots.
 - `POST /hotspot/:locationId` — the specific lifer species at one hotspot.
-- `POST /zones` — same body → ranked H3 zones.
-- `POST /zone/:cellRef` — the specific lifer species in one zone.
+- `POST /zones` — same body → ranked H3 zones (finest resolution).
+- `POST /zone/:cellRef` — the specific lifer species in one zone. NOTE: keyed by
+  `cell_ref` alone, so it is ambiguous now that `targets.db` carries multiple
+  resolutions; not used by the current full-page UI.
 
 Items carry a human-readable `regionName` (resolved from the `regions` table,
 walking up the code hierarchy for unknown sub-codes) and zones carry an
@@ -170,8 +195,17 @@ nearest bucket.
 
 - ~~**Region names for zones.**~~ Done — resolved from the `regions` table,
   plus hotspot-anchored zone names.
-- ~~**Render zones as hexagons.**~~ Done — `h3-js` boundaries with an
-  antimeridian unwrap, circle fallback below ~z8 where hexes are sub-pixel.
+- ~~**Render zones as hexagons.**~~ Done — superseded by the full-page grid:
+  an always-on multi-resolution H3 choropleth (`h3-js` boundaries, antimeridian
+  unwrap), coloured by lifer count and normalised per view.
+- **Grid dilution, decided.** The grid deliberately does *not* apply the user's
+  frequency filter (see "Why the filters don't touch the grid colour"). A
+  future refinement, if a diluted-but-rich cell ever needs to surface better, is
+  a peak-preserving rollup: colour a coarse cell from its best/hottest child
+  cells (or the best hotspot inside it) instead of its flat average, since the
+  resolution pyramid (res 3–6) is already stored. Not needed yet.
+- **`/zone/:cellRef` is resolution-ambiguous.** Add a `res` (or use the h3
+  index) if per-cell species detail is ever wired back into the UI.
 - **Month filter.** The month-partitioned data exists (`h3_cell_*`, `month_obs`)
   — a "planning a trip in October" filter is very doable but would need
   per-month buckets (bigger `lifers.db`) or an on-the-fly path.
