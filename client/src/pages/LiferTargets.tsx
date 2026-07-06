@@ -35,7 +35,14 @@ type HotspotResponse = {
 
 type StatusResponse = { ready: boolean; resolutions?: number[] };
 type SpeciesPayload = { sciName: string; commonName: string }[];
-type CellInfo = { h3: string; samples: number; totalSpecies: number; lifers: number };
+type CellInfo = {
+  h3: string;
+  samples: number;
+  totalSpecies: number;
+  lifers: number;
+  namedHotspots: number;
+  hotspotChecklists: number;
+};
 
 const HOTSPOT_LIMIT = 50;
 
@@ -98,16 +105,18 @@ const LiferTargets = () => {
   });
   const resolutions = status?.resolutions ?? [3, 4, 5, 6];
 
-  // Fixed, personalised colour scale: worldwide max lifers per resolution, so
-  // panning never recolours the grid (only zooming, which changes resolution).
-  const { data: scaleData } = useQuery<{ maxByRes: Record<number, number> }>({
+  // Fixed, personalised colour scale: worldwide quantile breakpoints per
+  // resolution, so panning never recolours the grid (only zooming, which
+  // changes resolution) and the full spectrum spreads across the distribution.
+  const { data: scaleData } = useQuery<{ breaksByRes: Record<number, number[]> }>({
     queryKey: ["lifer-grid-scale", species.length, fileName],
     enabled: !!lifeList && lifeList.length > 0,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
-    queryFn: () => mutate("POST", "/lifers/grid-scale", { species }) as Promise<{ maxByRes: Record<number, number> }>,
+    queryFn: () =>
+      mutate("POST", "/lifers/grid-scale", { species }) as Promise<{ breaksByRes: Record<number, number[]> }>,
   });
-  const maxByRes = scaleData?.maxByRes ?? null;
+  const breaksByRes = scaleData?.breaksByRes ?? null;
 
   // Result scope: a hex selection takes priority; otherwise the chosen regions.
   const scope: { kind: "hex"; bbox: Bbox | null } | { kind: "region"; codes: string } | null = useMemo(() => {
@@ -201,7 +210,7 @@ const LiferTargets = () => {
         ref={mapHandle}
         species={species}
         resolutions={resolutions}
-        maxByRes={maxByRes}
+        breaksByRes={breaksByRes}
         selectedCells={selectedCells}
         onToggleCell={toggleCell}
         onResolutionChange={handleResolutionChange}
@@ -344,13 +353,27 @@ function ControlPanel(props: {
                     </button>
                   </div>
                   {props.cellsInfo && props.cellsInfo.length > 0 && (
-                    <div className="mt-1.5 space-y-0.5 border-t border-amber-200/70 pt-1.5 font-mono text-[10.5px] text-amber-800/90">
+                    <div className="mt-1.5 space-y-1.5 border-t border-amber-200/70 pt-1.5 font-mono text-[10.5px] text-amber-800/90">
                       {props.cellsInfo.map((c, i) => (
-                        <div key={c.h3} className="flex items-center justify-between gap-2">
-                          <span className="text-amber-700/70">#{i + 1}</span>
-                          <span>{c.samples.toLocaleString()} checklists</span>
-                          <span>{c.totalSpecies} spp.</span>
-                          <span className="font-semibold text-amber-900">{c.lifers} lifers</span>
+                        <div key={c.h3} className="space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-amber-700/70">#{i + 1}</span>
+                            <span>{c.samples.toLocaleString()} lists</span>
+                            <span>{c.totalSpecies} spp.</span>
+                            <span className="font-semibold text-amber-900">{c.lifers} lifers</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-amber-700/70">
+                            {c.namedHotspots === 0 ? (
+                              <span className="italic">no hotspots — effort is dispersed</span>
+                            ) : (
+                              <>
+                                <span>
+                                  {c.namedHotspots} hotspot{c.namedHotspots > 1 ? "s" : ""}
+                                </span>
+                                <span>{c.hotspotChecklists.toLocaleString()} hotspot lists</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

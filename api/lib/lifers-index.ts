@@ -11,13 +11,23 @@
  * through a compressed-sparse-row (CSR) species -> location index.
  */
 import Database from "better-sqlite3";
+import { latLngToCell } from "h3-js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { LIFERS_DB_FILENAME } from "./config.js";
 import { topByLifers, allInBbox, regionMatches, type GeoArrays } from "./geo-query.js";
 
 export type GridCell = { h3: string; lifers: number };
-export type CellInfo = { h3: string; samples: number; totalSpecies: number; lifers: number };
+export type CellInfo = {
+  h3: string;
+  samples: number;
+  totalSpecies: number;
+  lifers: number;
+  /** Named eBird hotspots whose location falls inside this cell. */
+  namedHotspots: number;
+  /** Total checklists across those named hotspots. */
+  hotspotChecklists: number;
+};
 export type Bbox = { minLng: number; minLat: number; maxLng: number; maxLat: number };
 type ZoneDataset = {
   res: number;
@@ -437,38 +447,78 @@ class LifersIndex {
   }
 
   /**
-   * Worldwide maximum lifer count per resolution for this user — the fixed,
-   * personalised scale the map normalises colour to, so panning never recolours
-   * (only zooming, which changes resolution, rescales).
+   * Worldwide quantile breakpoints of lifer counts per resolution — the fixed,
+   * personalised colour scale. Returns `n` ascending lifer-count thresholds at
+   * evenly spaced quantiles over cells that hold at least one lifer, so the map
+   * spreads the full colour spectrum across the actual distribution (a few
+   * hyper-rich cells no longer wash everything else to grey) regardless of
+   * life-list size. It is worldwide, so panning never recolours; only zooming
+   * (which changes resolution) rescales.
    */
-  gridScale(seenIds: Set<number>): Record<number, number> {
+  gridQuantiles(seenIds: Set<number>, n = 10): Record<number, number[]> {
     if (!this.zonesByRes) throw new Error("Zones not loaded");
-    const out: Record<number, number> = {};
+    const out: Record<number, number[]> = {};
     for (const [res, zs] of this.zonesByRes) {
       const counter = this.walkSeen(zs, seenIds);
       const q0 = zs.qCount[0];
-      let max = 0;
+      const vals: number[] = [];
       for (let ref = 0; ref < zs.numRefs; ref++) {
         const l = q0[ref] - counter[ref];
-        if (l > max) max = l;
+        if (l > 0) vals.push(l);
       }
-      out[res] = max;
+      if (vals.length === 0) {
+        out[res] = [1];
+        continue;
+      }
+      vals.sort((a, b) => a - b);
+      const breaks: number[] = [];
+      for (let i = 1; i <= n; i++) {
+        const idx = Math.min(vals.length - 1, Math.max(0, Math.ceil((i / n) * vals.length) - 1));
+        breaks.push(vals[idx]);
+      }
+      out[res] = breaks;
     }
     return out;
   }
 
-  /** Debug/detail for specific cells: checklist samples, total quality species, lifers. */
+  /**
+   * Debug/detail for specific cells: cell-level checklist samples, total quality
+   * species and lifers (from the zone data, which counts ALL eBird effort), plus
+   * how many *named hotspots* actually sit inside each cell. The gap between the
+   * two explains why a colourful, data-rich cell can still surface no hotspots:
+   * the effort is dispersed across personal locations rather than named spots.
+   */
   cellsInfo(seenIds: Set<number>, res: number, h3s: string[]): CellInfo[] {
     if (!this.zonesByRes) throw new Error("Zones not loaded");
     const zs = this.zonesByRes.get(res);
-    if (!zs) return h3s.map((h3) => ({ h3, samples: 0, totalSpecies: 0, lifers: 0 }));
-    const counter = this.walkSeen(zs, seenIds);
-    const q0 = zs.qCount[0];
+
+    // Tally named hotspots (and their checklists) that fall inside each cell.
+    const want = new Set(h3s);
+    const hotCount = new Map<string, number>();
+    const hotLists = new Map<string, number>();
+    for (let ref = 0; ref < this.numLocs; ref++) {
+      const cell = latLngToCell(this.lat[ref], this.lng[ref], res);
+      if (!want.has(cell)) continue;
+      hotCount.set(cell, (hotCount.get(cell) ?? 0) + 1);
+      hotLists.set(cell, (hotLists.get(cell) ?? 0) + this.samples[ref]);
+    }
+
+    const counter = zs ? this.walkSeen(zs, seenIds) : null;
+    const q0 = zs?.qCount[0];
     return h3s.map((h3) => {
-      const ref = zs.byH3.get(h3);
-      if (ref == null) return { h3, samples: 0, totalSpecies: 0, lifers: 0 };
+      const hot = { namedHotspots: hotCount.get(h3) ?? 0, hotspotChecklists: hotLists.get(h3) ?? 0 };
+      const ref = zs?.byH3.get(h3);
+      if (!zs || ref == null || !q0 || !counter) {
+        return { h3, samples: 0, totalSpecies: 0, lifers: 0, ...hot };
+      }
       const totalSpecies = q0[ref];
-      return { h3, samples: zs.geo.samples[ref], totalSpecies, lifers: Math.max(0, totalSpecies - counter[ref]) };
+      return {
+        h3,
+        samples: zs.geo.samples[ref],
+        totalSpecies,
+        lifers: Math.max(0, totalSpecies - counter[ref]),
+        ...hot,
+      };
     });
   }
 

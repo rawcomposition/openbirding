@@ -288,8 +288,9 @@ lifersRoute.post("/grid", async (c) => {
   });
 });
 
-// Worldwide max lifer count per resolution — the fixed colour scale for this
-// life list, fetched once so panning never recolours the grid.
+// Worldwide quantile breakpoints per resolution — the fixed colour scale for
+// this life list, fetched once so panning never recolours the grid and the full
+// colour spectrum is spread across the real distribution of lifer counts.
 lifersRoute.post("/grid-scale", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
@@ -298,7 +299,7 @@ lifersRoute.post("/grid-scale", async (c) => {
   const index = await getLifersIndex();
   await ensureZonesLoaded(index);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
-  return c.json({ maxByRes: index.gridScale(seenIds) });
+  return c.json({ breaksByRes: index.gridQuantiles(seenIds) });
 });
 
 // Per-cell detail for selected hexes: checklist samples, species, lifers.

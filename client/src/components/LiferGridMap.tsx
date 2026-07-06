@@ -3,7 +3,7 @@ import maplibregl from "maplibre-gl";
 import { cellToBoundary } from "h3-js";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mutate } from "@/lib/utils";
-import { rampStops } from "@/lib/liferColors";
+import { quantileStops } from "@/lib/liferColors";
 
 export type Bbox = { minLng: number; minLat: number; maxLng: number; maxLat: number };
 export type SpeciesPayload = { sciName: string; commonName: string }[];
@@ -17,8 +17,8 @@ type GridResponse = {
 type Props = {
   species: SpeciesPayload;
   resolutions: number[];
-  /** Worldwide max lifers per resolution — the fixed colour scale. */
-  maxByRes: Record<number, number> | null;
+  /** Worldwide quantile breakpoints per resolution — the fixed colour scale. */
+  breaksByRes: Record<number, number[]> | null;
   selectedCells: string[];
   onToggleCell: (h3: string, resolution: number) => void;
   onResolutionChange: (resolution: number) => void;
@@ -58,7 +58,7 @@ function emptyFc(): GeoJSON.FeatureCollection {
 }
 
 const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
-  { species, resolutions, maxByRes, selectedCells, onToggleCell, onResolutionChange },
+  { species, resolutions, breaksByRes, selectedCells, onToggleCell, onResolutionChange },
   handleRef
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,8 +69,8 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
   speciesRef.current = species;
   const resolutionsRef = useRef(resolutions);
   resolutionsRef.current = resolutions;
-  const maxByResRef = useRef(maxByRes);
-  maxByResRef.current = maxByRes;
+  const breaksByResRef = useRef(breaksByRes);
+  breaksByResRef.current = breaksByRes;
   const onToggleCellRef = useRef(onToggleCell);
   onToggleCellRef.current = onToggleCell;
   const onResolutionChangeRef = useRef(onResolutionChange);
@@ -112,21 +112,44 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
   }
 
   function renderGrid(map: maplibregl.Map, res: GridResponse) {
-    // Fixed personalised scale: worldwide max for this resolution. Falls back to
-    // the in-view max only until the scale has loaded.
-    const globalMax = maxByResRef.current?.[res.resolution];
-    const max = Math.max(1, globalMax ?? res.maxLifers);
     const features: GeoJSON.Feature[] = res.cells.map((cell) => ({
       type: "Feature",
       id: cell.h3,
       geometry: { type: "Polygon", coordinates: [hexRing(cell.h3)] },
-      properties: { h3: cell.h3, lifers: cell.lifers, t: Math.min(1, cell.lifers / max) },
+      properties: { h3: cell.h3, lifers: cell.lifers },
     }));
     (map.getSource("grid") as maplibregl.GeoJSONSource | undefined)?.setData({
       type: "FeatureCollection",
       features,
     });
+    applyScale(map, res.resolution);
     syncSelectedCells(map);
+  }
+
+  /**
+   * Colour + opacity keyed directly on lifer count, using the worldwide quantile
+   * breakpoints for the current resolution. Falls back to a single stop until
+   * the scale has loaded.
+   */
+  function applyScale(map: maplibregl.Map, resolution: number) {
+    const breaks = breaksByResRef.current?.[resolution] ?? [1];
+    const stops = quantileStops(breaks);
+    const lo = stops[0] as number;
+    const hi = stops[stops.length - 2] as number;
+    map.setPaintProperty("grid-fill", "fill-color", [
+      "interpolate",
+      ["linear"],
+      ["get", "lifers"],
+      ...stops,
+    ]);
+    map.setPaintProperty("grid-fill", "fill-opacity", [
+      "case",
+      ["boolean", ["feature-state", "selected"], false],
+      0.85,
+      ["==", ["get", "lifers"], 0],
+      0.08,
+      ["interpolate", ["linear"], ["get", "lifers"], lo, 0.4, hi, 0.78],
+    ]);
   }
 
   const selectedCellsRef = useRef<string[]>([]);
@@ -158,15 +181,16 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
         id: "grid-fill",
         type: "fill",
         source: "grid",
+        // Placeholder paint; applyScale() sets the real quantile ramp per render.
         paint: {
-          "fill-color": ["interpolate", ["linear"], ["get", "t"], ...rampStops()],
+          "fill-color": ["interpolate", ["linear"], ["get", "lifers"], ...quantileStops([1])],
           "fill-opacity": [
             "case",
             ["boolean", ["feature-state", "selected"], false],
             0.85,
             ["==", ["get", "lifers"], 0],
             0.08,
-            ["+", 0.32, ["*", 0.4, ["get", "t"]]],
+            0.5,
           ],
         },
       });
@@ -224,9 +248,8 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
   // Recolour in place when the fixed scale arrives (no refetch).
   useEffect(() => {
     const map = mapRef.current;
-    if (map && loadedRef.current && lastResponseRef.current) renderGrid(map, lastResponseRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxByRes]);
+    if (map && loadedRef.current && lastResponseRef.current) applyScale(map, lastResponseRef.current.resolution);
+  }, [breaksByRes]);
 
   // Restyle selected hexes.
   useEffect(() => {

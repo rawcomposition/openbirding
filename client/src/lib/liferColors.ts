@@ -13,12 +13,21 @@ export const MARKER_COLORS = [
   "#ad0002",
 ];
 
-/** Colour stops for a MapLibre `interpolate` expression keyed on normalised t (0..1). */
-export function rampStops(): (number | string)[] {
+/**
+ * Colour stops for a MapLibre `interpolate` keyed directly on a cell's lifer
+ * count, using worldwide quantile breakpoints (ascending lifer thresholds) so
+ * each colour band holds roughly the same share of cells. Inputs are forced
+ * strictly increasing, which MapLibre requires; missing/short break arrays are
+ * padded so the result always has one stop per colour.
+ */
+export function quantileStops(breaks: number[]): (number | string)[] {
   const stops: (number | string)[] = [];
-  const n = MARKER_COLORS.length;
-  MARKER_COLORS.forEach((c, i) => {
-    stops.push(i / (n - 1), c);
-  });
+  let prev = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < MARKER_COLORS.length; i++) {
+    let v = breaks[i] ?? prev + 1;
+    if (v <= prev) v = prev + 1;
+    stops.push(v, MARKER_COLORS[i]);
+    prev = v;
+  }
   return stops;
 }
