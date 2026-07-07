@@ -11,7 +11,6 @@
  * through a compressed-sparse-row (CSR) species -> location index.
  */
 import Database from "better-sqlite3";
-import { latLngToCell } from "h3-js";
 import { existsSync } from "node:fs";
 import { rename } from "node:fs/promises";
 import { join } from "node:path";
@@ -135,6 +134,11 @@ class LifersIndex {
   // on first zone/grid query. Coarse resolutions colour the map when zoomed out,
   // finer ones as you zoom in.
   private zonesByRes: Map<number, ZoneDataset> | null = null;
+
+  // Precomputed per-resolution "which zone cell is this hotspot in" (-1 = none),
+  // baked into occurrences.db by the aggregator so cellsInfo() never needs H3
+  // coordinate math (or the h3-js dependency) at request time.
+  private readonly locCellRef = new Map<number, Int32Array>();
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -340,6 +344,13 @@ class LifersIndex {
           if (h3[ref] !== 0n) byH3.set(BigInt.asUintN(64, h3[ref]).toString(16), ref);
         }
 
+        try {
+          this.locCellRef.set(res, blobToArray(getBlob(`loc:cellRef:${res}`), Int32Array));
+        } catch {
+          // Older occurrences.db without the precomputed mapping — cellsInfo()
+          // reports zero named hotspots per cell instead of throwing.
+        }
+
         byRes.set(res, {
           res,
           numRefs: size,
@@ -436,7 +447,8 @@ class LifersIndex {
   /**
    * Lifer count for every H3 cell of `res` inside `bbox` — the data behind the
    * always-on choropleth. Unfiltered by the user's frequency/checklist controls
-   * (those apply only to hotspot results); uses bucket 0 (the >=1% floor baked
+   * (those apply only to hotspot results); uses bucket 0 (the lowest frequency
+   * floor baked
    * into the data) purely to strip one-off vagrant records.
    */
   gridCells(seenIds: Set<number>, res: number, bbox: Bbox): { cells: GridCell[]; maxLifers: number } {
@@ -513,23 +525,30 @@ class LifersIndex {
   cellsInfo(seenIds: Set<number>, res: number, h3s: string[]): CellInfo[] {
     if (!this.zonesByRes) throw new Error("Zones not loaded");
     const zs = this.zonesByRes.get(res);
+    const cellRefOfLoc = this.locCellRef.get(res);
 
-    // Tally named hotspots (and their checklists) that fall inside each cell.
-    const want = new Set(h3s);
-    const hotCount = new Map<string, number>();
-    const hotLists = new Map<string, number>();
-    for (let ref = 0; ref < this.numLocs; ref++) {
-      const cell = latLngToCell(this.lat[ref], this.lng[ref], res);
-      if (!want.has(cell)) continue;
-      hotCount.set(cell, (hotCount.get(cell) ?? 0) + 1);
-      hotLists.set(cell, (hotLists.get(cell) ?? 0) + this.samples[ref]);
+    // Tally named hotspots (and their checklists) whose precomputed cell_ref
+    // (baked in at build time) falls among the requested cells.
+    const wantRefs = zs ? new Set(h3s.map((h3) => zs.byH3.get(h3)).filter((ref): ref is number => ref != null)) : null;
+    const hotCount = new Map<number, number>();
+    const hotLists = new Map<number, number>();
+    if (cellRefOfLoc && wantRefs) {
+      for (let ref = 0; ref < this.numLocs; ref++) {
+        const cellRef = cellRefOfLoc[ref];
+        if (cellRef < 0 || !wantRefs.has(cellRef)) continue;
+        hotCount.set(cellRef, (hotCount.get(cellRef) ?? 0) + 1);
+        hotLists.set(cellRef, (hotLists.get(cellRef) ?? 0) + this.samples[ref]);
+      }
     }
 
     const counter = zs ? this.walkSeen(zs, seenIds) : null;
     const q0 = zs?.qCount[0];
     return h3s.map((h3) => {
-      const hot = { namedHotspots: hotCount.get(h3) ?? 0, hotspotChecklists: hotLists.get(h3) ?? 0 };
       const ref = zs?.byH3.get(h3);
+      const hot =
+        ref != null
+          ? { namedHotspots: hotCount.get(ref) ?? 0, hotspotChecklists: hotLists.get(ref) ?? 0 }
+          : { namedHotspots: 0, hotspotChecklists: 0 };
       if (!zs || ref == null || !q0 || !counter) {
         return { h3, samples: 0, totalSpecies: 0, lifers: 0, ...hot };
       }

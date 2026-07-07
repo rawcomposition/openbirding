@@ -142,9 +142,12 @@ two seconds.
 
 ### Frequency thresholds are bucketed
 
-Users choose from presets **1% / 3% / 5% / 10% / 20% / 30% / 50%** (fraction of
-checklists). These are the buckets baked into `occurrences.db`. `minChecklists` is
-fully dynamic (a per-location filter), not bucketed.
+Users choose from presets **5% / 10% / 20% / 30% / 50%** (fraction of
+checklists). These are the buckets baked into `occurrences.db`; 5% is also the
+hotspot data floor (rows below it are dropped at build time). The grid keeps
+its own permissive 1% floor — cell-level frequency is diluted by unrelated
+effort, so hotspot presets don't translate to cells. `minChecklists` is fully
+dynamic (a per-location filter, floor 25), not bucketed.
 
 ---
 
