@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { db, withTargetsDb } from "../db/index.js";
 import { speciesPhoto } from "../lib/avicommons.js";
-import { getEbdCitation } from "../lib/ebird.js";
+import { ebdCitation } from "../lib/utils.js";
 import {
   getLifersIndex,
   lifersIndexStatus,
@@ -257,7 +257,7 @@ lifersRoute.post("/hotspots", async (c) => {
       minChecklists: Math.max(minChecklists, index.minChecklistsFloor),
       version: `${index.versionMonth} ${index.versionYear}`,
     },
-    citation: await withTargetsDb((db) => getEbdCitation(db)).catch(() => undefined),
+    citation: ebdCitation(index.versionMonth, index.versionYear),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   });
 });
@@ -316,6 +316,7 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
     lifers,
     liferCount: lifers.length,
     frequency: threshold,
+    citation: ebdCitation(index.versionMonth, index.versionYear),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   });
 });

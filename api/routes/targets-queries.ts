@@ -1,8 +1,14 @@
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
 import { db, type TargetsDb } from "../db/index.js";
-import { getEbdCitation } from "../lib/ebird.js";
+import { getTargetsMetadata } from "../db/targets.js";
+import { ebdCitation } from "../lib/utils.js";
 import { parseRegionCodes } from "./targets-validators.js";
+
+async function getEbdCitation(targetsDb: TargetsDb) {
+  const { versionMonth, versionYear } = await getTargetsMetadata(targetsDb);
+  return ebdCitation(versionMonth, versionYear);
+}
 
 type HotspotsRequestOptions = {
   speciesCode: string;
