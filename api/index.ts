@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { userMessageFor } from "./lib/user-error.js";
 import { setupDatabase } from "./db/index.js";
 import packs from "./routes/packs.js";
 import backups from "./routes/backups.js";
@@ -46,7 +47,8 @@ app.onError((err, c) => {
     if (err.res) {
       return err.getResponse();
     }
-    return c.json({ message: err.message }, err.status);
+    const userMessage = userMessageFor(err);
+    return c.json(userMessage ? { message: err.message, userMessage } : { message: err.message }, err.status);
   }
   const message = err instanceof Error ? err.message : "Internal Server Error";
   return c.json({ message }, 500);

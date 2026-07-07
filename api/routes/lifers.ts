@@ -12,6 +12,7 @@ import {
   type SpeciesInput,
 } from "../lib/lifers-index.js";
 import { isLocationId, parseBBoxBody, parseRegionCodes } from "./targets-validators.js";
+import { userError } from "../lib/user-error.js";
 
 const lifersRoute = new Hono();
 
@@ -114,7 +115,7 @@ async function speciesInputsFor(body: Record<string, unknown>): Promise<SpeciesI
       .where("token", "=", token)
       .executeTakeFirst();
     if (!row) {
-      throw new HTTPException(404, { message: "Life list not found — please upload it again" });
+      throw userError(404, "Life list not found — please upload it again");
     }
     return parseSpeciesInput(JSON.parse(row.species));
   }

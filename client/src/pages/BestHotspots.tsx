@@ -18,7 +18,9 @@ import {
 import toast from "react-hot-toast";
 import LiferGridMap, { type GridMapHandle, type Bbox } from "@/components/LiferGridMap";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { cn, mutate } from "@/lib/utils";
+import { cn, mutate, ApiError } from "@/lib/utils";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { MARKER_COLORS } from "@/lib/liferColors";
 import { parseEbirdCsv, EbirdCsvError } from "@/lib/ebirdCsv";
 import { useLiferTargetsStore, FREQUENCY_PRESETS, MIN_CHECKLIST_PRESETS } from "@/stores/liferTargetsStore";
@@ -195,7 +197,7 @@ const BestHotspots = () => {
         ? `view:${bboxKey(scope.bbox)}`
         : "none";
 
-  const { data: results, isFetching } = useQuery<HotspotResponse>({
+  const { data: results, isFetching, isError, error, refetch } = useQuery<HotspotResponse>({
     queryKey: ["lifer-hotspots", scopeKey, frequency, minChecklists, listToken],
     enabled: !!listToken && !!scope?.bbox,
     refetchOnWindowFocus: false,
@@ -253,7 +255,7 @@ const BestHotspots = () => {
     if (next) mapHandle.current?.flyTo(h.lng, h.lat);
   };
 
-  const { data: detail, isFetching: detailFetching } = useQuery<HotspotDetailResponse>({
+  const { data: detail, isFetching: detailFetching, isError: detailError, error: detailErrorObj, refetch: refetchDetail } = useQuery<HotspotDetailResponse>({
     queryKey: ["lifer-hotspot-detail", selectedHotspot?.id, listToken, frequency],
     enabled: !!listToken && !!selectedHotspot,
     refetchOnWindowFocus: false,
@@ -272,6 +274,9 @@ const BestHotspots = () => {
         selectedHotspot={selectedHotspot}
         detail={detail ?? null}
         detailFetching={detailFetching}
+        detailError={detailError}
+        detailErrorMessage={detailErrorObj instanceof ApiError ? detailErrorObj.userMessage : undefined}
+        onRetryDetail={() => refetchDetail()}
         onCloseDetail={() => setSelectedHotspot(null)}
         speciesCount={speciesCount}
         hasList={!!listToken}
@@ -289,6 +294,9 @@ const BestHotspots = () => {
         hotspots={hotspots}
         hotspotsInScope={results?.meta.hotspotsInScope}
         isFetching={isFetching}
+        isError={isError}
+        errorMessage={error instanceof ApiError ? error.userMessage : undefined}
+        onRetry={() => refetch()}
         onSelectHotspot={selectHotspotFromList}
         rowRefs={rowRefs.current}
         citation={results?.citation}
@@ -326,6 +334,9 @@ function Sidebar(props: {
   selectedHotspot: HotspotItem | null;
   detail: HotspotDetailResponse | null;
   detailFetching: boolean;
+  detailError: boolean;
+  detailErrorMessage?: string;
+  onRetryDetail: () => void;
   onCloseDetail: () => void;
   speciesCount: number | null;
   hasList: boolean;
@@ -343,6 +354,9 @@ function Sidebar(props: {
   hotspots: HotspotItem[];
   hotspotsInScope?: number;
   isFetching: boolean;
+  isError: boolean;
+  errorMessage?: string;
+  onRetry: () => void;
   onSelectHotspot: (h: HotspotItem) => void;
   rowRefs: Map<string, HTMLDivElement>;
   citation?: string;
@@ -410,6 +424,9 @@ function Sidebar(props: {
           hotspots={props.hotspots}
           hotspotsInScope={props.hotspotsInScope}
           isFetching={props.isFetching}
+          isError={props.isError}
+          errorMessage={props.errorMessage}
+          onRetry={props.onRetry}
           frequency={props.frequency}
           onFrequency={props.onFrequency}
           minChecklists={props.minChecklists}
@@ -424,6 +441,9 @@ function Sidebar(props: {
         hotspot={props.selectedHotspot}
         detail={props.detail}
         isFetching={props.detailFetching}
+        isError={props.detailError}
+        errorMessage={props.detailErrorMessage}
+        onRetry={props.onRetryDetail}
         onBack={props.onCloseDetail}
         citation={props.citation}
       />
@@ -514,6 +534,9 @@ function HotspotResults({
   hotspots,
   hotspotsInScope,
   isFetching,
+  isError,
+  errorMessage,
+  onRetry,
   frequency,
   onFrequency,
   minChecklists,
@@ -526,6 +549,9 @@ function HotspotResults({
   hotspots: HotspotItem[];
   hotspotsInScope?: number;
   isFetching: boolean;
+  isError: boolean;
+  errorMessage?: string;
+  onRetry: () => void;
   frequency: number;
   onFrequency: (v: number) => void;
   minChecklists: number;
@@ -536,11 +562,13 @@ function HotspotResults({
 }) {
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-slate-100">
-      <div className="flex items-center justify-between px-3 pt-2">
+      <div className="flex items-center gap-2 px-3 pt-2">
         <h2 className="text-base font-semibold text-slate-700">
           Best hotspots {scopeKind === "hex" ? "in selection" : "in view"}
         </h2>
-        {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
+        {isFetching && hotspots.length > 0 && (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+        )}
       </div>
       <div className="flex items-center gap-1.5 px-3 pb-2 pt-1.5">
         <PillSelect
@@ -557,7 +585,15 @@ function HotspotResults({
           options={MIN_CHECKLIST_PRESETS.map((n) => ({ value: n, label: `${n}+ checklists` }))}
         />
       </div>
-      {hotspots.length === 0 && !isFetching ? (
+      {isError && hotspots.length === 0 ? (
+        <ErrorState
+          message={errorMessage ?? "Couldn't load hotspots."}
+          onRetry={onRetry}
+          className="mx-3"
+        />
+      ) : hotspots.length === 0 && (isFetching || hotspotsInScope === undefined) ? (
+        <LoadingState />
+      ) : hotspots.length === 0 ? (
         <p className="mx-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">
           {hotspotsInScope === 0
             ? "No hotspots in this area."
@@ -598,12 +634,18 @@ function HotspotDetailPanel({
   hotspot,
   detail,
   isFetching,
+  isError,
+  errorMessage,
+  onRetry,
   onBack,
   citation,
 }: {
   hotspot: HotspotItem | null;
   detail: HotspotDetailResponse | null;
   isFetching: boolean;
+  isError: boolean;
+  errorMessage?: string;
+  onRetry: () => void;
   onBack: () => void;
   citation?: string;
 }) {
@@ -654,9 +696,13 @@ function HotspotDetailPanel({
             "Species"
           )}
         </h4>
-        {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
+        {isFetching && detail && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
+        {isError && !detail && (
+          <ErrorState message={errorMessage ?? "Couldn't load this hotspot."} onRetry={onRetry} />
+        )}
+        {!detail && !isError && isFetching && <LoadingState />}
         {detail?.lifers.map((l) => {
           const photo = l.photo;
           return (
