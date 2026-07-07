@@ -5,19 +5,19 @@ import { db, withTargetsDb } from "../db/index.js";
 import { speciesPhoto } from "../lib/avicommons.js";
 import { ebdCitation } from "../lib/utils.js";
 import {
-  getLifersIndex,
-  lifersIndexStatus,
-  warmLifersIndex,
-  type LifersIndex,
+  getOccurrencesIndex,
+  occurrencesIndexStatus,
+  warmOccurrencesIndex,
+  type OccurrencesIndex,
   type SpeciesInput,
-} from "../lib/lifers-index.js";
+} from "../lib/occurrences-index.js";
 import { isLocationId, parseBBoxBody, parseRegionCodes } from "./targets-validators.js";
 import { userError } from "../lib/user-error.js";
 
-const lifersRoute = new Hono();
+const bestHotspotsRoute = new Hono();
 
 let zonesReady: Promise<void> | null = null;
-function ensureZonesLoaded(index: LifersIndex): Promise<void> {
+function ensureZonesLoaded(index: OccurrencesIndex): Promise<void> {
   if (index.zonesLoaded) return Promise.resolve();
   if (!zonesReady) {
     zonesReady = new Promise<void>((resolve, reject) => {
@@ -25,7 +25,7 @@ function ensureZonesLoaded(index: LifersIndex): Promise<void> {
         try {
           const start = Date.now();
           index.loadZones();
-          console.log(`Lifers zone index loaded in ${Date.now() - start} ms`);
+          console.log(`Occurrences zone index loaded in ${Date.now() - start} ms`);
           resolve();
         } catch (err) {
           zonesReady = null;
@@ -40,8 +40,8 @@ function ensureZonesLoaded(index: LifersIndex): Promise<void> {
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
-warmLifersIndex();
-getLifersIndex()
+warmOccurrencesIndex();
+getOccurrencesIndex()
   .then((index) => ensureZonesLoaded(index))
   .catch(() => {});
 
@@ -157,13 +157,13 @@ function parseResolution(value: unknown, allowed: number[]): number {
   return n;
 }
 
-lifersRoute.get("/status", async (c) => {
-  const status = lifersIndexStatus();
+bestHotspotsRoute.get("/status", async (c) => {
+  const status = occurrencesIndexStatus();
   if (!status.available) {
     return c.json({ ready: false, available: false, error: status.error });
   }
   try {
-    const index = await getLifersIndex();
+    const index = await getOccurrencesIndex();
     return c.json({
       ready: true,
       available: true,
@@ -179,14 +179,14 @@ lifersRoute.get("/status", async (c) => {
   }
 });
 
-lifersRoute.post("/list", async (c) => {
+bestHotspotsRoute.post("/list", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
   const speciesInputs = parseSpeciesInput(body.species);
   const fileName = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
 
-  const index = await getLifersIndex();
+  const index = await getOccurrencesIndex();
   const { matched, unmatched } = index.resolveSpecies(speciesInputs);
 
   const species = JSON.stringify(speciesInputs);
@@ -209,7 +209,7 @@ lifersRoute.post("/list", async (c) => {
   return c.json({ token, count: speciesCount, matched, unmatchedCount: unmatched.length });
 });
 
-lifersRoute.get("/list/:token", async (c) => {
+bestHotspotsRoute.get("/list/:token", async (c) => {
   const token = parseToken(c.req.param("token"));
   const row = await db
     .selectFrom("lifeLists")
@@ -220,13 +220,13 @@ lifersRoute.get("/list/:token", async (c) => {
   return c.json({ token, ...row });
 });
 
-lifersRoute.delete("/list/:token", async (c) => {
+bestHotspotsRoute.delete("/list/:token", async (c) => {
   const token = parseToken(c.req.param("token"));
   await db.deleteFrom("lifeLists").where("token", "=", token).execute();
   return c.json({ ok: true });
 });
 
-lifersRoute.post("/hotspots", async (c) => {
+bestHotspotsRoute.post("/hotspots", async (c) => {
   const startTime = performance.now();
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
@@ -239,7 +239,7 @@ lifersRoute.post("/hotspots", async (c) => {
   const regionCodes = body.region ? parseRegionCodes(String(body.region)) : null;
   const bbox = parseBBoxBody(body.bbox);
 
-  const index = await getLifersIndex();
+  const index = await getOccurrencesIndex();
   const { ids: seenIds, matched, unmatched } = index.resolveSpecies(speciesInputs);
   const bucket = index.bucketForFrequency(frequency);
 
@@ -263,7 +263,7 @@ lifersRoute.post("/hotspots", async (c) => {
   });
 });
 
-lifersRoute.post("/hotspot/:locationId", async (c) => {
+bestHotspotsRoute.post("/hotspot/:locationId", async (c) => {
   const startTime = performance.now();
   const locationId = c.req.param("locationId").trim().toUpperCase();
   if (!isLocationId(locationId)) {
@@ -275,7 +275,7 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
   const speciesInputs = await speciesInputsFor(body);
   const frequency = parseFrequency(body.frequency);
 
-  const index = await getLifersIndex();
+  const index = await getOccurrencesIndex();
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
   const bucket = index.bucketForFrequency(frequency);
   const threshold = index.buckets[bucket];
@@ -322,7 +322,7 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
   });
 });
 
-lifersRoute.post("/grid", async (c) => {
+bestHotspotsRoute.post("/grid", async (c) => {
   const startTime = performance.now();
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
@@ -334,7 +334,7 @@ lifersRoute.post("/grid", async (c) => {
     throw new HTTPException(400, { message: "bbox is required for grid queries" });
   }
 
-  const index = await getLifersIndex();
+  const index = await getOccurrencesIndex();
   await ensureZonesLoaded(index);
   const resolution = parseResolution(body.resolution, index.resolutions);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
@@ -348,18 +348,18 @@ lifersRoute.post("/grid", async (c) => {
   });
 });
 
-lifersRoute.post("/grid-scale", async (c) => {
+bestHotspotsRoute.post("/grid-scale", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
   const speciesInputs = await speciesInputsFor(body);
-  const index = await getLifersIndex();
+  const index = await getOccurrencesIndex();
   await ensureZonesLoaded(index);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
   return c.json({ breaksByRes: index.gridQuantiles(seenIds) });
 });
 
-lifersRoute.post("/cells", async (c) => {
+bestHotspotsRoute.post("/cells", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
@@ -374,11 +374,11 @@ lifersRoute.post("/cells", async (c) => {
     return h;
   });
 
-  const index = await getLifersIndex();
+  const index = await getOccurrencesIndex();
   await ensureZonesLoaded(index);
   const resolution = parseResolution(body.resolution, index.resolutions);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
   return c.json({ resolution, cells: index.cellsInfo(seenIds, resolution, cells) });
 });
 
-export default lifersRoute;
+export default bestHotspotsRoute;

@@ -8,11 +8,6 @@ import type { HotspotItem, HotspotResponse } from "@/components/besthotspots/typ
 
 const HOTSPOT_LIMIT = 100;
 
-/**
- * Union bounding box over a set of H3 cells. Cell sets straddling the
- * antimeridian are unwrapped and returned in the crossing form
- * (minLng > maxLng), which the server's bbox filter understands.
- */
 function cellsBbox(cells: string[]): Bbox | null {
   const lngs: number[] = [];
   let minLat = Infinity;
@@ -59,12 +54,12 @@ export function useHotspots() {
         : "none";
 
   const query = useQuery<HotspotResponse>({
-    queryKey: ["lifer-hotspots", scopeKey, frequency, minChecklists, listToken],
+    queryKey: ["best-hotspots", scopeKey, frequency, minChecklists, listToken],
     enabled: !!listToken && !!scope?.bbox,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
     queryFn: () =>
-      mutate("POST", "/lifers/hotspots", {
+      mutate("POST", "/best-hotspots/hotspots", {
         listToken,
         frequency,
         minChecklists,

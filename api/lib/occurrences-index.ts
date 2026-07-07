@@ -94,7 +94,7 @@ function blobToArray<T>(buf: Buffer, Ctor: TypedArrayCtor<T>): T {
   return new Ctor(ab);
 }
 
-class LifersIndex {
+class OccurrencesIndex {
   readonly buckets: number[];
   readonly minChecklistsFloor: number;
   readonly versionMonth: string;
@@ -566,15 +566,15 @@ class LifersIndex {
 
 // --- singleton, loaded lazily in the background -----------------------------
 
-function lifersDbPath(): string {
+function occurrencesDbPath(): string {
   return join(process.env.SQLITE_DIR ?? "/data", OCCURRENCES_DB_FILENAME);
 }
 
-let loadPromise: Promise<LifersIndex> | null = null;
+let loadPromise: Promise<OccurrencesIndex> | null = null;
 let loadError: string | null = null;
 
-function startLoad(): Promise<LifersIndex> {
-  const path = lifersDbPath();
+function startLoad(): Promise<OccurrencesIndex> {
+  const path = occurrencesDbPath();
   if (!existsSync(path)) {
     loadError = `occurrences.db not found at ${path}`;
     return Promise.reject(new Error(loadError));
@@ -585,40 +585,40 @@ function startLoad(): Promise<LifersIndex> {
     setImmediate(() => {
       try {
         const start = Date.now();
-        const index = new LifersIndex(path);
-        console.log(`Lifers index loaded (${index.numLocs} locations) in ${Date.now() - start} ms`);
+        const index = new OccurrencesIndex(path);
+        console.log(`Occurrences index loaded (${index.numLocs} locations) in ${Date.now() - start} ms`);
         resolve(index);
       } catch (err) {
         loadError = err instanceof Error ? err.message : String(err);
-        console.error("Failed to load lifers index:", loadError);
+        console.error("Failed to load occurrences index:", loadError);
         reject(err);
       }
     });
   });
 }
 
-function ensureLoad(): Promise<LifersIndex> {
+function ensureLoad(): Promise<OccurrencesIndex> {
   if (!loadPromise) {
     loadPromise = startLoad();
     // Guard against an unhandled rejection when nobody is awaiting yet; real
-    // awaiters still observe the rejection via getLifersIndex().
+    // awaiters still observe the rejection via getOccurrencesIndex().
     loadPromise.catch(() => {});
   }
   return loadPromise;
 }
 
 /** Kick off background loading (idempotent). */
-export function warmLifersIndex(): void {
+export function warmOccurrencesIndex(): void {
   ensureLoad();
 }
 
 /** Await the ready index (starts loading if needed). Throws if unavailable. */
-export function getLifersIndex(): Promise<LifersIndex> {
+export function getOccurrencesIndex(): Promise<OccurrencesIndex> {
   return ensureLoad();
 }
 
-export function lifersIndexStatus(): { available: boolean; error: string | null } {
-  return { available: existsSync(lifersDbPath()), error: loadError };
+export function occurrencesIndexStatus(): { available: boolean; error: string | null } {
+  return { available: existsSync(occurrencesDbPath()), error: loadError };
 }
 
 let occSwapInProgress = false;
@@ -637,16 +637,16 @@ export async function swapOccurrencesDb(): Promise<
     return { ok: false, error: "Occurrences database swap already in progress" };
   }
   occSwapInProgress = true;
-  const livePath = lifersDbPath();
+  const livePath = occurrencesDbPath();
   const newPath = `${livePath}.new`;
   try {
     if (!existsSync(newPath)) {
       return { ok: false, error: `No staged database at ${newPath}` };
     }
-    const next = await new Promise<LifersIndex>((resolve, reject) => {
+    const next = await new Promise<OccurrencesIndex>((resolve, reject) => {
       setImmediate(() => {
         try {
-          const index = new LifersIndex(newPath);
+          const index = new OccurrencesIndex(newPath);
           index.loadZones();
           resolve(index);
         } catch (err) {
@@ -668,4 +668,4 @@ export async function swapOccurrencesDb(): Promise<
   }
 }
 
-export type { LifersIndex };
+export type { OccurrencesIndex };

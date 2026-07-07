@@ -2,8 +2,8 @@ import { useRef } from "react";
 import { Binoculars } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBestHotspotsStore } from "@/stores/bestHotspotsStore";
-import { useHotspots } from "@/components/besthotspots/useHotspots";
-import { useUploadLifeList } from "@/components/besthotspots/useUploadLifeList";
+import { useHotspots } from "@/hooks/best-hotspots/useHotspots";
+import { useUploadLifeList } from "@/hooks/best-hotspots/useUploadLifeList";
 
 export function LifeListChip() {
   const fileName = useBestHotspotsStore((s) => s.fileName);

@@ -1,4 +1,4 @@
-# Lifer Targets & Hot Zones
+# Best Hotspots
 
 A tool that takes a birder's eBird life list and finds the places — individual
 hotspots or geographic zones — where they can see the most species they haven't
@@ -9,7 +9,7 @@ No other birding app does this at global scale. It responds in tens of
 milliseconds.
 
 - **Bird Finder** (existing): pick one species → where is it?
-- **Lifer Targets** (new): upload your whole life list → where should I go?
+- **Best Hotspots** (new): upload your whole life list → where should I go?
 
 ---
 
@@ -115,13 +115,13 @@ data pre-packed as little-endian typed-array BLOBs. The API loads those with a
 few memcpy-speed reads (~0.5 s total) instead of iterating tens of millions of
 rows through the JS statement cursor (~60 s, which blocked the whole event
 loop). The exact blob layout is documented in `generate_occurrences.py` and
-consumed by `api/lib/lifers-index.ts` — **keep the two in sync**. The row
+consumed by `api/lib/occurrences-index.ts` — **keep the two in sync**. The row
 tables remain the source of truth; the loader falls back to iterating them if
 `blob_cache` is absent.
 
 ### The in-memory index
 
-At API startup (`api/lib/lifers-index.ts`) the whole thing is loaded into
+At API startup (`api/lib/occurrences-index.ts`) the whole thing is loaded into
 compact typed arrays:
 
 - Per-location metadata arrays (samples, lat/lng, region code).
@@ -174,7 +174,7 @@ Memory: ~570 MB RSS with res 3+4 loaded (~1 GB if res 5/6 are re-enabled via
 
 ## API
 
-All under `/api/v1/lifers`. Species are matched by code → scientific name →
+All under `/api/v1/best-hotspots`. Species are matched by code → scientific name →
 common name → base-binomial fallback. Every query endpoint accepts either an
 inline `species` array or a `listToken` referencing a stored list (the normal
 path).
@@ -278,4 +278,4 @@ nearest bucket.
    derived from `DB_SWAP_ENDPOINT`). No restart needed. (Manual alternative:
    place `occurrences.db` in `SQLITE_DIR` and restart.)
 3. Start the API — the index warms automatically (~0.5 s hotspots + ~0.1 s
-   zones from the blob cache). `GET /api/v1/lifers/status` reports readiness.
+   zones from the blob cache). `GET /api/v1/best-hotspots/status` reports readiness.

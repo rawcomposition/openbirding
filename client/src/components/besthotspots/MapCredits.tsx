@@ -1,6 +1,6 @@
 import { Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useHotspots } from "@/components/besthotspots/useHotspots";
+import { useHotspots } from "@/hooks/best-hotspots/useHotspots";
 
 export function MapCredits() {
   const citation = useHotspots().data?.citation;

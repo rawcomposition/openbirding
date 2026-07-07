@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { swapTargetsDb } from "../db/index.js";
-import { swapOccurrencesDb } from "../lib/lifers-index.js";
+import { swapOccurrencesDb } from "../lib/occurrences-index.js";
 
 const adminRoute = new Hono();
 

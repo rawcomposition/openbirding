@@ -5,7 +5,7 @@ import { ApiError } from "@/lib/utils";
 import { FREQUENCY_PRESETS, MIN_CHECKLIST_PRESETS, useBestHotspotsStore, useBestHotspotsSession } from "@/stores/bestHotspotsStore";
 import { PillSelect } from "@/components/besthotspots/PillSelect";
 import { CitationFooter } from "@/components/besthotspots/CitationFooter";
-import { useHotspots } from "@/components/besthotspots/useHotspots";
+import { useHotspots } from "@/hooks/best-hotspots/useHotspots";
 import type { HotspotItem } from "@/components/besthotspots/types";
 
 export function HotspotResults() {

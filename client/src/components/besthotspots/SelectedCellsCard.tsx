@@ -12,11 +12,11 @@ export function SelectedCellsCard() {
   const selectedCells = selection?.cells ?? [];
 
   const { data: cellsData } = useQuery<{ cells: CellInfo[] }>({
-    queryKey: ["lifer-cells", selection?.resolution, selectedCells.join(","), listToken],
+    queryKey: ["best-hotspots-cells", selection?.resolution, selectedCells.join(","), listToken],
     enabled: !!listToken && !!selection && selectedCells.length > 0,
     refetchOnWindowFocus: false,
     queryFn: () =>
-      mutate("POST", "/lifers/cells", {
+      mutate("POST", "/best-hotspots/cells", {
         listToken,
         resolution: selection!.resolution,
         cells: selection!.cells,

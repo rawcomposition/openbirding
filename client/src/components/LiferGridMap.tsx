@@ -116,7 +116,7 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
 
     const reqId = ++gridReqIdRef.current;
     try {
-      const res = (await mutate("POST", "/lifers/grid", { listToken: token, bbox, resolution })) as GridResponse;
+      const res = (await mutate("POST", "/best-hotspots/grid", { listToken: token, bbox, resolution })) as GridResponse;
       if (reqId !== gridReqIdRef.current) return;
       lastResponseRef.current = res;
       renderGrid(map, res);

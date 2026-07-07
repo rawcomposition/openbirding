@@ -54,7 +54,7 @@ export const useBestHotspotsStore = create<BestHotspotsState>()(
       setMinChecklists: (minChecklists) => set({ minChecklists }),
     }),
     {
-      name: "openbirding-lifer-targets",
+      name: "openbirding-best-hotspots",
       partialize: (state) => ({
         listToken: state.listToken,
         fileName: state.fileName,

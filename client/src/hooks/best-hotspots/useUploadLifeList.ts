@@ -13,7 +13,7 @@ export function useUploadLifeList() {
       const text = await file.text();
       const parsed = parseEbirdCsv(text);
       const token = useBestHotspotsStore.getState().listToken;
-      const res = (await mutate("POST", "/lifers/list", {
+      const res = (await mutate("POST", "/best-hotspots/list", {
         species: parsed.entries,
         fileName: file.name,
         token: token ?? undefined,

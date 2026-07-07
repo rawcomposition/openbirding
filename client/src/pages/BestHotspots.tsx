@@ -26,7 +26,7 @@ const BestHotspots = () => {
   const mapHandle = useRef<GridMapHandle>(null);
 
   const { error: listError } = useQuery({
-    queryKey: [`/lifers/list/${listToken}`],
+    queryKey: [`/best-hotspots/list/${listToken}`],
     enabled: !!listToken,
     retry: false,
     refetchOnWindowFocus: false,
@@ -41,19 +41,19 @@ const BestHotspots = () => {
   }, [listError]);
 
   const { data: status } = useQuery<StatusResponse>({
-    queryKey: ["/lifers/status"],
+    queryKey: ["/best-hotspots/status"],
     refetchOnWindowFocus: false,
     staleTime: Infinity,
   });
   const resolutions = status?.resolutions ?? [3, 4];
 
   const { data: scaleData } = useQuery<{ breaksByRes: Record<number, number[]> }>({
-    queryKey: ["lifer-grid-scale", listToken],
+    queryKey: ["best-hotspots-grid-scale", listToken],
     enabled: !!listToken,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     queryFn: () =>
-      mutate("POST", "/lifers/grid-scale", { listToken }) as Promise<{ breaksByRes: Record<number, number[]> }>,
+      mutate("POST", "/best-hotspots/grid-scale", { listToken }) as Promise<{ breaksByRes: Record<number, number[]> }>,
   });
   const breaksByRes = scaleData?.breaksByRes ?? null;
 

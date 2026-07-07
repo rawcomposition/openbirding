@@ -6,7 +6,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { ApiError, mutate } from "@/lib/utils";
 import { useBestHotspotsStore, useBestHotspotsSession } from "@/stores/bestHotspotsStore";
 import { CitationFooter } from "@/components/besthotspots/CitationFooter";
-import { useHotspots } from "@/components/besthotspots/useHotspots";
+import { useHotspots } from "@/hooks/best-hotspots/useHotspots";
 import type { HotspotDetailResponse } from "@/components/besthotspots/types";
 
 function ebirdTargetsUrl(hotspotId: string): string {
@@ -23,12 +23,12 @@ export function HotspotDetailPanel() {
   const citation = useHotspots().data?.citation;
 
   const { data: detail, isFetching, isError, error, refetch } = useQuery<HotspotDetailResponse>({
-    queryKey: ["lifer-hotspot-detail", shown?.id, listToken, frequency],
+    queryKey: ["best-hotspots-detail", shown?.id, listToken, frequency],
     enabled: !!listToken && !!shown,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
-      mutate("POST", `/lifers/hotspot/${shown!.id}`, { listToken, frequency }) as Promise<HotspotDetailResponse>,
+      mutate("POST", `/best-hotspots/hotspot/${shown!.id}`, { listToken, frequency }) as Promise<HotspotDetailResponse>,
   });
   const errorMessage = error instanceof ApiError ? error.userMessage : undefined;
 

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { ExternalLink, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUploadLifeList } from "@/components/besthotspots/useUploadLifeList";
+import { useUploadLifeList } from "@/hooks/best-hotspots/useUploadLifeList";
 
 export function UploadArea() {
   const upload = useUploadLifeList();
