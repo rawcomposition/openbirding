@@ -1,10 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { Bbox } from "@/components/LiferGridMap";
+import type { HotspotItem } from "@/components/besthotspots/types";
 
 export type HexSelection = {
   resolution: number;
   cells: string[];
 };
+
+export type Viewport = { bbox: Bbox; resolution: number };
 
 export const FREQUENCY_PRESETS: { value: number; label: string }[] = [
   { value: 0.05, label: "5%" },
@@ -16,7 +20,7 @@ export const FREQUENCY_PRESETS: { value: number; label: string }[] = [
 
 export const MIN_CHECKLIST_PRESETS = [25, 50, 100, 250, 500];
 
-type LiferTargetsState = {
+type BestHotspotsState = {
   listToken: string | null;
   fileName: string | null;
   speciesCount: number | null;
@@ -25,18 +29,13 @@ type LiferTargetsState = {
   frequency: number;
   minChecklists: number;
 
-  selection: HexSelection | null;
-
   setListInfo: (info: { token: string; fileName: string | null; count: number }) => void;
   clearLifeList: () => void;
   setFrequency: (frequency: number) => void;
   setMinChecklists: (minChecklists: number) => void;
-
-  toggleCell: (h3: string, resolution: number) => void;
-  clearSelection: () => void;
 };
 
-export const useLiferTargetsStore = create<LiferTargetsState>()(
+export const useBestHotspotsStore = create<BestHotspotsState>()(
   persist(
     (set) => ({
       listToken: null,
@@ -47,27 +46,12 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
       frequency: 0.1,
       minChecklists: 50,
 
-      selection: null,
-
       setListInfo: ({ token, fileName, count }) =>
         set({ listToken: token, fileName, speciesCount: count, uploadedAt: Date.now() }),
       clearLifeList: () =>
         set({ listToken: null, fileName: null, speciesCount: null, uploadedAt: null }),
       setFrequency: (frequency) => set({ frequency }),
       setMinChecklists: (minChecklists) => set({ minChecklists }),
-
-      toggleCell: (h3, resolution) =>
-        set((s) => {
-          if (!s.selection || s.selection.resolution !== resolution) {
-            return { selection: { resolution, cells: [h3] } };
-          }
-          const has = s.selection.cells.includes(h3);
-          const cells = has
-            ? s.selection.cells.filter((c) => c !== h3)
-            : [...s.selection.cells, h3];
-          return { selection: cells.length ? { resolution, cells } : null };
-        }),
-      clearSelection: () => set({ selection: null }),
     }),
     {
       name: "openbirding-lifer-targets",
@@ -82,3 +66,36 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
     }
   )
 );
+
+type BestHotspotsSessionState = {
+  viewport: Viewport | null;
+  selectedHotspot: HotspotItem | null;
+  selection: HexSelection | null;
+
+  setViewport: (viewport: Viewport) => void;
+  setSelectedHotspot: (hotspot: HotspotItem | null) => void;
+  toggleCell: (h3: string, resolution: number) => void;
+  clearSelection: () => void;
+};
+
+export const useBestHotspotsSession = create<BestHotspotsSessionState>((set) => ({
+  viewport: null,
+  selectedHotspot: null,
+  selection: null,
+
+  setViewport: (viewport) => set({ viewport }),
+  setSelectedHotspot: (selectedHotspot) => set({ selectedHotspot }),
+
+  toggleCell: (h3, resolution) =>
+    set((s) => {
+      if (!s.selection || s.selection.resolution !== resolution) {
+        return { selection: { resolution, cells: [h3] } };
+      }
+      const has = s.selection.cells.includes(h3);
+      const cells = has
+        ? s.selection.cells.filter((c) => c !== h3)
+        : [...s.selection.cells, h3];
+      return { selection: cells.length ? { resolution, cells } : null };
+    }),
+  clearSelection: () => set({ selection: null }),
+}));
