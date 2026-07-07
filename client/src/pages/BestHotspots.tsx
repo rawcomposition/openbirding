@@ -574,7 +574,6 @@ function HotspotResults({
           options={FREQUENCY_PRESETS.map((p) => ({
             value: p.value,
             label: `${p.label}+ frequency`,
-            hint: p.hint,
           }))}
         />
         <PillSelect
@@ -832,7 +831,7 @@ function PillSelect({
 }: {
   value: number;
   onChange: (value: string) => void;
-  options: { value: number; label: string; hint?: string }[];
+  options: { value: number; label: string }[];
 }) {
   return (
     <span className="relative inline-flex">
@@ -842,7 +841,7 @@ function PillSelect({
         className="cursor-pointer appearance-none rounded-full border border-slate-300 bg-white py-1 pl-3 pr-6 text-xs font-medium text-slate-700 shadow-xs hover:border-emerald-400 hover:text-emerald-700 focus:outline-none focus:ring-1 focus:ring-emerald-400"
       >
         {options.map((o) => (
-          <option key={o.value} value={o.value} title={o.hint}>
+          <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}

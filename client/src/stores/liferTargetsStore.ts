@@ -12,12 +12,12 @@ export type HexSelection = {
 // Frequency presets (fraction of checklists) must match the buckets baked into
 // occurrences.db (see the aggregator repo, generate_occurrences.py). These scope hotspot results
 // only — never the grid colour.
-export const FREQUENCY_PRESETS: { value: number; label: string; hint: string }[] = [
-  { value: 0.05, label: "5%", hint: "Reasonable chance (default)" },
-  { value: 0.1, label: "10%", hint: "Fairly reliable" },
-  { value: 0.2, label: "20%", hint: "Likely on a visit" },
-  { value: 0.3, label: "30%", hint: "Very likely" },
-  { value: 0.5, label: "50%", hint: "Almost guaranteed" },
+export const FREQUENCY_PRESETS: { value: number; label: string }[] = [
+  { value: 0.05, label: "5%" },
+  { value: 0.1, label: "10%" },
+  { value: 0.2, label: "20%" },
+  { value: 0.3, label: "30%" },
+  { value: 0.5, label: "50%" },
 ];
 
 export const MIN_CHECKLIST_PRESETS = [25, 50, 100, 250, 500];
@@ -61,7 +61,7 @@ export const useLiferTargetsStore = create<LiferTargetsState>()(
       uploadedAt: null,
       legacyLifeList: null,
 
-      frequency: 0.05,
+      frequency: 0.1,
       minChecklists: 50,
 
       selection: null,
