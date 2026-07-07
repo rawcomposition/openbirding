@@ -13,7 +13,8 @@ export type GeoArrays = {
   samples: Int32Array;
   lat: Float32Array;
   lng: Float32Array;
-  regionCode: string[];
+  /** Present for hotspots (region filtering); zones don't carry regions. */
+  regionCode?: string[];
   // Species -> ref CSR
   spOff: Int32Array;
   csrRef: Int32Array;
@@ -137,7 +138,7 @@ export function topByLifers(
 
   let candidates = 0; // hotspots in scope before the user's filters — lets the UI explain empty results
   for (let ref = 0; ref < a.numRefs; ref++) {
-    if (regionCodes && !regionMatches(a.regionCode[ref], regionCodes)) continue;
+    if (regionCodes && !regionMatches(a.regionCode?.[ref] ?? "", regionCodes)) continue;
     if (bbox) {
       const la = a.lat[ref];
       if (la < bbox.minLat || la > bbox.maxLat || !lngInBbox(a.lng[ref], bbox.minLng, bbox.maxLng)) continue;

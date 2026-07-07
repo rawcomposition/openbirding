@@ -8,7 +8,9 @@
     "api"
   ],
   "scripts": {
+    "predev": "node scripts/fetch-avicommons.mjs",
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:api\"",
+    "prebuild": "node scripts/fetch-avicommons.mjs",
     "dev:client": "cd client && npm run dev",
     "dev:api": "cd api && npm run dev",
     "build": "npm run build:client && npm run build:api",
@@ -18,12 +20,9 @@
     "install:all": "npm install && cd client && npm install && cd ../api && npm install",
     "sync-regions": "cd api && npx tsx scripts/sync-regions.ts",
     "generate-region-parents": "cd api && npx tsx scripts/generate-region-parents.ts",
-    "init-db": "cd api && npx tsx scripts/init-db.ts",
-    "system-health": "cd api && npx tsx scripts/system-health-check.ts",
-    "build-lifers": "cd api && npx tsx scripts/build-lifers-db.ts"
+    "system-health": "cd api && npx tsx scripts/system-health-check.ts"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "concurrently": "^8.2.2"
   },
   "keywords": [
@@ -36,9 +35,5 @@
     "serverless"
   ],
   "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "better-sqlite3": "^12.2.0",
-    "kysely": "^0.28.5"
-  }
+  "license": "MIT"
 }

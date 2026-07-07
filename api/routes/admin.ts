@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { swapTargetsDb } from "../db/index.js";
+import { swapOccurrencesDb } from "../lib/lifers-index.js";
 
 const adminRoute = new Hono();
 
@@ -15,6 +16,16 @@ adminRoute.use(async (c, next) => {
 
 adminRoute.post("/swap-targets-db", async (c) => {
   const result = await swapTargetsDb();
+  if (!result.ok) {
+    return c.json(result, 400);
+  }
+  return c.json(result);
+});
+
+// Reloads the Best Hotspots in-memory index from a staged /data/occurrences.db.new
+// without a restart. RSS briefly doubles while the replacement index builds.
+adminRoute.post("/swap-occurrences-db", async (c) => {
+  const result = await swapOccurrencesDb();
   if (!result.ok) {
     return c.json(result, 400);
   }

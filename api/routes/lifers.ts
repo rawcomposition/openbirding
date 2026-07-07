@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { sql } from "kysely";
 import { db, withTargetsDb } from "../db/index.js";
 import { getEbdCitation } from "../lib/ebird.js";
 import {
@@ -412,108 +411,6 @@ lifersRoute.post("/cells", async (c) => {
   const resolution = parseResolution(body.resolution, index.resolutions);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
   return c.json({ resolution, cells: index.cellsInfo(seenIds, resolution, cells) });
-});
-
-// Hot Zones: H3 hexagons ranked by how many new species you could find there.
-lifersRoute.post("/zones", async (c) => {
-  const startTime = performance.now();
-  const body = await c.req.json().catch(() => {
-    throw new HTTPException(400, { message: "Request body must be JSON" });
-  });
-
-  const speciesInputs = await speciesInputsFor(body);
-  const frequency = parseFrequency(body.frequency);
-  const minChecklists = parseMinChecklists(body.minChecklists);
-  const limit = parseLimit(body.limit);
-  const regionCodes = body.region ? parseRegionCodes(String(body.region)) : null;
-  const bbox = parseBBoxBody(body.bbox);
-
-  const index = await getLifersIndex();
-  await ensureZonesLoaded(index);
-  const { ids: seenIds, matched, unmatched } = index.resolveSpecies(speciesInputs);
-  const bucket = index.bucketForFrequency(frequency);
-
-  const items = index.queryZones({ seenIds, bucket, minChecklists, regionCodes, bbox, limit });
-  const regionNames = await getRegionNames().catch(() => new Map<string, string>());
-
-  return c.json({
-    items: items.map((it) => ({ ...it, regionName: regionNameFor(it.regionCode, regionNames) })),
-    meta: {
-      seenMatched: matched,
-      seenUnmatched: unmatched.length,
-      frequency: index.buckets[bucket],
-      frequencyPct: Math.round(index.buckets[bucket] * 100 * 10) / 10,
-      minChecklists: Math.max(minChecklists, index.minChecklistsFloor),
-      version: `${index.versionMonth} ${index.versionYear}`,
-    },
-    citation: await withTargetsDb((db) => getEbdCitation(db)).catch(() => undefined),
-    queryTime: `${Math.round(performance.now() - startTime)} ms`,
-  });
-});
-
-// Detail: which new species you'd get in one H3 zone, most-likely first.
-lifersRoute.post("/zone/:cellRef", async (c) => {
-  const startTime = performance.now();
-  const cellRef = Number(c.req.param("cellRef"));
-  if (!Number.isInteger(cellRef) || cellRef < 0) {
-    throw new HTTPException(400, { message: "cellRef must be a non-negative integer" });
-  }
-  const body = await c.req.json().catch(() => {
-    throw new HTTPException(400, { message: "Request body must be JSON" });
-  });
-  const speciesInputs = await speciesInputsFor(body);
-  const frequency = parseFrequency(body.frequency);
-
-  const index = await getLifersIndex();
-  const { ids: seenIds } = index.resolveSpecies(speciesInputs);
-  const bucket = index.bucketForFrequency(frequency);
-  const threshold = index.buckets[bucket];
-
-  const result = await withTargetsDb(async (db) => {
-    const samplesRow = await sql<{ samples: number }>`
-      SELECT SUM(samples) AS samples FROM h3_cell_samples WHERE cell_ref = ${cellRef}
-    `.execute(db);
-    const samples = samplesRow.rows[0]?.samples ?? 0;
-    if (!samples) return { samples: 0, rows: [] as any[] };
-
-    const rows = await sql<{
-      id: number;
-      code: string;
-      name: string;
-      sciName: string;
-      taxonOrder: number;
-      obs: number;
-    }>`
-      SELECT s.id AS id, s.code AS code, s.name AS name, s.sci_name AS sciName,
-             s.taxon_order AS taxonOrder, SUM(o.obs) AS obs
-      FROM h3_cell_obs o
-      JOIN species s ON s.id = o.species_id
-      WHERE o.cell_ref = ${cellRef}
-      GROUP BY o.species_id
-    `.execute(db);
-    return { samples, rows: rows.rows };
-  });
-
-  const lifers = result.rows
-    .map((r) => ({ ...r, frequency: r.obs / result.samples }))
-    .filter((r) => r.frequency >= threshold && !seenIds.has(r.id))
-    .map((r) => ({
-      code: r.code,
-      name: r.name,
-      sciName: r.sciName,
-      score: Math.round(r.frequency * 1000) / 10,
-      taxonOrder: r.taxonOrder,
-    }))
-    .sort((a, b) => b.score - a.score || a.taxonOrder - b.taxonOrder);
-
-  return c.json({
-    cellRef,
-    checklists: result.samples,
-    lifers,
-    liferCount: lifers.length,
-    frequency: threshold,
-    queryTime: `${Math.round(performance.now() - startTime)} ms`,
-  });
 });
 
 export default lifersRoute;

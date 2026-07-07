@@ -438,8 +438,8 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
 export async function executeH3TargetsQuery(targetsDb: TargetsDb, cells: bigint[], months: number[] | null) {
   const startTime = performance.now();
   const cellList = sql.join(cells.map((cell) => sql`${cell}`), sql`, `);
-  const cellRefsResult = await sql<{ cellRef: number }>`
-    SELECT cell_ref FROM h3_cells WHERE h3 IN (${cellList})
+  const cellRefsResult = await sql<{ res: number; cellRef: number }>`
+    SELECT res, cell_ref FROM h3_cells WHERE h3 IN (${cellList})
   `.execute(targetsDb);
 
   if (cellRefsResult.rows.length === 0) {
@@ -452,7 +452,9 @@ export async function executeH3TargetsQuery(targetsDb: TargetsDb, cells: bigint[
     };
   }
 
-  const refList = sql.join(cellRefsResult.rows.map((row) => sql`${row.cellRef}`), sql`, `);
+  // cell_ref is only unique per resolution — filter on (res, cell_ref) pairs
+  // or refs from other resolutions with the same number would leak in.
+  const refList = sql.join(cellRefsResult.rows.map((row) => sql`(${row.res}, ${row.cellRef})`), sql`, `);
 
   const [speciesResult, samplesResult] = await Promise.all([
     sql<TargetsSpeciesRow>`
@@ -465,14 +467,14 @@ export async function executeH3TargetsQuery(targetsDb: TargetsDb, cells: bigint[
         SUM(o.obs) AS obs
       FROM h3_cell_obs o
       JOIN species s ON s.id = o.species_id
-      WHERE o.cell_ref IN (${refList})
+      WHERE (o.res, o.cell_ref) IN (VALUES ${refList})
       GROUP BY o.species_id, o.month
     `.execute(targetsDb),
 
     sql<{ month: number; samples: number }>`
       SELECT month, SUM(samples) AS samples
       FROM h3_cell_samples
-      WHERE cell_ref IN (${refList})
+      WHERE (res, cell_ref) IN (VALUES ${refList})
       GROUP BY month
     `.execute(targetsDb),
   ]);

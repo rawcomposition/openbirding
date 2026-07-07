@@ -98,9 +98,11 @@ attached read-only and a fresh `occurrences.db` is written. Tables:
 | `zone_species` | 46 M   | `(res, species_id, cell_ref, bucket_level)` for zones |
 | `zone_qcount`  | 3 M    | precomputed `qCount` per `(res, bucket, cell)` |
 
-The zone tables carry H3 **res 3 and 4** (`targets.db` has 3–6, but res 5/6
-hexes are too fine for this UI and were ~85% of the zone rows; the cap is
-`OCCURRENCES_MAX_ZONE_RES` in `api/lib/config.ts`, mirrored in the build script).
+The zone tables carry H3 **res 3 and 4**, rolled up by the build script from
+the finest resolution in `targets.db` (res 6 — the only one it stores; finer
+than 4 is too fine for this UI and was ~85% of the zone rows). The API-side cap
+is `OCCURRENCES_MAX_ZONE_RES` in `api/lib/config.ts`; the build-side list is
+`--zone-res` (default `3,4`) in `generate_occurrences.py`.
 `cell_ref` is only unique within a resolution, so all three zone tables are
 keyed by `(res, cell_ref)`. The in-memory index loads one dataset per
 resolution and the map colours whichever fits the current zoom.
@@ -234,8 +236,9 @@ nearest bucket.
 
 ## Follow-ups / ideas
 
-- ~~**Region names for zones.**~~ Done — resolved from the `regions` table,
-  plus hotspot-anchored zone names.
+- ~~**Region names for zones.**~~ Obsolete — the zone endpoints were removed
+  with the old Hot Zones UI, and `zone_meta` no longer carries a region code at
+  all (hotspot rows have their own, which is what the results list shows).
 - ~~**Render zones as hexagons.**~~ Done — superseded by the full-page grid:
   an always-on multi-resolution H3 choropleth (`h3-js` boundaries, antimeridian
   unwrap), coloured by lifer count and normalised per view.
@@ -253,9 +256,9 @@ nearest bucket.
 - **"Trip" aggregation.** Combine several nearby zones into a route and show the
   combined lifer total.
 - ~~**Rebuild cadence.**~~ Done — `occurrences.db` is built and uploaded by the
-  aggregator pipeline whenever `targets.db` is refreshed; the API picks up the
-  new file on its next restart (a `swapTargetsDb`-style hot reload of the
-  lifers index is possible if zero-downtime refresh is ever needed).
+  aggregator pipeline whenever `targets.db` is refreshed, and hot-swapped via
+  `POST /api/v1/admin/swap-occurrences-db` (no restart; RSS briefly doubles
+  while the replacement index builds).
 - **Very large life lists** (10k+ species) persist to `localStorage`; if it
   exceeds quota the tool still works for the session but won't remember the list.
   Consider IndexedDB if this becomes common.
@@ -266,9 +269,10 @@ nearest bucket.
 
 1. Build via the aggregator CLI ("Build Occurrences DB", or as part of "All"):
    `python3 generate_occurrences.py <targets.db> <occurrences.db>`.
-2. The aggregator's "Upload SQLite" step ships `occurrences.db` to the VPS
-   data volume alongside `targets.db`; the API reads it only at startup, so it
-   loads on the next API restart. (Manual alternative: place it in
-   `SQLITE_DIR`, same dir as `targets.db`.)
+2. The aggregator's "Upload SQLite" step stages `occurrences.db.new` on the VPS
+   data volume alongside `targets.db.new`, then hot-swaps both via the admin
+   API (`swap-targets-db`, then `swap-occurrences-db` — the second URL is
+   derived from `DB_SWAP_ENDPOINT`). No restart needed. (Manual alternative:
+   place `occurrences.db` in `SQLITE_DIR` and restart.)
 3. Start the API — the index warms automatically (~0.5 s hotspots + ~0.1 s
    zones from the blob cache). `GET /api/v1/lifers/status` reports readiness.

@@ -13,6 +13,7 @@
 import Database from "better-sqlite3";
 import { latLngToCell } from "h3-js";
 import { existsSync } from "node:fs";
+import { rename } from "node:fs/promises";
 import { join } from "node:path";
 import { OCCURRENCES_DB_FILENAME, OCCURRENCES_MAX_ZONE_RES } from "./config.js";
 import { topByLifers, allInBbox, type GeoArrays } from "./geo-query.js";
@@ -55,19 +56,6 @@ export type LiferHotspot = {
   checklists: number;
 };
 
-export type LiferZone = {
-  cellRef: number;
-  h3: string;
-  lat: number;
-  lng: number;
-  regionCode: string;
-  /** Name of the best-known hotspot inside the cell (for labelling), if any. */
-  anchorHotspot: { id: string; name: string } | null;
-  lifers: number;
-  totalSpecies: number;
-  checklists: number;
-};
-
 export type GeoTargetQuery = {
   seenIds: Set<number>;
   bucket: number;
@@ -107,13 +95,6 @@ function blobToArray<T>(buf: Buffer, Ctor: TypedArrayCtor<T>): T {
   return new Ctor(ab);
 }
 
-// 0.5°-bin key for the hotspot spatial grid (720 lng bins per lat row).
-function gridKey(lat: number, lng: number): number {
-  const la = Math.min(359, Math.max(0, Math.floor((lat + 90) * 2)));
-  const ln = Math.min(719, Math.max(0, Math.floor((lng + 180) * 2)));
-  return la * 720 + ln;
-}
-
 class LifersIndex {
   readonly buckets: number[];
   readonly minChecklistsFloor: number;
@@ -147,11 +128,8 @@ class LifersIndex {
   // Scratch buffer reused across (synchronous) queries.
   private readonly counter: Int32Array;
 
-  // Coarse spatial grid over hotspots (0.5° bins) for "best hotspot near a
-  // point" lookups, used to give zones human-friendly names.
-  private readonly gridBins = new Map<number, number[]>();
-
-  private readonly dbPath: string;
+  /** Mutable: swapOccurrencesDb() re-points it at the live path after rename. */
+  dbPath: string;
 
   // Zone (H3) datasets, one per resolution (res 3..6) — loaded lazily together
   // on first zone/grid query. Coarse resolutions colour the map when zoomed out,
@@ -181,7 +159,7 @@ class LifersIndex {
     const getBlob = blobReader(db);
     if (getBlob) {
       // Fast path: numeric arrays come straight from packed blobs; only the
-      // string columns (and the spatial grid) still walk loc_meta rows.
+      // string columns still walk loc_meta rows.
       this.samples = blobToArray(getBlob("loc:samples"), Int32Array);
       this.lat = blobToArray(getBlob("loc:lat"), Float32Array);
       this.lng = blobToArray(getBlob("loc:lng"), Float32Array);
@@ -198,10 +176,6 @@ class LifersIndex {
         this.locId[ref] = id;
         this.locName[ref] = name ?? id;
         this.regionCode[ref] = rc ?? "";
-        const key = gridKey(this.lat[ref], this.lng[ref]);
-        const bin = this.gridBins.get(key);
-        if (bin) bin.push(ref);
-        else this.gridBins.set(key, [ref]);
       }
     } else {
       // Fallback for an unpacked occurrences.db: iterate the row tables (slow).
@@ -222,10 +196,6 @@ class LifersIndex {
         this.locId[ref] = id;
         this.locName[ref] = name ?? id;
         this.regionCode[ref] = rc ?? "";
-        const key = gridKey(la, ln);
-        const bin = this.gridBins.get(key);
-        if (bin) bin.push(ref);
-        else this.gridBins.set(key, [ref]);
       }
 
       this.qCount = this.buckets.map(() => new Int32Array(n));
@@ -300,41 +270,6 @@ class LifersIndex {
     return { ids, matched: ids.size, unmatched: unmatched.filter(Boolean) };
   }
 
-  /**
-   * The most-birded hotspot within `radiusKm` of a point, or null. Used to
-   * label H3 zones with a recognizable place name.
-   */
-  bestHotspotNear(lat: number, lng: number, radiusKm: number): { id: string; name: string } | null {
-    const kmPerDegLat = 111.32;
-    const kmPerDegLng = Math.max(1e-6, 111.32 * Math.cos((lat * Math.PI) / 180));
-    const binSpan = Math.ceil(radiusKm / (kmPerDegLat * 0.5)); // grid bins are 0.5°
-    const laBin = Math.floor((lat + 90) * 2);
-    const lnBin = Math.floor((lng + 180) * 2);
-    let best = -1;
-    let bestSamples = 0;
-    for (let dla = -binSpan; dla <= binSpan; dla++) {
-      const row = laBin + dla;
-      if (row < 0 || row > 359) continue;
-      // Longitude bins near the poles get wide; clamp the sweep to the full ring.
-      const lnSpan = Math.min(360, Math.ceil(radiusKm / (kmPerDegLng * 0.5)));
-      for (let dln = -lnSpan; dln <= lnSpan; dln++) {
-        const refs = this.gridBins.get(row * 720 + ((lnBin + dln + 720) % 720));
-        if (!refs) continue;
-        for (const ref of refs) {
-          if (this.samples[ref] <= bestSamples) continue;
-          let dLng = Math.abs(this.lng[ref] - lng);
-          if (dLng > 180) dLng = 360 - dLng;
-          const dKm = Math.hypot((this.lat[ref] - lat) * kmPerDegLat, dLng * kmPerDegLng);
-          if (dKm <= radiusKm) {
-            best = ref;
-            bestSamples = this.samples[ref];
-          }
-        }
-      }
-    }
-    return best >= 0 ? { id: this.locId[best], name: this.locName[best] } : null;
-  }
-
   private get hotspotGeo(): GeoArrays {
     return {
       numRefs: this.numLocs,
@@ -388,8 +323,7 @@ class LifersIndex {
 
     for (const res of resList) {
       if (getBlob) {
-        // Fast path: numeric arrays from packed blobs; only region-code
-        // strings still walk zone_meta rows.
+        // Fast path: everything comes from packed blobs — no row iteration.
         const samples = blobToArray(getBlob(`zone:${res}:samples`), Int32Array);
         const size = samples.length;
         const lat = blobToArray(getBlob(`zone:${res}:lat`), Float32Array);
@@ -401,14 +335,9 @@ class LifersIndex {
         const csrRef = blobToArray(getBlob(`zone:${res}:csrRef`), Int32Array);
         const csrLvl = blobToArray(getBlob(`zone:${res}:csrLvl`), Uint8Array);
 
-        const regionCode: string[] = new Array(size).fill("");
         const byH3 = new Map<string, number>();
-        for (const [ref, rc] of db
-          .prepare("SELECT cell_ref, region_code FROM zone_meta WHERE res = ?")
-          .raw()
-          .iterate(res) as Iterable<any[]>) {
-          regionCode[ref] = rc ?? "";
-          byH3.set(BigInt.asUintN(64, h3[ref]).toString(16), ref);
+        for (let ref = 0; ref < size; ref++) {
+          if (h3[ref] !== 0n) byH3.set(BigInt.asUintN(64, h3[ref]).toString(16), ref);
         }
 
         byRes.set(res, {
@@ -417,7 +346,7 @@ class LifersIndex {
           h3,
           qCount,
           byH3,
-          geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
+          geo: { numRefs: size, samples, lat, lng, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
         });
         continue;
       }
@@ -435,13 +364,12 @@ class LifersIndex {
       const lat = new Float32Array(size);
       const lng = new Float32Array(size);
       const h3 = new BigInt64Array(size);
-      const regionCode: string[] = new Array(size).fill("");
       const byH3 = new Map<string, number>();
 
       // h3 is a full 64-bit integer, so read in safe-integer (BigInt) mode and
       // coerce the small columns back to numbers.
-      for (const [ref, hh, la, ln, rc, s] of db
-        .prepare("SELECT cell_ref, h3, lat, lng, region_code, samples FROM zone_meta WHERE res = ?")
+      for (const [ref, hh, la, ln, s] of db
+        .prepare("SELECT cell_ref, h3, lat, lng, samples FROM zone_meta WHERE res = ?")
         .raw()
         .safeIntegers()
         .iterate(res) as Iterable<any[]>) {
@@ -451,7 +379,6 @@ class LifersIndex {
         lng[r] = Number(ln);
         const hb = typeof hh === "bigint" ? hh : BigInt(hh);
         h3[r] = hb;
-        regionCode[r] = rc ?? "";
         byH3.set(BigInt.asUintN(64, hb).toString(16), r);
       }
 
@@ -489,7 +416,7 @@ class LifersIndex {
         h3,
         qCount,
         byH3,
-        geo: { numRefs: size, samples, lat, lng, regionCode, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
+        geo: { numRefs: size, samples, lat, lng, spOff, csrRef, csrLvl, counter: new Int32Array(size) },
       });
     }
 
@@ -617,40 +544,6 @@ class LifersIndex {
     });
   }
 
-  queryZones(q: GeoTargetQuery, res?: number): LiferZone[] {
-    if (!this.zonesByRes) throw new Error("Zones not loaded");
-    const useRes = res ?? Math.max(...this.zonesByRes.keys()); // finest by default
-    const zs = this.zonesByRes.get(useRes);
-    if (!zs) return [];
-    const minChecklists = Math.max(q.minChecklists, this.minChecklistsFloor);
-    const q0 = zs.qCount[q.bucket];
-    const { top } = topByLifers(zs.geo, {
-      seenIds: q.seenIds,
-      bucket: q.bucket,
-      qCountForBucket: q0,
-      minChecklists,
-      regionCodes: q.regionCodes,
-      bbox: q.bbox,
-      limit: q.limit,
-    });
-    return top.map(({ ref, lifers }) => {
-      const lat = zs.geo.lat[ref];
-      const lng = zs.geo.lng[ref];
-      return {
-        cellRef: ref,
-        h3: BigInt.asUintN(64, zs.h3[ref]).toString(16),
-        lat,
-        lng,
-        regionCode: zs.geo.regionCode[ref],
-        // Res-6 hexes have a ~3.7 km circumradius; 4 km catches the cell's hotspots.
-        anchorHotspot: this.bestHotspotNear(lat, lng, 4),
-        lifers,
-        totalSpecies: q0[ref],
-        checklists: zs.geo.samples[ref],
-      };
-    });
-  }
-
   getSpeciesMeta(id: number): SpeciesMeta | undefined {
     return this.speciesById.get(id);
   }
@@ -711,6 +604,53 @@ export function getLifersIndex(): Promise<LifersIndex> {
 
 export function lifersIndexStatus(): { available: boolean; error: string | null } {
   return { available: existsSync(lifersDbPath()), error: loadError };
+}
+
+let occSwapInProgress = false;
+
+/**
+ * Zero-downtime reload from a staged occurrences.db.new (uploaded by the
+ * aggregator). The replacement index — including zones — is built fully from
+ * the staged file before the singleton pointer moves, so in-flight requests
+ * keep using the old index and never see a partial load. Peak RSS briefly
+ * doubles while both indexes exist.
+ */
+export async function swapOccurrencesDb(): Promise<
+  { ok: true; version: string; locations: number } | { ok: false; error: string }
+> {
+  if (occSwapInProgress) {
+    return { ok: false, error: "Occurrences database swap already in progress" };
+  }
+  occSwapInProgress = true;
+  const livePath = lifersDbPath();
+  const newPath = `${livePath}.new`;
+  try {
+    if (!existsSync(newPath)) {
+      return { ok: false, error: `No staged database at ${newPath}` };
+    }
+    const next = await new Promise<LifersIndex>((resolve, reject) => {
+      setImmediate(() => {
+        try {
+          const index = new LifersIndex(newPath);
+          index.loadZones();
+          resolve(index);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+    await rename(newPath, livePath);
+    next.dbPath = livePath; // handles are closed; only the label needs updating
+    loadPromise = Promise.resolve(next);
+    loadError = null;
+    const version = `${next.versionMonth} ${next.versionYear}`;
+    console.log(`Occurrences database swapped to version ${version} (${next.numLocs} locations)`);
+    return { ok: true, version, locations: next.numLocs };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    occSwapInProgress = false;
+  }
 }
 
 export type { LifersIndex };

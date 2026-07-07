@@ -24,12 +24,13 @@ type Props = {
   onResolutionChange: (resolution: number) => void;
   /** Fired on every settled pan/zoom — the page scopes hotspot results to it. */
   onViewportChange: (bbox: Bbox, resolution: number) => void;
+  /** Fired on any map click (hex or background) — the page closes popups on it. */
+  onMapClick?: () => void;
   /** Location of the selected hotspot, shown as a single map marker. */
   markerAt: { lng: number; lat: number } | null;
 };
 
 export type GridMapHandle = {
-  fitBounds: (bbox: Bbox) => void;
   flyTo: (lng: number, lat: number) => void;
 };
 
@@ -62,7 +63,17 @@ function emptyFc(): GeoJSON.FeatureCollection {
 }
 
 const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
-  { listToken, resolutions, breaksByRes, selectedCells, onToggleCell, onResolutionChange, onViewportChange, markerAt },
+  {
+    listToken,
+    resolutions,
+    breaksByRes,
+    selectedCells,
+    onToggleCell,
+    onResolutionChange,
+    onViewportChange,
+    onMapClick,
+    markerAt,
+  },
   handleRef
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -81,6 +92,8 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
   onResolutionChangeRef.current = onResolutionChange;
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   const currentResRef = useRef<number | null>(null);
   const gridReqIdRef = useRef(0);
@@ -225,6 +238,9 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
         },
       });
 
+      // Any click on the map itself (hex or empty background) dismisses page
+      // popups; the layer-scoped handler below still toggles hex selection.
+      map.on("click", () => onMapClickRef.current?.());
       map.on("click", "grid-fill", (e) => {
         const f = e.features?.[0];
         const h3 = f?.properties?.h3;
@@ -290,24 +306,14 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     markerRef.current?.remove();
     markerRef.current = null;
     if (markerAt) {
-      markerRef.current = new maplibregl.Marker({ color: "#f59e0b" })
+      // Emerald, matching the selected row highlight in the results list.
+      markerRef.current = new maplibregl.Marker({ color: "#10b981" })
         .setLngLat([markerAt.lng, markerAt.lat])
         .addTo(map);
     }
   }, [markerAt]);
 
   useImperativeHandle(handleRef, () => ({
-    fitBounds(bbox: Bbox) {
-      const map = mapRef.current;
-      if (!map) return;
-      map.fitBounds(
-        [
-          [bbox.minLng, bbox.minLat],
-          [bbox.maxLng, bbox.maxLat],
-        ],
-        { padding: { top: 60, bottom: 60, left: 380, right: 60 }, duration: 800, maxZoom: 9 }
-      );
-    },
     flyTo(lng: number, lat: number) {
       const map = mapRef.current;
       if (!map) return;

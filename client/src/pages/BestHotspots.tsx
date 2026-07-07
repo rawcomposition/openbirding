@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { cellToBoundary, latLngToCell } from "h3-js";
-import { Binoculars, Upload, X, Loader2, Hexagon, Eraser, ExternalLink, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  Binoculars,
+  Bird,
+  ChevronDown,
+  ChevronLeft,
+  Upload,
+  Loader2,
+  Hexagon,
+  X,
+  ExternalLink,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import LiferGridMap, { type GridMapHandle, type Bbox } from "@/components/LiferGridMap";
 import { cn, mutate } from "@/lib/utils";
+import { useAvicommons, avicommonsPhoto } from "@/lib/avicommons";
 import { MARKER_COLORS } from "@/lib/liferColors";
 import { parseEbirdCsv, EbirdCsvError } from "@/lib/ebirdCsv";
 import { useLiferTargetsStore, FREQUENCY_PRESETS, MIN_CHECKLIST_PRESETS } from "@/stores/liferTargetsStore";
@@ -55,7 +68,7 @@ const HOTSPOT_LIMIT = 100;
  * Opens live on eBird so a logged-in user sees their own up-to-date targets.
  */
 function ebirdTargetsUrl(hotspotId: string): string {
-  const p = new URLSearchParams({ r1: hotspotId, bmo: "1", emo: "12", r2: "world", t2: "life", mediaType: "" });
+  const p = new URLSearchParams({ r1: hotspotId, bmo: "1", emo: "12", r2: "world", t2: "life" });
   return `https://ebird.org/targets?${p.toString()}`;
 }
 
@@ -112,6 +125,7 @@ const BestHotspots = () => {
 
   const [selectedHotspot, setSelectedHotspot] = useState<HotspotItem | null>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // The map's settled viewport — the default scope for hotspot results.
   const [viewport, setViewport] = useState<{ bbox: Bbox; resolution: number } | null>(null);
   const mapHandle = useRef<GridMapHandle>(null);
@@ -120,6 +134,10 @@ const BestHotspots = () => {
   const onViewportChange = useCallback((bbox: Bbox, resolution: number) => {
     setViewport({ bbox, resolution });
   }, []);
+
+  // Any click on the map — a hex or the empty background — dismisses the
+  // hotspot detail card.
+  const onMapClick = useCallback(() => setSelectedHotspot(null), []);
 
   /** Store a parsed list server-side under our (possibly new) anonymous token. */
   const uploadList = async (entries: { sciName: string; commonName: string }[], name: string | null) => {
@@ -271,7 +289,10 @@ const BestHotspots = () => {
   const selectedCells = selection?.cells ?? [];
 
   return (
-    <div className="relative h-[calc(100vh_-_4rem)] w-full overflow-hidden">
+    // Fixed to the viewport below the 4rem header, outside document flow: no
+    // page scrollbar on desktop, and no white gap on mobile (where 100vh
+    // includes the area behind the browser chrome).
+    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden">
       <LiferGridMap
         ref={mapHandle}
         listToken={listToken}
@@ -281,19 +302,28 @@ const BestHotspots = () => {
         onToggleCell={toggleCell}
         onResolutionChange={handleResolutionChange}
         onViewportChange={onViewportChange}
+        onMapClick={onMapClick}
         markerAt={selectedHotspot ? { lng: selectedHotspot.lng, lat: selectedHotspot.lat } : null}
       />
 
-      {selectedHotspot && (
-        <HotspotDetailCard
-          hotspot={selectedHotspot}
-          detail={detail ?? null}
-          isFetching={detailFetching}
-          onClose={() => setSelectedHotspot(null)}
-        />
+      {listToken && (
+        <div
+          className={cn(
+            "absolute bottom-3 z-10 w-44 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 shadow-lg backdrop-blur",
+            sidebarCollapsed ? "left-3" : "left-[calc(min(27rem,100vw_-_2.5rem)_+_0.75rem)]"
+          )}
+        >
+          <Legend />
+        </div>
       )}
 
       <Sidebar
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+        selectedHotspot={selectedHotspot}
+        detail={detail ?? null}
+        detailFetching={detailFetching}
+        onCloseDetail={() => setSelectedHotspot(null)}
         speciesCount={speciesCount}
         hasList={!!listToken || !!legacyLifeList}
         fileName={fileName}
@@ -323,6 +353,12 @@ const BestHotspots = () => {
 // --- Docked sidebar ----------------------------------------------------------
 
 function Sidebar(props: {
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
+  selectedHotspot: HotspotItem | null;
+  detail: HotspotDetailResponse | null;
+  detailFetching: boolean;
+  onCloseDetail: () => void;
   speciesCount: number | null;
   hasList: boolean;
   fileName: string | null;
@@ -345,14 +381,13 @@ function Sidebar(props: {
   onHoverHotspot: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
   const hasList = props.hasList;
 
-  if (collapsed) {
+  if (props.collapsed) {
     return (
       <button
         type="button"
-        onClick={() => setCollapsed(false)}
+        onClick={() => props.onCollapsedChange(false)}
         className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur hover:border-emerald-300"
         aria-label="Open Best Hotspots panel"
       >
@@ -364,7 +399,9 @@ function Sidebar(props: {
   }
 
   return (
-    <div className="absolute inset-y-0 left-0 z-10 flex w-[min(27rem,calc(100vw_-_2.5rem))] flex-col border-r border-slate-200 bg-white/95 shadow-xl backdrop-blur">
+    // overflow-hidden clips the hotspot-detail panel shown over this sidebar
+    // like a pushed screen in a mobile app.
+    <div className="absolute inset-y-0 left-0 z-10 flex w-[min(27rem,calc(100vw_-_2.5rem))] flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-xl backdrop-blur">
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <span className="flex items-center gap-2">
           <Binoculars className="h-5 w-5 text-emerald-600" />
@@ -372,7 +409,7 @@ function Sidebar(props: {
         </span>
         <button
           type="button"
-          onClick={() => setCollapsed(true)}
+          onClick={() => props.onCollapsedChange(true)}
           className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           aria-label="Collapse panel"
         >
@@ -392,65 +429,13 @@ function Sidebar(props: {
               onReplace={props.onFile}
             />
 
-            <Legend />
-
             {props.selectedCells.length > 0 && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
-                      <Hexagon className="h-4 w-4" />
-                      {props.selectedCells.length} cell{props.selectedCells.length > 1 ? "s" : ""} selected
-                    </span>
-                    <button
-                      onClick={props.onClearSelection}
-                      className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
-                    >
-                      <Eraser className="h-3.5 w-3.5" /> Clear
-                    </button>
-                  </div>
-                  {props.cellsInfo && props.cellsInfo.length > 0 && (
-                    <div className="mt-1.5 space-y-1.5 border-t border-amber-200/70 pt-1.5 font-mono text-[10.5px] text-amber-800/90">
-                      {props.cellsInfo.map((c, i) => (
-                        <div key={c.h3} className="space-y-0.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-amber-700/70">#{i + 1}</span>
-                            <span>{c.samples.toLocaleString()} lists</span>
-                            <span>{c.totalSpecies} species</span>
-                            <span className="font-semibold text-amber-900">{c.lifers} lifers</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 text-amber-700/70">
-                            {c.namedHotspots === 0 ? (
-                              <span className="italic">no hotspots — effort is dispersed</span>
-                            ) : (
-                              <>
-                                <span>
-                                  {c.namedHotspots} hotspot{c.namedHotspots > 1 ? "s" : ""}
-                                </span>
-                                <span>{c.hotspotChecklists.toLocaleString()} hotspot lists</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <PresetSelect
-                label="Min. frequency"
-                value={props.frequency}
-                onChange={(v) => props.onFrequency(Number(v))}
-                options={FREQUENCY_PRESETS.map((p) => ({ value: p.value, label: p.label }))}
+              <SelectedCellsCard
+                count={props.selectedCells.length}
+                cellsInfo={props.cellsInfo}
+                onClear={props.onClearSelection}
               />
-              <PresetSelect
-                label="Min. checklists"
-                value={props.minChecklists}
-                onChange={(v) => props.onMinChecklists(Number(v))}
-                options={MIN_CHECKLIST_PRESETS.map((n) => ({ value: n, label: `${n}+` }))}
-              />
-            </div>
+            )}
           </>
         )}
       </div>
@@ -461,12 +446,70 @@ function Sidebar(props: {
           hotspots={props.hotspots}
           hotspotsInScope={props.hotspotsInScope}
           isFetching={props.isFetching}
+          frequency={props.frequency}
+          onFrequency={props.onFrequency}
+          minChecklists={props.minChecklists}
+          onMinChecklists={props.onMinChecklists}
           selectedHotspotId={props.selectedHotspotId}
           hoveredHotspotId={props.hoveredHotspotId}
           onSelect={props.onSelectHotspot}
           onHover={props.onHoverHotspot}
           rowRefs={props.rowRefs}
         />
+      )}
+
+      <HotspotDetailPanel
+        hotspot={props.selectedHotspot}
+        detail={props.detail}
+        isFetching={props.detailFetching}
+        onBack={props.onCloseDetail}
+      />
+    </div>
+  );
+}
+
+function SelectedCellsCard({
+  count,
+  cellsInfo,
+  onClear,
+}: {
+  count: number;
+  cellsInfo: CellInfo[] | null;
+  onClear: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+          <Hexagon className="h-4 w-4" />
+          {count === 1 ? "Selected area" : `${count} areas selected`}
+        </span>
+        <button
+          onClick={onClear}
+          className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
+        >
+          <X className="h-3.5 w-3.5" /> Clear
+        </button>
+      </div>
+      {cellsInfo && cellsInfo.length > 0 && (
+        <div className="mt-1.5 space-y-1 border-t border-amber-200/70 pt-1.5 text-xs text-amber-900">
+          {cellsInfo.map((c) => (
+            <div key={c.h3}>
+              <span className="font-semibold">
+                {c.lifers} possible lifer{c.lifers === 1 ? "" : "s"}
+              </span>
+              <span className="text-amber-800/80">
+                {" "}
+                · {c.totalSpecies.toLocaleString()} species · {c.samples.toLocaleString()} checklists
+              </span>
+              {c.namedHotspots === 0 && (
+                <div className="text-[11px] italic text-amber-700/90">
+                  No eBird hotspots here — sightings come from personal locations.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -492,6 +535,10 @@ function HotspotResults({
   hotspots,
   hotspotsInScope,
   isFetching,
+  frequency,
+  onFrequency,
+  minChecklists,
+  onMinChecklists,
   selectedHotspotId,
   hoveredHotspotId,
   onSelect,
@@ -502,6 +549,10 @@ function HotspotResults({
   hotspots: HotspotItem[];
   hotspotsInScope?: number;
   isFetching: boolean;
+  frequency: number;
+  onFrequency: (v: number) => void;
+  minChecklists: number;
+  onMinChecklists: (v: number) => void;
   selectedHotspotId: string | null;
   hoveredHotspotId: string | null;
   onSelect: (h: HotspotItem) => void;
@@ -510,11 +561,27 @@ function HotspotResults({
 }) {
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-slate-100">
-      <div className="flex items-center justify-between px-3 py-2">
+      <div className="flex items-center justify-between px-3 pt-2">
         <h2 className="text-sm font-semibold text-slate-700">
           Best hotspots {scopeKind === "hex" ? "in selection" : "in view"}
         </h2>
         {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
+      </div>
+      <div className="flex items-center gap-1.5 px-3 pb-2 pt-1.5">
+        <PillSelect
+          value={frequency}
+          onChange={(v) => onFrequency(Number(v))}
+          options={FREQUENCY_PRESETS.map((p) => ({
+            value: p.value,
+            label: `${p.label}+ frequency`,
+            hint: p.hint,
+          }))}
+        />
+        <PillSelect
+          value={minChecklists}
+          onChange={(v) => onMinChecklists(Number(v))}
+          options={MIN_CHECKLIST_PRESETS.map((n) => ({ value: n, label: `${n}+ checklists` }))}
+        />
       </div>
       {hotspots.length === 0 && !isFetching ? (
         <p className="mx-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-xs text-slate-500">
@@ -523,7 +590,7 @@ function HotspotResults({
             : "No hotspots here pass your filters. Try a lower frequency or fewer required checklists."}
         </p>
       ) : (
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3 pt-1">
           {hotspots.map((h) => (
             <div
               key={h.id}
@@ -537,7 +604,7 @@ function HotspotResults({
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 rounded-md border bg-white px-2 py-1.5 scroll-mt-2 transition-colors",
                 h.id === selectedHotspotId
-                  ? "border-amber-400 ring-1 ring-amber-300"
+                  ? "border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-400"
                   : h.id === hoveredHotspotId
                     ? "border-emerald-400"
                     : "border-slate-200 hover:border-emerald-300"
@@ -561,40 +628,44 @@ function HotspotResults({
   );
 }
 
-// --- Selected-hotspot detail card --------------------------------------------
+// --- Selected-hotspot detail panel --------------------------------------------
 
-function HotspotDetailCard({
+/**
+ * Mobile-app-style pushed screen shown over the sidebar when a hotspot is
+ * selected; Back (or any map click) returns to the results.
+ */
+function HotspotDetailPanel({
   hotspot,
   detail,
   isFetching,
-  onClose,
+  onBack,
 }: {
-  hotspot: HotspotItem;
+  hotspot: HotspotItem | null;
   detail: HotspotDetailResponse | null;
   isFetching: boolean;
-  onClose: () => void;
+  onBack: () => void;
 }) {
+  const avicommons = useAvicommons();
+  const shown = hotspot;
+  if (!shown) return null;
   return (
-    <div className="absolute right-3 top-3 z-10 flex max-h-[calc(100%_-_5rem)] w-[min(21rem,calc(100vw_-_1.5rem))] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur">
-      <div className="flex items-start justify-between gap-2 px-4 pt-3">
-        <div className="min-w-0">
-          <h3 className="text-sm font-bold leading-snug text-slate-900">{hotspot.name}</h3>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            {hotspot.regionName ?? hotspot.regionCode} · {hotspot.checklists.toLocaleString()} lists
-          </p>
-        </div>
+    <div className="absolute inset-0 z-20 flex flex-col bg-white">
+      <div className="px-4 pt-3">
         <button
-          onClick={onClose}
-          className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-          aria-label="Close hotspot details"
+          onClick={onBack}
+          className="-ml-1 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
         >
-          <X className="h-4 w-4" />
+          <ChevronLeft className="h-3.5 w-3.5" /> Back to results
         </button>
+        <h3 className="mt-2 text-sm font-bold leading-snug text-slate-900">{shown.name}</h3>
+        <p className="mt-0.5 text-[11px] text-slate-500">
+          {shown.regionName ?? shown.regionCode} · {shown.checklists.toLocaleString()} lists
+        </p>
       </div>
 
       <div className="flex gap-2 px-4 py-3">
         <a
-          href={ebirdTargetsUrl(hotspot.id)}
+          href={ebirdTargetsUrl(shown.id)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
@@ -602,7 +673,7 @@ function HotspotDetailCard({
           View targets <ExternalLink className="h-3 w-3" />
         </a>
         <a
-          href={`https://ebird.org/hotspot/${hotspot.id}/about`}
+          href={`https://ebird.org/hotspot/${shown.id}/about`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-400 hover:text-emerald-700"
@@ -618,12 +689,36 @@ function HotspotDetailCard({
         {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
-        {detail?.lifers.map((l) => (
-          <div key={l.code} className="flex items-baseline justify-between gap-2 border-b border-slate-50 py-1">
-            <span className="min-w-0 text-[13px] leading-snug text-slate-800">{l.name}</span>
-            <span className="shrink-0 text-[11px] font-medium tabular-nums text-slate-500">{l.score}%</span>
-          </div>
-        ))}
+        {detail?.lifers.map((l) => {
+          const photo = avicommonsPhoto(avicommons, l.code);
+          return (
+            <a
+              key={l.code}
+              href={`https://ebird.org/species/${l.code}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2.5 border-b border-slate-100 py-1.5 last:border-b-0"
+            >
+              {photo ? (
+                <img
+                  src={photo.url}
+                  alt={l.name}
+                  title={`By ${photo.by}`}
+                  loading="lazy"
+                  className="h-9 w-12 shrink-0 rounded-md bg-slate-100 object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-300">
+                  <Bird className="h-4 w-4" />
+                </span>
+              )}
+              <span className="min-w-0 flex-1 text-[13px] leading-snug text-slate-800 group-hover:text-emerald-700">
+                {l.name}
+              </span>
+              <span className="shrink-0 text-[11px] font-medium tabular-nums text-slate-500">{l.score}%</span>
+            </a>
+          );
+        })}
         {detail && detail.lifers.length === 0 && (
           <p className="py-2 text-center text-xs text-slate-500">No new species here at this frequency.</p>
         )}
@@ -729,32 +824,31 @@ function LifeListChip({
   );
 }
 
-function PresetSelect({
-  label,
+/** A native <select> styled as a toggle pill — no label, chevron as the only affordance. */
+function PillSelect({
   value,
   onChange,
   options,
 }: {
-  label: string;
   value: number;
   onChange: (value: string) => void;
-  options: { value: number; label: string }[];
+  options: { value: number; label: string; hint?: string }[];
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+    <span className="relative inline-flex">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700 shadow-xs focus:border-emerald-500 focus:outline-none"
+        className="cursor-pointer appearance-none rounded-full border border-slate-300 bg-white py-1 pl-3 pr-6 text-xs font-medium text-slate-700 shadow-xs hover:border-emerald-400 hover:text-emerald-700 focus:outline-none focus:ring-1 focus:ring-emerald-400"
       >
         {options.map((o) => (
-          <option key={o.value} value={o.value}>
+          <option key={o.value} value={o.value} title={o.hint}>
             {o.label}
           </option>
         ))}
       </select>
-    </div>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+    </span>
   );
 }
 
