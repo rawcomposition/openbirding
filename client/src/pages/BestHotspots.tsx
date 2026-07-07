@@ -236,9 +236,8 @@ const BestHotspots = () => {
     try {
       const text = await file.text();
       const parsed = parseEbirdCsv(text);
-      const res = await uploadList(parsed.entries, file.name);
+      await uploadList(parsed.entries, file.name);
       setSelectedHotspot(null);
-      toast.success(`Loaded ${res.count.toLocaleString()} species from ${file.name}`);
     } catch (err) {
       toast.error(err instanceof EbirdCsvError ? err.message : "Could not read that file.");
     }
