@@ -1,4 +1,5 @@
-/* Hide attribution until map has loaded and we've collapsed it */
-.maplibregl-ctrl-attrib.maplibregl-compact:not(.attrib-ready) {
+/* Hide attribution until loaded/collapsed. Scoped to .area-map so this global
+   rule can't hide other maps' attribution (only AreaMap adds .attrib-ready). */
+.area-map .maplibregl-ctrl-attrib.maplibregl-compact:not(.attrib-ready) {
   visibility: hidden;
 }

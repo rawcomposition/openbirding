@@ -202,12 +202,12 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
       style: OPENFREEMAP_STYLE,
       center: [0, 20],
       zoom: 1.4,
-      attributionControl: { compact: true },
+      attributionControl: false,
     });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(
       new maplibregl.GeolocateControl({ trackUserLocation: false, fitBoundsOptions: { maxZoom: 4 }}),
-      "bottom-right",
+      "top-right",
     );
     mapRef.current = map;
 
@@ -262,10 +262,18 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
       void refreshGrid();
     });
 
-    const ro = new ResizeObserver(() => map.resize());
+    // Container resize (e.g. collapsing the sidebar) changes bounds without a
+    // moveend, so refetch once the size settles.
+    let resizeTimer = 0;
+    const ro = new ResizeObserver(() => {
+      map.resize();
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => void refreshGrid(), 150);
+    });
     ro.observe(containerRef.current);
 
     return () => {
+      window.clearTimeout(resizeTimer);
       ro.disconnect();
       map.remove();
       mapRef.current = null;

@@ -9,6 +9,7 @@ import {
   Upload,
   Loader2,
   Hexagon,
+  Info,
   X,
   ExternalLink,
   PanelLeftClose,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import LiferGridMap, { type GridMapHandle, type Bbox } from "@/components/LiferGridMap";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn, mutate } from "@/lib/utils";
 import { useAvicommons, avicommonsPhoto } from "@/lib/avicommons";
 import { MARKER_COLORS } from "@/lib/liferColors";
@@ -43,6 +45,7 @@ type HotspotResponse = {
     frequencyPct: number;
     minChecklists: number;
   };
+  citation?: string;
   queryTime: string;
 };
 
@@ -292,31 +295,7 @@ const BestHotspots = () => {
     // Fixed to the viewport below the 4rem header, outside document flow: no
     // page scrollbar on desktop, and no white gap on mobile (where 100vh
     // includes the area behind the browser chrome).
-    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden">
-      <LiferGridMap
-        ref={mapHandle}
-        listToken={listToken}
-        resolutions={resolutions}
-        breaksByRes={breaksByRes}
-        selectedCells={selectedCells}
-        onToggleCell={toggleCell}
-        onResolutionChange={handleResolutionChange}
-        onViewportChange={onViewportChange}
-        onMapClick={onMapClick}
-        markerAt={selectedHotspot ? { lng: selectedHotspot.lng, lat: selectedHotspot.lat } : null}
-      />
-
-      {listToken && (
-        <div
-          className={cn(
-            "absolute bottom-3 z-10 w-44 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 shadow-lg backdrop-blur",
-            sidebarCollapsed ? "left-3" : "left-[calc(min(27rem,100vw_-_2.5rem)_+_0.75rem)]"
-          )}
-        >
-          <Legend />
-        </div>
-      )}
-
+    <div className="fixed inset-x-0 bottom-0 top-16 flex overflow-hidden">
       <Sidebar
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
@@ -345,7 +324,31 @@ const BestHotspots = () => {
         onSelectHotspot={selectHotspotFromList}
         onHoverHotspot={setHoveredHotspotId}
         rowRefs={rowRefs.current}
+        citation={results?.citation}
       />
+
+      <div className="relative min-w-0 flex-1">
+        <LiferGridMap
+          ref={mapHandle}
+          listToken={listToken}
+          resolutions={resolutions}
+          breaksByRes={breaksByRes}
+          selectedCells={selectedCells}
+          onToggleCell={toggleCell}
+          onResolutionChange={handleResolutionChange}
+          onViewportChange={onViewportChange}
+          onMapClick={onMapClick}
+          markerAt={selectedHotspot ? { lng: selectedHotspot.lng, lat: selectedHotspot.lat } : null}
+        />
+
+        {listToken && (
+          <div className="absolute bottom-3 left-3 z-10 w-44 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 shadow-lg backdrop-blur">
+            <Legend />
+          </div>
+        )}
+
+        <MapCredits citation={results?.citation} />
+      </div>
     </div>
   );
 };
@@ -380,6 +383,7 @@ function Sidebar(props: {
   onSelectHotspot: (h: HotspotItem) => void;
   onHoverHotspot: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
+  citation?: string;
 }) {
   const hasList = props.hasList;
 
@@ -399,9 +403,7 @@ function Sidebar(props: {
   }
 
   return (
-    // overflow-hidden clips the hotspot-detail panel shown over this sidebar
-    // like a pushed screen in a mobile app.
-    <div className="absolute inset-y-0 left-0 z-10 flex w-[min(27rem,calc(100vw_-_2.5rem))] flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-xl backdrop-blur">
+    <div className="absolute inset-y-0 left-0 z-10 flex w-[min(27rem,calc(100vw_-_2.5rem))] flex-col overflow-hidden border-r border-slate-200 bg-white/95 shadow-xl backdrop-blur md:relative md:inset-auto md:w-[27rem] md:shrink-0 md:bg-white md:shadow-none md:backdrop-blur-none">
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <span className="flex items-center gap-2">
           <Binoculars className="h-5 w-5 text-emerald-600" />
@@ -455,6 +457,7 @@ function Sidebar(props: {
           onSelect={props.onSelectHotspot}
           onHover={props.onHoverHotspot}
           rowRefs={props.rowRefs}
+          citation={props.citation}
         />
       )}
 
@@ -463,6 +466,7 @@ function Sidebar(props: {
         detail={props.detail}
         isFetching={props.detailFetching}
         onBack={props.onCloseDetail}
+        citation={props.citation}
       />
     </div>
   );
@@ -530,6 +534,15 @@ function Legend() {
   );
 }
 
+function CitationFooter({ citation }: { citation?: string }) {
+  if (!citation) return null;
+  return (
+    <p className="mt-2 border-t border-slate-100 pt-2 text-[10px] leading-tight text-slate-400">
+      {citation}
+    </p>
+  );
+}
+
 function HotspotResults({
   scopeKind,
   hotspots,
@@ -544,6 +557,7 @@ function HotspotResults({
   onSelect,
   onHover,
   rowRefs,
+  citation,
 }: {
   scopeKind: "hex" | "view" | null;
   hotspots: HotspotItem[];
@@ -558,6 +572,7 @@ function HotspotResults({
   onSelect: (h: HotspotItem) => void;
   onHover: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
+  citation?: string;
 }) {
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-slate-100">
@@ -621,6 +636,7 @@ function HotspotResults({
               </div>
             </div>
           ))}
+          <CitationFooter citation={citation} />
         </div>
       )}
     </div>
@@ -638,11 +654,13 @@ function HotspotDetailPanel({
   detail,
   isFetching,
   onBack,
+  citation,
 }: {
   hotspot: HotspotItem | null;
   detail: HotspotDetailResponse | null;
   isFetching: boolean;
   onBack: () => void;
+  citation?: string;
 }) {
   const avicommons = useAvicommons();
   const shown = hotspot;
@@ -721,12 +739,57 @@ function HotspotDetailPanel({
         {detail && detail.lifers.length === 0 && (
           <p className="py-2 text-center text-xs text-slate-500">No new species here at this frequency.</p>
         )}
+        <CitationFooter citation={citation} />
       </div>
     </div>
   );
 }
 
 // --- Small controls ---------------------------------------------------------
+
+function MapCredits({ citation }: { citation?: string }) {
+  return (
+    <Dialog>
+      <DialogTrigger
+        className="absolute bottom-3 right-3 z-10 rounded-full border border-slate-200 bg-white/90 p-1 text-slate-500 shadow-lg backdrop-blur hover:text-slate-800"
+        aria-label="Map credits and data sources"
+      >
+        <Info className="h-4 w-4" />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Credits &amp; data sources</DialogTitle>
+        </DialogHeader>
+        <dl className="space-y-4 text-sm text-slate-600">
+          <div>
+            <dt className="font-medium text-slate-800">Base map</dt>
+            <dd className="mt-1">
+              ©{" "}
+              <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">
+                OpenFreeMap
+              </a>
+              , ©{" "}
+              <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">
+                OpenMapTiles
+              </a>
+              , data from{" "}
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">
+                © OpenStreetMap
+              </a>{" "}
+              contributors
+            </dd>
+          </div>
+          {citation && (
+            <div>
+              <dt className="font-medium text-slate-800">eBird Data</dt>
+              <dd className="mt-1">{citation}</dd>
+            </div>
+          )}
+        </dl>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function UploadArea({ onFile }: { onFile: (f: File) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
