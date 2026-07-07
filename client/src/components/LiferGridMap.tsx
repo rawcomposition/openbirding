@@ -205,7 +205,10 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-    map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), "bottom-right");
+    map.addControl(
+      new maplibregl.GeolocateControl({ trackUserLocation: false, fitBoundsOptions: { maxZoom: 4 }}),
+      "bottom-right",
+    );
     mapRef.current = map;
 
     map.on("load", () => {
