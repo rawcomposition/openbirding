@@ -22,8 +22,6 @@ adminRoute.post("/swap-targets-db", async (c) => {
   return c.json(result);
 });
 
-// Reloads the Best Hotspots in-memory index from a staged /data/occurrences.db.new
-// without a restart. RSS briefly doubles while the replacement index builds.
 adminRoute.post("/swap-occurrences-db", async (c) => {
   const result = await swapOccurrencesDb();
   if (!result.ok) {

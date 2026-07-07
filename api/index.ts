@@ -43,7 +43,6 @@ app.notFound((c) => {
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
-    // If the exception has a custom response (e.g., basic auth), use it directly
     if (err.res) {
       return err.getResponse();
     }

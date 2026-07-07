@@ -3,5 +3,3 @@ node_modules
 *.db
 *.db-shm
 *.db-wal
-# Fetched by scripts/fetch-avicommons.mjs (predev/prebuild)
-client/public/avicommons-lite.json

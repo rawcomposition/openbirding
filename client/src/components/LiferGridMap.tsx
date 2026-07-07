@@ -14,19 +14,14 @@ type GridResponse = {
 };
 
 type Props = {
-  /** Server-side life-list token; the grid only renders once one exists. */
   listToken: string | null;
   resolutions: number[];
-  /** Worldwide quantile breakpoints per resolution — the fixed colour scale. */
   breaksByRes: Record<number, number[]> | null;
   selectedCells: string[];
   onToggleCell: (h3: string, resolution: number) => void;
   onResolutionChange: (resolution: number) => void;
-  /** Fired on every settled pan/zoom — the page scopes hotspot results to it. */
   onViewportChange: (bbox: Bbox, resolution: number) => void;
-  /** Fired on any map click (hex or background) — the page closes popups on it. */
   onMapClick?: () => void;
-  /** Location of the selected hotspot, shown as a single map marker. */
   markerAt: { lng: number; lat: number } | null;
 };
 
@@ -37,10 +32,6 @@ export type GridMapHandle = {
 const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const SELECTED_COLOR = "#f59e0b";
 
-/**
- * Finer H3 resolution as you zoom in, clamped to what the server has. Coarse
- * hexes are kept for a wide zoom range; fine hexes only appear once zoomed in.
- */
 function resForZoom(zoom: number, available: number[]): number {
   const sorted = [...available].sort((a, b) => a - b);
   if (sorted.length === 0) return 6;
@@ -48,7 +39,6 @@ function resForZoom(zoom: number, available: number[]): number {
   return sorted[Math.min(idx, sorted.length - 1)];
 }
 
-/** Hex boundary as a GeoJSON ring, unwrapped across the antimeridian. */
 function hexRing(h3: string): [number, number][] {
   const ring = cellToBoundary(h3, true) as [number, number][];
   const lngs = ring.map(([lng]) => lng);
@@ -99,7 +89,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
   const gridReqIdRef = useRef(0);
   const lastResponseRef = useRef<GridResponse | null>(null);
 
-  // --- Grid fetch (per settled viewport) -------------------------------------
   async function refreshGrid() {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
@@ -128,11 +117,11 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     const reqId = ++gridReqIdRef.current;
     try {
       const res = (await mutate("POST", "/lifers/grid", { listToken: token, bbox, resolution })) as GridResponse;
-      if (reqId !== gridReqIdRef.current) return; // stale
+      if (reqId !== gridReqIdRef.current) return;
       lastResponseRef.current = res;
       renderGrid(map, res);
     } catch {
-      /* transient — the next settled move retries */
+      return;
     }
   }
 
@@ -151,11 +140,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     syncSelectedCells(map);
   }
 
-  /**
-   * Colour + opacity keyed directly on lifer count, using the worldwide quantile
-   * breakpoints for the current resolution. Until the scale has loaded, paint a
-   * quiet neutral — a placeholder ramp would flash everything bright red.
-   */
   function applyScale(map: maplibregl.Map, resolution: number) {
     const breaks = breaksByResRef.current?.[resolution];
     if (!breaks) {
@@ -194,7 +178,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     selectedCellsRef.current = [...selectedCells];
   }
 
-  // --- Bootstrap (once) ------------------------------------------------------
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
@@ -219,8 +202,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
         id: "grid-fill",
         type: "fill",
         source: "grid",
-        // Neutral placeholder paint; applyScale() sets the real quantile ramp
-        // per render once the worldwide scale has loaded.
         paint: {
           "fill-color": "#94a3b8",
           "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.85, 0.12],
@@ -241,8 +222,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
         },
       });
 
-      // Any click on the map itself (hex or empty background) dismisses page
-      // popups; the layer-scoped handler below still toggles hex selection.
       map.on("click", () => onMapClickRef.current?.());
       map.on("click", "grid-fill", (e) => {
         const f = e.features?.[0];
@@ -262,8 +241,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
       void refreshGrid();
     });
 
-    // Container resize (e.g. collapsing the sidebar) changes bounds without a
-    // moveend, so refetch once the size settles.
     let resizeTimer = 0;
     const ro = new ResizeObserver(() => {
       map.resize();
@@ -282,8 +259,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Refetch grid when the life list changes; clear it when the list is removed
-  // (stale cells would otherwise linger and recolour wrongly).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
@@ -296,20 +271,17 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listToken]);
 
-  // Recolour in place when the fixed scale arrives (no refetch).
   useEffect(() => {
     const map = mapRef.current;
     if (map && loadedRef.current && lastResponseRef.current) applyScale(map, lastResponseRef.current.resolution);
   }, [breaksByRes]);
 
-  // Restyle selected hexes.
   useEffect(() => {
     const map = mapRef.current;
     if (map && loadedRef.current) syncSelectedCells(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCells]);
 
-  // Marker for the selected hotspot.
   const markerRef = useRef<maplibregl.Marker | null>(null);
   useEffect(() => {
     const map = mapRef.current;
@@ -317,7 +289,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     markerRef.current?.remove();
     markerRef.current = null;
     if (markerAt) {
-      // Emerald, matching the selected row highlight in the results list.
       markerRef.current = new maplibregl.Marker({ color: "#10b981" })
         .setLngLat([markerAt.lng, markerAt.lat])
         .addTo(map);
@@ -328,8 +299,6 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     flyTo(lng: number, lat: number) {
       const map = mapRef.current;
       if (!map) return;
-      // Pan only — zooming would change the grid resolution and drop any hex
-      // selection, wiping the very results the user just clicked.
       map.flyTo({ center: [lng, lat], duration: 800, essential: true });
     },
   }));

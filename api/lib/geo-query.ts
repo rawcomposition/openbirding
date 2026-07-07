@@ -1,25 +1,12 @@
-/**
- * Shared "top locations by lifer count" kernel used by both the hotspot and
- * zone indexes. Operates purely on typed arrays for speed.
- *
- *   lifers[ref] = qCount[bucket][ref] - seenCount[ref]
- *
- * seenCount is tallied by walking only the user's seen species through the
- * species -> ref CSR index.
- */
-
 export type GeoArrays = {
   numRefs: number;
   samples: Int32Array;
   lat: Float32Array;
   lng: Float32Array;
-  /** Present for hotspots (region filtering); zones don't carry regions. */
   regionCode?: string[];
-  // Species -> ref CSR
   spOff: Int32Array;
   csrRef: Int32Array;
   csrLvl: Uint8Array;
-  // Reusable scratch counter (length numRefs)
   counter: Int32Array;
 };
 
@@ -49,11 +36,6 @@ function lngInBbox(ln: number, minLng: number, maxLng: number): boolean {
   return minLng <= maxLng ? ln >= minLng && ln <= maxLng : ln >= minLng || ln <= maxLng;
 }
 
-/**
- * Every ref inside a bbox with its lifer count (>= 0), unranked. Used to colour
- * the H3 grid: we need *all* visible cells, not just the top-K, and we keep
- * cells with zero lifers so the map can render them subtly.
- */
 export function allInBbox(
   a: GeoArrays,
   q: { seenIds: Set<number>; qCountForBucket: Int32Array; bucket: number; bbox: GeoQuery["bbox"] }
@@ -74,7 +56,7 @@ export function allInBbox(
   const out: { ref: number; lifers: number }[] = [];
   for (let ref = 0; ref < a.numRefs; ref++) {
     const q0 = qCountForBucket[ref];
-    if (q0 <= 0) continue; // cell has no quality species at all → nothing to draw
+    if (q0 <= 0) continue;
     if (bbox) {
       const la = a.lat[ref];
       if (la < bbox.minLat || la > bbox.maxLat || !lngInBbox(a.lng[ref], bbox.minLng, bbox.maxLng)) continue;
@@ -102,7 +84,6 @@ export function topByLifers(
     }
   }
 
-  // Bounded selection via a size-`limit` min-heap keyed by lifer count.
   const heapRef = new Int32Array(limit);
   const heapVal = new Int32Array(limit);
   let heapSize = 0;
@@ -136,7 +117,7 @@ export function topByLifers(
     heapRef[y] = tr;
   };
 
-  let candidates = 0; // hotspots in scope before the user's filters — lets the UI explain empty results
+  let candidates = 0;
   for (let ref = 0; ref < a.numRefs; ref++) {
     if (regionCodes && !regionMatches(a.regionCode?.[ref] ?? "", regionCodes)) continue;
     if (bbox) {

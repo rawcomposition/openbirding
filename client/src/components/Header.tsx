@@ -2,9 +2,6 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
 
-// Tool links removed for now — tools are linked from elsewhere. Logo left,
-// Download App right; single 4rem line at every width so full-page map tools
-// can size themselves against it.
 const Header2 = () => {
   return (
     <header className="bg-white/90 backdrop-blur border-b border-slate-200 sticky top-0 z-50">

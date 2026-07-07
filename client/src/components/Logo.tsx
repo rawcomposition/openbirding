@@ -1,7 +1,5 @@
 import { cn } from "@/lib/utils";
 
-// OpenBirding hummingbird mark. Color via `currentColor` (defaults to brand green);
-// size with className, e.g. <Logo className="h-8 w-8" />.
 export default function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   return (
     <svg

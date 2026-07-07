@@ -39,7 +39,6 @@ const sanitize = (text: string) => text.replace(/-/g, " ").toLowerCase();
 
 function formatOptionLabel(option: Option, { inputValue }: FormatOptionLabelContext) {
   const searchWords = inputValue.split(/\s+/).filter(Boolean);
-  // Strip the region name prefix from longName (e.g., "California, United States" -> "United States")
   const prefix = `${option.label}, `;
   const parentRegions = option.longName.startsWith(prefix) ? option.longName.slice(prefix.length) : option.longName;
   return (

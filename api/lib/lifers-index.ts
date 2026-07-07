@@ -251,7 +251,6 @@ class LifersIndex {
     return best;
   }
 
-  /** Resolve a list of species inputs to internal species ids. */
   resolveSpecies(inputs: SpeciesInput[]): { ids: Set<number>; matched: number; unmatched: string[] } {
     const ids = new Set<number>();
     const unmatched: string[] = [];
@@ -446,9 +445,8 @@ class LifersIndex {
   /**
    * Lifer count for every H3 cell of `res` inside `bbox` — the data behind the
    * always-on choropleth. Unfiltered by the user's frequency/checklist controls
-   * (those apply only to hotspot results); uses bucket 0 (the lowest frequency
-   * floor baked
-   * into the data) purely to strip one-off vagrant records.
+   * (those apply only to hotspot results); uses bucket 0 (the baked-in frequency
+   * floor) purely to strip one-off vagrant records.
    */
   gridCells(seenIds: Set<number>, res: number, bbox: Bbox): { cells: GridCell[]; maxLifers: number } {
     if (!this.zonesByRes) throw new Error("Zones not loaded");
@@ -481,11 +479,10 @@ class LifersIndex {
 
   /**
    * Worldwide quantile breakpoints of lifer counts per resolution — the fixed,
-   * personalised colour scale. Returns `n` ascending lifer-count thresholds at
-   * evenly spaced quantiles over cells that hold at least one lifer, so the map
-   * spreads the full colour spectrum across the actual distribution (a few
-   * hyper-rich cells no longer wash everything else to grey) regardless of
-   * life-list size. It is worldwide, so panning never recolours; only zooming
+   * personalised colour scale. Returns `n` ascending thresholds at evenly spaced
+   * quantiles over cells with at least one lifer, spreading the full colour
+   * spectrum across the real distribution so a few hyper-rich cells don't wash
+   * everything else to grey. Worldwide, so panning never recolours; only zooming
    * (which changes resolution) rescales.
    */
   gridQuantiles(seenIds: Set<number>, n = 10): Record<number, number[]> {

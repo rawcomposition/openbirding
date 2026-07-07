@@ -49,7 +49,6 @@ const ClearIndicator = (props: ClearIndicatorProps<Option>) => (
 
 const LoadingIndicator = () => null;
 
-// Normalize text for matching: treat hyphens as spaces and lowercase
 const sanitize = (text: string) => text.replace(/-/g, " ").toLowerCase();
 
 function formatOptionLabel(option: Option, { inputValue }: FormatOptionLabelContext) {
@@ -68,7 +67,6 @@ export default function SpeciesSearch({ pill, ...props }: SearchProps) {
   const { species, setSpecies } = useBirdFinderStore();
   const [inputValue, setInputValue] = React.useState("");
 
-  // Convert store value to Option format
   const value: Option | null = species ? { value: species.code, label: species.name, sciName: species.sciName } : null;
 
   const searchSpecies = async (searchTerm: string): Promise<Option[]> => {

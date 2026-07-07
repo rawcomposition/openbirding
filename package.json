@@ -8,9 +8,8 @@
     "api"
   ],
   "scripts": {
-    "predev": "node scripts/fetch-avicommons.mjs",
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:api\"",
-    "prebuild": "node scripts/fetch-avicommons.mjs",
+    "fetch-avicommons": "node scripts/fetch-avicommons.mjs",
     "dev:client": "cd client && npm run dev",
     "dev:api": "cd api && npm run dev",
     "build": "npm run build:client && npm run build:api",

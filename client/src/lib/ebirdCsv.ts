@@ -1,8 +1,3 @@
-// Parse an eBird "My eBird Data" / life-list CSV export into a list of species.
-//
-// eBird exports have a header row with (at least) "Common Name" and
-// "Scientific Name" columns. We keep those two and dedupe by scientific name.
-
 export type LifeListEntry = { sciName: string; commonName: string };
 
 export type ParsedLifeList = {
@@ -10,8 +5,6 @@ export type ParsedLifeList = {
   rowCount: number;
 };
 
-// Minimal RFC-4180-ish CSV parser (handles quoted fields, embedded commas,
-// escaped quotes, and CRLF/LF line endings).
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];

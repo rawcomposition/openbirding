@@ -88,14 +88,6 @@ export async function setupDatabase() {
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  // Briefly shipped as "lifer_lists"; rename in place to keep any stored lists.
-  const hasOldName = await sql<{ n: number }>`
-    SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'lifer_lists'
-  `.execute(db);
-  if (hasOldName.rows[0]?.n) {
-    await sql`ALTER TABLE lifer_lists RENAME TO life_lists`.execute(db);
-  }
-
   await db.schema
     .createTable("life_lists")
     .ifNotExists()
@@ -107,7 +99,6 @@ export async function setupDatabase() {
     .addColumn("updated_at", "text")
     .execute();
 
-  // Setup FTS5 for regions search
   await setupRegionsFts();
 
   console.log("Main database setup complete");
@@ -126,7 +117,6 @@ export async function setupRegionsFts() {
     )
   `.execute(db);
 
-  // Rebuild FTS index to ensure it's in sync with content table, then optimize
   await sql`INSERT INTO regions_fts(regions_fts) VALUES('rebuild')`.execute(db);
   await sql`INSERT INTO regions_fts(regions_fts) VALUES('optimize')`.execute(db);
 }

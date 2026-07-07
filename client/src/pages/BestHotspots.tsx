@@ -19,7 +19,6 @@ import toast from "react-hot-toast";
 import LiferGridMap, { type GridMapHandle, type Bbox } from "@/components/LiferGridMap";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn, mutate } from "@/lib/utils";
-import { useAvicommons, avicommonsPhoto } from "@/lib/avicommons";
 import { MARKER_COLORS } from "@/lib/liferColors";
 import { parseEbirdCsv, EbirdCsvError } from "@/lib/ebirdCsv";
 import { useLiferTargetsStore, FREQUENCY_PRESETS, MIN_CHECKLIST_PRESETS } from "@/stores/liferTargetsStore";
@@ -49,7 +48,14 @@ type HotspotResponse = {
   queryTime: string;
 };
 
-type HotspotLifer = { code: string; name: string; sciName: string; frequency: number; score: number };
+type HotspotLifer = {
+  code: string;
+  name: string;
+  sciName: string;
+  frequency: number;
+  score: number;
+  photo: { url: string; by: string } | null;
+};
 type HotspotDetailResponse = { locationId: string; lifers: HotspotLifer[]; liferCount: number; frequency: number };
 
 type StatusResponse = { ready: boolean; resolutions?: number[] };
@@ -65,11 +71,6 @@ type CellInfo = {
 
 const HOTSPOT_LIMIT = 100;
 
-/**
- * eBird's "targets" page for a hotspot — the species you still need there,
- * measured against your worldwide life list (r2=world, t2=life), all months.
- * Opens live on eBird so a logged-in user sees their own up-to-date targets.
- */
 function ebirdTargetsUrl(hotspotId: string): string {
   const p = new URLSearchParams({ r1: hotspotId, bmo: "1", emo: "12", r2: "world", t2: "life" });
   return `https://ebird.org/targets?${p.toString()}`;
@@ -96,7 +97,6 @@ function cellsBbox(cells: string[]): Bbox | null {
   let minLng = Math.min(...lngs);
   let maxLng = Math.max(...lngs);
   if (maxLng - minLng > 180) {
-    // Straddles the seam: shift the western hemisphere up, recompute, re-wrap.
     const shifted = lngs.map((l) => (l < 0 ? l + 360 : l));
     const wrapLng = (l: number) => (l > 180 ? l - 360 : l);
     minLng = wrapLng(Math.min(...shifted));
@@ -114,7 +114,6 @@ const BestHotspots = () => {
     listToken,
     fileName,
     speciesCount,
-    legacyLifeList,
     frequency,
     minChecklists,
     selection,
@@ -129,7 +128,6 @@ const BestHotspots = () => {
   const [selectedHotspot, setSelectedHotspot] = useState<HotspotItem | null>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  // The map's settled viewport — the default scope for hotspot results.
   const [viewport, setViewport] = useState<{ bbox: Bbox; resolution: number } | null>(null);
   const mapHandle = useRef<GridMapHandle>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
@@ -138,11 +136,8 @@ const BestHotspots = () => {
     setViewport({ bbox, resolution });
   }, []);
 
-  // Any click on the map — a hex or the empty background — dismisses the
-  // hotspot detail card.
   const onMapClick = useCallback(() => setSelectedHotspot(null), []);
 
-  /** Store a parsed list server-side under our (possibly new) anonymous token. */
   const uploadList = async (entries: { sciName: string; commonName: string }[], name: string | null) => {
     const token = useLiferTargetsStore.getState().listToken;
     const res = (await mutate("POST", "/lifers/list", {
@@ -154,19 +149,6 @@ const BestHotspots = () => {
     return res;
   };
 
-  // One-time migration: v1 kept the raw entries in localStorage; upload them
-  // once to mint a token, then drop them.
-  const migratingRef = useRef(false);
-  useEffect(() => {
-    if (!legacyLifeList || listToken || migratingRef.current) return;
-    migratingRef.current = true;
-    uploadList(legacyLifeList, fileName).catch(() => {
-      migratingRef.current = false; // transient failure — retry next visit
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [legacyLifeList, listToken]);
-
-  // Confirm a persisted token still exists server-side; if not, prompt a fresh upload.
   const { error: listError } = useQuery({
     queryKey: [`/lifers/list/${listToken}`],
     enabled: !!listToken,
@@ -189,9 +171,6 @@ const BestHotspots = () => {
   });
   const resolutions = status?.resolutions ?? [3, 4];
 
-  // Fixed, personalised colour scale: worldwide quantile breakpoints per
-  // resolution, so panning never recolours the grid (only zooming, which
-  // changes resolution) and the full spectrum spreads across the distribution.
   const { data: scaleData } = useQuery<{ breaksByRes: Record<number, number[]> }>({
     queryKey: ["lifer-grid-scale", listToken],
     enabled: !!listToken,
@@ -202,7 +181,6 @@ const BestHotspots = () => {
   });
   const breaksByRes = scaleData?.breaksByRes ?? null;
 
-  // Result scope: a hex selection narrows; otherwise the current viewport.
   const scope: { kind: "hex" | "view"; bbox: Bbox | null } | null = useMemo(() => {
     if (selection && selection.cells.length) return { kind: "hex", bbox: cellsBbox(selection.cells) };
     if (viewport) return { kind: "view", bbox: viewport.bbox };
@@ -233,7 +211,6 @@ const BestHotspots = () => {
       }) as Promise<HotspotResponse>,
   });
 
-  // For a hex scope, keep only hotspots that actually fall inside a selected cell.
   const hotspots: HotspotItem[] = useMemo(() => {
     const items = results?.items ?? [];
     if (scope?.kind === "hex" && selection) {
@@ -243,7 +220,6 @@ const BestHotspots = () => {
     return items;
   }, [results, scope, selection]);
 
-  // Per-cell debug for the current hex selection (checklist samples etc.).
   const { data: cellsData } = useQuery<{ cells: CellInfo[] }>({
     queryKey: ["lifer-cells", selection?.resolution, selection?.cells.join(","), listToken],
     enabled: !!listToken && !!selection && selection.cells.length > 0,
@@ -279,7 +255,6 @@ const BestHotspots = () => {
     if (next) mapHandle.current?.flyTo(h.lng, h.lat);
   };
 
-  // The selected hotspot's specific lifers, most likely first.
   const { data: detail, isFetching: detailFetching } = useQuery<HotspotDetailResponse>({
     queryKey: ["lifer-hotspot-detail", selectedHotspot?.id, listToken, frequency],
     enabled: !!listToken && !!selectedHotspot,
@@ -292,9 +267,6 @@ const BestHotspots = () => {
   const selectedCells = selection?.cells ?? [];
 
   return (
-    // Fixed to the viewport below the 4rem header, outside document flow: no
-    // page scrollbar on desktop, and no white gap on mobile (where 100vh
-    // includes the area behind the browser chrome).
     <div className="fixed inset-x-0 bottom-0 top-16 flex overflow-hidden">
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -304,7 +276,7 @@ const BestHotspots = () => {
         detailFetching={detailFetching}
         onCloseDetail={() => setSelectedHotspot(null)}
         speciesCount={speciesCount}
-        hasList={!!listToken || !!legacyLifeList}
+        hasList={!!listToken}
         fileName={fileName}
         matched={results?.meta.seenMatched}
         onFile={handleFile}
@@ -352,8 +324,6 @@ const BestHotspots = () => {
     </div>
   );
 };
-
-// --- Docked sidebar ----------------------------------------------------------
 
 function Sidebar(props: {
   collapsed: boolean;
@@ -650,12 +620,6 @@ function HotspotResults({
   );
 }
 
-// --- Selected-hotspot detail panel --------------------------------------------
-
-/**
- * Mobile-app-style pushed screen shown over the sidebar when a hotspot is
- * selected; Back (or any map click) returns to the results.
- */
 function HotspotDetailPanel({
   hotspot,
   detail,
@@ -669,7 +633,6 @@ function HotspotDetailPanel({
   onBack: () => void;
   citation?: string;
 }) {
-  const avicommons = useAvicommons();
   const shown = hotspot;
   if (!shown) return null;
   return (
@@ -721,7 +684,7 @@ function HotspotDetailPanel({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         {detail?.lifers.map((l) => {
-          const photo = avicommonsPhoto(avicommons, l.code);
+          const photo = l.photo;
           return (
             <a
               key={l.code}
@@ -758,8 +721,6 @@ function HotspotDetailPanel({
     </div>
   );
 }
-
-// --- Small controls ---------------------------------------------------------
 
 function MapCredits({ citation }: { citation?: string }) {
   return (
@@ -907,7 +868,6 @@ function LifeListChip({
   );
 }
 
-/** A native <select> styled as a toggle pill — no label, chevron as the only affordance. */
 function PillSelect({
   value,
   onChange,

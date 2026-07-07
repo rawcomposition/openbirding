@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { db, withTargetsDb } from "../db/index.js";
+import { speciesPhoto } from "../lib/avicommons.js";
 import { getEbdCitation } from "../lib/ebird.js";
 import {
   getLifersIndex,
@@ -14,8 +15,6 @@ import { isLocationId, parseBBoxBody, parseRegionCodes } from "./targets-validat
 
 const lifersRoute = new Hono();
 
-// The zone (H3) dataset is large, so it is loaded into memory the first time a
-// zone query arrives (guarded so concurrent requests share one load).
 let zonesReady: Promise<void> | null = null;
 function ensureZonesLoaded(index: LifersIndex): Promise<void> {
   if (index.zonesLoaded) return Promise.resolve();
@@ -37,19 +36,14 @@ function ensureZonesLoaded(index: LifersIndex): Promise<void> {
   return zonesReady;
 }
 
-const MAX_SPECIES = 40000; // generous cap for large world life lists
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
-// Begin loading the in-memory index as soon as this module is mounted, then
-// warm the (larger) zone dataset in the background so users never wait for it.
 warmLifersIndex();
 getLifersIndex()
   .then((index) => ensureZonesLoaded(index))
   .catch(() => {});
 
-// Region code -> human-readable name ("PE-MDD" -> "Madre de Dios, Peru"),
-// loaded once from the regions table.
 let regionNamesPromise: Promise<Map<string, string>> | null = null;
 function getRegionNames(): Promise<Map<string, string>> {
   if (!regionNamesPromise) {
@@ -70,7 +64,6 @@ function getRegionNames(): Promise<Map<string, string>> {
   return regionNamesPromise;
 }
 
-/** Resolve a region code to a name, walking up the hierarchy (BR-MT-003 -> BR-MT -> BR). */
 function regionNameFor(code: string, names: Map<string, string>): string | null {
   let c = code;
   while (c) {
@@ -88,9 +81,6 @@ function parseSpeciesInput(value: unknown): SpeciesInput[] {
     throw new HTTPException(400, {
       message: "species must be a non-empty array of { sciName, commonName, code }",
     });
-  }
-  if (value.length > MAX_SPECIES) {
-    throw new HTTPException(400, { message: `species cannot contain more than ${MAX_SPECIES} entries` });
   }
   return value.map((item) => {
     if (typeof item === "string") return { sciName: item };
@@ -115,12 +105,6 @@ function parseToken(value: unknown): string {
   return value;
 }
 
-/**
- * Species inputs for a query: either a stored life list referenced by
- * `listToken` (the normal path — the client uploads once via POST /list and
- * sends the ~40-byte token on every query instead of the full ~100 KB list),
- * or an inline `species` array.
- */
 async function speciesInputsFor(body: Record<string, unknown>): Promise<SpeciesInput[]> {
   if (body.listToken != null) {
     const token = parseToken(body.listToken);
@@ -137,7 +121,6 @@ async function speciesInputsFor(body: Record<string, unknown>): Promise<SpeciesI
   return parseSpeciesInput(body.species);
 }
 
-/** Accepts frequency as a fraction (0-1) or a percent (>1); returns a fraction. */
 function parseFrequency(value: unknown): number {
   if (value == null) return 0.05;
   const n = Number(value);
@@ -195,14 +178,11 @@ lifersRoute.get("/status", async (c) => {
   }
 });
 
-// Store (or replace) a life list server-side under an anonymous token the
-// client keeps in localStorage, so revisits restore instantly and queries send
-// a tiny token instead of the full species payload.
 lifersRoute.post("/list", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
   });
-  const speciesInputs = parseSpeciesInput(body.species); // /list stores a real list, never a token
+  const speciesInputs = parseSpeciesInput(body.species);
   const fileName = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
 
   const index = await getLifersIndex();
@@ -211,8 +191,6 @@ lifersRoute.post("/list", async (c) => {
   const species = JSON.stringify(speciesInputs);
   const speciesCount = matched;
 
-  // Reuse the caller's token when it still exists (a "Replace" keeps the same
-  // identity); otherwise mint a fresh one.
   let token = typeof body.token === "string" && TOKEN_RE.test(body.token) ? body.token : null;
   if (token) {
     const res = await db
@@ -230,8 +208,6 @@ lifersRoute.post("/list", async (c) => {
   return c.json({ token, count: speciesCount, matched, unmatchedCount: unmatched.length });
 });
 
-// Metadata for a stored list — lets a returning client confirm its token is
-// still valid (404 => prompt a re-upload).
 lifersRoute.get("/list/:token", async (c) => {
   const token = parseToken(c.req.param("token"));
   const row = await db
@@ -272,8 +248,6 @@ lifersRoute.post("/hotspots", async (c) => {
   return c.json({
     items: items.map((it) => ({ ...it, regionName: regionNameFor(it.regionCode, regionNames) })),
     meta: {
-      // Hotspots in scope before frequency/checklist filtering — 0 means the
-      // area simply has no eBird hotspots, so relaxing filters won't help.
       hotspotsInScope: candidates,
       seenMatched: matched,
       seenUnmatched: unmatched.length,
@@ -288,7 +262,6 @@ lifersRoute.post("/hotspots", async (c) => {
   });
 });
 
-// Detail: which specific new species you'd get at one hotspot, most-likely first.
 lifersRoute.post("/hotspot/:locationId", async (c) => {
   const startTime = performance.now();
   const locationId = c.req.param("locationId").trim().toUpperCase();
@@ -334,6 +307,7 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
       frequency: Math.round((r.obs / r.samples) * 1000) / 10,
       score: Math.round(r.score * 1000) / 10,
       taxonOrder: r.taxonOrder,
+      photo: speciesPhoto(r.code),
     }))
     .sort((a, b) => b.score - a.score || a.taxonOrder - b.taxonOrder);
 
@@ -346,10 +320,6 @@ lifersRoute.post("/hotspot/:locationId", async (c) => {
   });
 });
 
-// Grid: lifer count for every H3 cell of a resolution inside a viewport bbox.
-// This is the always-on choropleth; the user's frequency/checklist filters do
-// NOT apply here (they scope hotspot results only). Called on every settled
-// pan/zoom, so it stays lean: no region-name enrichment, no citation.
 lifersRoute.post("/grid", async (c) => {
   const startTime = performance.now();
   const body = await c.req.json().catch(() => {
@@ -376,9 +346,6 @@ lifersRoute.post("/grid", async (c) => {
   });
 });
 
-// Worldwide quantile breakpoints per resolution — the fixed colour scale for
-// this life list, fetched once so panning never recolours the grid and the full
-// colour spectrum is spread across the real distribution of lifer counts.
 lifersRoute.post("/grid-scale", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
@@ -390,7 +357,6 @@ lifersRoute.post("/grid-scale", async (c) => {
   return c.json({ breaksByRes: index.gridQuantiles(seenIds) });
 });
 
-// Per-cell detail for selected hexes: checklist samples, species, lifers.
 lifersRoute.post("/cells", async (c) => {
   const body = await c.req.json().catch(() => {
     throw new HTTPException(400, { message: "Request body must be JSON" });
