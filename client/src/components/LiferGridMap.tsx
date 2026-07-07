@@ -289,7 +289,7 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
     markerRef.current?.remove();
     markerRef.current = null;
     if (markerAt) {
-      markerRef.current = new maplibregl.Marker({ color: "#10b981" })
+      markerRef.current = new maplibregl.Marker({ color: "#059669" })
         .setLngLat([markerAt.lng, markerAt.lat])
         .addTo(map);
     }

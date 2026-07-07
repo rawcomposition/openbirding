@@ -126,7 +126,6 @@ const BestHotspots = () => {
   } = useLiferTargetsStore();
 
   const [selectedHotspot, setSelectedHotspot] = useState<HotspotItem | null>(null);
-  const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [viewport, setViewport] = useState<{ bbox: Bbox; resolution: number } | null>(null);
   const mapHandle = useRef<GridMapHandle>(null);
@@ -290,10 +289,7 @@ const BestHotspots = () => {
         hotspots={hotspots}
         hotspotsInScope={results?.meta.hotspotsInScope}
         isFetching={isFetching}
-        selectedHotspotId={selectedHotspot?.id ?? null}
-        hoveredHotspotId={hoveredHotspotId}
         onSelectHotspot={selectHotspotFromList}
-        onHoverHotspot={setHoveredHotspotId}
         rowRefs={rowRefs.current}
         citation={results?.citation}
       />
@@ -347,10 +343,7 @@ function Sidebar(props: {
   hotspots: HotspotItem[];
   hotspotsInScope?: number;
   isFetching: boolean;
-  selectedHotspotId: string | null;
-  hoveredHotspotId: string | null;
   onSelectHotspot: (h: HotspotItem) => void;
-  onHoverHotspot: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
   citation?: string;
 }) {
@@ -421,10 +414,7 @@ function Sidebar(props: {
           onFrequency={props.onFrequency}
           minChecklists={props.minChecklists}
           onMinChecklists={props.onMinChecklists}
-          selectedHotspotId={props.selectedHotspotId}
-          hoveredHotspotId={props.hoveredHotspotId}
           onSelect={props.onSelectHotspot}
-          onHover={props.onHoverHotspot}
           rowRefs={props.rowRefs}
           citation={props.citation}
         />
@@ -453,13 +443,13 @@ function SelectedCellsCard({
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+        <span className="flex items-center gap-1.5 text-base font-medium text-amber-900">
           <Hexagon className="h-4 w-4" />
           {count === 1 ? "Selected area" : `${count} areas selected`}
         </span>
         <button
           onClick={onClear}
-          className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
+          className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-sm font-medium text-amber-800 shadow-sm hover:bg-amber-100"
         >
           <X className="h-3.5 w-3.5" /> Clear
         </button>
@@ -475,7 +465,7 @@ function SelectedCellsCard({
           { lifers: 0, totalSpecies: 0, samples: 0, namedHotspots: 0 }
         );
         return (
-          <div className="mt-1.5 border-t border-amber-200/70 pt-1.5 text-xs text-amber-900">
+          <div className="mt-1.5 border-t border-amber-200/70 pt-1.5 text-sm text-amber-900">
             <span className="font-semibold">
               {total.lifers.toLocaleString()} possible lifer{total.lifers === 1 ? "" : "s"}
             </span>
@@ -484,7 +474,7 @@ function SelectedCellsCard({
               · {total.totalSpecies.toLocaleString()} species · {total.samples.toLocaleString()} checklists
             </span>
             {total.namedHotspots === 0 && (
-              <div className="text-[11px] italic text-amber-700/90">
+              <div className="text-xs italic text-amber-700/90">
                 No eBird hotspots here — sightings come from personal locations.
               </div>
             )}
@@ -498,7 +488,7 @@ function SelectedCellsCard({
 function Legend() {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-slate-500">
+      <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
         <span>Fewer lifers</span>
         <span>More</span>
       </div>
@@ -513,7 +503,7 @@ function Legend() {
 function CitationFooter({ citation }: { citation?: string }) {
   if (!citation) return null;
   return (
-    <p className="mt-2 border-t border-slate-100 pt-2 text-[10px] leading-tight text-slate-400">
+    <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] leading-tight text-slate-400">
       {citation}
     </p>
   );
@@ -528,10 +518,7 @@ function HotspotResults({
   onFrequency,
   minChecklists,
   onMinChecklists,
-  selectedHotspotId,
-  hoveredHotspotId,
   onSelect,
-  onHover,
   rowRefs,
   citation,
 }: {
@@ -543,17 +530,14 @@ function HotspotResults({
   onFrequency: (v: number) => void;
   minChecklists: number;
   onMinChecklists: (v: number) => void;
-  selectedHotspotId: string | null;
-  hoveredHotspotId: string | null;
   onSelect: (h: HotspotItem) => void;
-  onHover: (id: string | null) => void;
   rowRefs: Map<string, HTMLDivElement>;
   citation?: string;
 }) {
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-slate-100">
       <div className="flex items-center justify-between px-3 pt-2">
-        <h2 className="text-sm font-semibold text-slate-700">
+        <h2 className="text-base font-semibold text-slate-700">
           Best hotspots {scopeKind === "hex" ? "in selection" : "in view"}
         </h2>
         {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
@@ -574,13 +558,13 @@ function HotspotResults({
         />
       </div>
       {hotspots.length === 0 && !isFetching ? (
-        <p className="mx-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-xs text-slate-500">
+        <p className="mx-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">
           {hotspotsInScope === 0
             ? "No hotspots in this area."
             : "No hotspots match your filters."}
         </p>
       ) : (
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3 pt-1">
+        <div className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto px-3 pb-3 pt-1">
           {hotspots.map((h) => (
             <div
               key={h.id}
@@ -588,25 +572,16 @@ function HotspotResults({
                 if (el) rowRefs.set(h.id, el);
                 else rowRefs.delete(h.id);
               }}
-              onMouseEnter={() => onHover(h.id)}
-              onMouseLeave={() => onHover(null)}
               onClick={() => onSelect(h)}
-              className={cn(
-                "flex cursor-pointer items-start justify-between gap-3 rounded-md border bg-white px-2 py-1.5 scroll-mt-2 transition-colors",
-                h.id === selectedHotspotId
-                  ? "border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-400"
-                  : h.id === hoveredHotspotId
-                    ? "border-emerald-400"
-                    : "border-slate-200 hover:border-emerald-300"
-              )}
+              className="group flex cursor-pointer items-start justify-between gap-3 py-2 scroll-mt-2"
             >
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-medium leading-snug text-slate-800">{h.name}</div>
-                <div className="truncate text-[11px] leading-tight text-slate-400">{h.regionName ?? h.regionCode}</div>
+                <div className="text-sm font-medium leading-snug text-slate-800 group-hover:text-emerald-700">{h.name}</div>
+                <div className="truncate text-xs leading-tight text-slate-400">{h.regionName ?? h.regionCode}</div>
               </div>
               <div className="flex shrink-0 flex-col items-end">
                 <span className="text-base font-bold leading-tight tabular-nums text-emerald-600">{h.lifers}</span>
-                <span className="whitespace-nowrap text-[11px] font-medium leading-tight tabular-nums text-slate-500">
+                <span className="whitespace-nowrap text-xs font-medium leading-tight tabular-nums text-slate-500">
                   {h.checklists.toLocaleString()} lists
                 </span>
               </div>
@@ -643,8 +618,8 @@ function HotspotDetailPanel({
         >
           <ChevronLeft className="h-3.5 w-3.5" /> Back to results
         </button>
-        <h3 className="mt-2 text-sm font-bold leading-snug text-slate-900">{shown.name}</h3>
-        <p className="mt-0.5 text-[11px] text-slate-500">
+        <h3 className="mt-2 text-base font-bold leading-snug text-slate-900">{shown.name}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">
           {shown.regionName ?? shown.regionCode} · {shown.checklists.toLocaleString()} lists
         </p>
       </div>
@@ -654,7 +629,7 @@ function HotspotDetailPanel({
           href={ebirdTargetsUrl(shown.id)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
         >
           View targets <ExternalLink className="h-3 w-3" />
         </a>
@@ -662,14 +637,14 @@ function HotspotDetailPanel({
           href={`https://ebird.org/hotspot/${shown.id}/about`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-400 hover:text-emerald-700"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 hover:border-emerald-400 hover:text-emerald-700"
         >
           Hotspot details <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2">
-        <h4 className="text-xs text-slate-600">
+        <h4 className="text-sm text-slate-600">
           {detail ? (
             <>
               <span className="font-semibold">{detail.liferCount}</span> species above{" "}
@@ -705,15 +680,15 @@ function HotspotDetailPanel({
                   <Bird className="h-4 w-4" />
                 </span>
               )}
-              <span className="min-w-0 flex-1 text-[13px] leading-snug text-slate-800 group-hover:text-emerald-700">
+              <span className="min-w-0 flex-1 text-sm leading-snug text-slate-800 group-hover:text-emerald-700">
                 {l.name}
               </span>
-              <span className="shrink-0 text-[11px] font-medium tabular-nums text-slate-500">{Math.round(l.score)}%</span>
+              <span className="shrink-0 text-base font-bold tabular-nums text-emerald-600">{Math.round(l.score)}%</span>
             </a>
           );
         })}
         {detail && detail.lifers.length === 0 && (
-          <p className="py-2 text-center text-xs text-slate-500">No new species here at this frequency.</p>
+          <p className="py-2 text-center text-sm text-slate-500">No new species here at this frequency.</p>
         )}
         <CitationFooter citation={citation} />
       </div>
