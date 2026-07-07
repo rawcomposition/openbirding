@@ -673,7 +673,7 @@ function HotspotDetailPanel({
           {detail ? (
             <>
               <span className="font-semibold">{detail.liferCount}</span> species above{" "}
-              <span className="font-semibold">{Math.round(detail.frequency * 100)}%</span> frequency · year-round
+              <span className="font-semibold">{Math.round(detail.frequency * 100)}%</span> adjusted frequency · year-round
             </>
           ) : (
             "Species"
