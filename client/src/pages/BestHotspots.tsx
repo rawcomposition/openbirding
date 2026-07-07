@@ -733,6 +733,26 @@ function UploadArea({ onFile }: { onFile: (f: File) => void }) {
   const [dragging, setDragging] = useState(false);
   return (
     <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm text-slate-700">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
+          1
+        </span>
+        <a
+          href="https://ebird.org/lifelist?r=world&time=life&fmt=csv"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-800"
+        >
+          Download your life list from eBird
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+      <div className="flex items-center gap-2 text-sm text-slate-700">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
+          2
+        </span>
+        <span className="font-medium">Drop it below</span>
+      </div>
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -752,7 +772,7 @@ function UploadArea({ onFile }: { onFile: (f: File) => void }) {
         )}
       >
         <Upload className="mx-auto mb-2 h-8 w-8 text-emerald-600" />
-        <p className="text-sm font-medium text-slate-800">Drop your eBird life list CSV</p>
+        <p className="text-sm font-medium text-slate-800">Drag &amp; drop your CSV</p>
         <p className="mt-0.5 text-xs text-slate-500">or click to choose a file</p>
         <input
           ref={inputRef}
@@ -766,19 +786,6 @@ function UploadArea({ onFile }: { onFile: (f: File) => void }) {
           }}
         />
       </div>
-      <p className="text-[11px] leading-tight text-slate-500">
-        Export from{" "}
-        <a
-          href="https://ebird.org/lifelist"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-emerald-600 hover:text-emerald-700"
-        >
-          ebird.org/lifelist
-        </a>{" "}
-        (World, Life). Your list is stored under an anonymous ID — no account
-        needed — so it's ready when you come back. Clearing it deletes it.
-      </p>
     </div>
   );
 }
