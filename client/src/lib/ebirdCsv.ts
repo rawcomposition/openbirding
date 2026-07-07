@@ -63,6 +63,8 @@ export function parseEbirdCsv(text: string): ParsedLifeList {
   const header = rows[0].map((h) => h.trim().toLowerCase());
   const sciIdx = header.findIndex((h) => h === "scientific name");
   const commonIdx = header.findIndex((h) => h === "common name");
+  const categoryIdx = header.findIndex((h) => h === "category");
+  const countableIdx = header.findIndex((h) => h === "countable");
 
   if (sciIdx === -1 && commonIdx === -1) {
     throw new EbirdCsvError(
@@ -70,9 +72,19 @@ export function parseEbirdCsv(text: string): ParsedLifeList {
     );
   }
 
+  const nonSpeciesCategories = new Set(["slash", "spuh", "hybrid"]);
+
   const seen = new Set<string>();
   const entries: LifeListEntry[] = [];
   for (const r of rows.slice(1)) {
+    if (countableIdx !== -1) {
+      const countable = r[countableIdx]?.trim().toLowerCase() ?? "";
+      if (countable === "0" || countable === "no" || countable === "false") continue;
+    }
+    if (categoryIdx !== -1) {
+      const category = r[categoryIdx]?.trim().toLowerCase() ?? "";
+      if (nonSpeciesCategories.has(category)) continue;
+    }
     const sciName = (sciIdx !== -1 ? r[sciIdx] : "")?.trim() ?? "";
     const commonName = (commonIdx !== -1 ? r[commonIdx] : "")?.trim() ?? "";
     if (!sciName && !commonName) continue;

@@ -209,7 +209,7 @@ lifersRoute.post("/list", async (c) => {
   const { matched, unmatched } = index.resolveSpecies(speciesInputs);
 
   const species = JSON.stringify(speciesInputs);
-  const speciesCount = speciesInputs.length;
+  const speciesCount = matched;
 
   // Reuse the caller's token when it still exists (a "Replace" keeps the same
   // identity); otherwise mint a fresh one.

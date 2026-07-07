@@ -264,9 +264,8 @@ class LifersIndex {
       if (id == null && sci) id = this.bySci.get(sci);
       if (id == null && common) id = this.byName.get(common);
       if (id == null && sci) {
-        // eBird "slash"/subspecies forms: fall back to the base binomial.
-        const base = sci.split("/")[0].split(" ").slice(0, 2).join(" ");
-        id = this.bySci.get(base);
+        const binomial = sci.split(/\s+/).slice(0, 2).join(" ");
+        if (binomial !== sci) id = this.bySci.get(binomial);
       }
       if (id != null) ids.add(id);
       else unmatched.push(input.sciName || input.commonName || input.code || "");
