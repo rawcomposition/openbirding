@@ -129,7 +129,6 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
       }}
       inputId="region-search"
       instanceId="region-search"
-      // Render the menu in a portal so the sidebar's overflow doesn't clip it.
       menuPortalTarget={document.body}
       menuPosition="fixed"
       value={selectValue}
