@@ -39,7 +39,6 @@ const sanitize = (text: string) => text.replace(/-/g, " ").toLowerCase();
 
 function formatOptionLabel(option: Option, { inputValue }: FormatOptionLabelContext) {
   const searchWords = inputValue.split(/\s+/).filter(Boolean);
-  // Strip the region name prefix from longName (e.g., "California, United States" -> "United States")
   const prefix = `${option.label}, `;
   const parentRegions = option.longName.startsWith(prefix) ? option.longName.slice(prefix.length) : option.longName;
   return (
@@ -118,7 +117,8 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
         input: () => "text-slate-900",
         placeholder: () => "text-slate-400 text-left",
         indicatorsContainer: () => "h-[34px]",
-        menu: () => "mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50",
+        menu: () => "mt-1 bg-white border border-slate-200 rounded-md shadow-lg",
+        menuPortal: () => "z-50",
         menuList: () => "p-1",
         option: (state) =>
           `text-left text-slate-900 px-3 py-2 rounded cursor-pointer ${
@@ -129,6 +129,8 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
       }}
       inputId="region-search"
       instanceId="region-search"
+      menuPortalTarget={document.body}
+      menuPosition="fixed"
       value={selectValue}
       inputValue={inputValue}
       onInputChange={(val) => setInputValue(val)}

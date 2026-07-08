@@ -1,8 +1,3 @@
-/**
- * Ray-casting algorithm to determine if a point is inside a polygon.
- * @param point [lng, lat]
- * @param polygon Array of [lng, lat] vertices
- */
 export function pointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
   const [x, y] = point;
   let inside = false;
@@ -15,10 +10,6 @@ export function pointInPolygon(point: [number, number], polygon: [number, number
   return inside;
 }
 
-/**
- * Compute bounding box from a polygon.
- * @param polygon Array of [lng, lat] vertices
- */
 export function polygonBbox(polygon: [number, number][]): {
   minLng: number;
   minLat: number;

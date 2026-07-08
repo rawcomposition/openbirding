@@ -1,16 +1,18 @@
 import React from "react";
 
 export default function Phone(props: React.SVGProps<SVGSVGElement>) {
+  const rawId = React.useId().replace(/:/g, "");
+  const maskId = `screenPunch-${rawId}`;
+  const clipId = `roundedCorners-${rawId}`;
   return (
     <svg
       viewBox="0 0 433 882"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className="absolute inset-0 size-full"
-      style={{ transform: "translateZ(0)" }}
       {...props}
     >
-      <g mask="url(#screenPunch)">
+      <g mask={`url(#${maskId})`}>
         <path
           d="M2 73C2 32.6832 34.6832 0 75 0H357C397.317 0 430 32.6832 430 73V809C430 849.317 397.317 882 357 882H75C34.6832 882 2 849.317 2 809V73Z"
           className="fill-slate-700"
@@ -44,7 +46,7 @@ export default function Phone(props: React.SVGProps<SVGSVGElement>) {
       <path
         d="M21.25 75C21.25 44.2101 46.2101 19.25 77 19.25H355C385.79 19.25 410.75 44.2101 410.75 75V807C410.75 837.79 385.79 862.75 355 862.75H77C46.2101 862.75 21.25 837.79 21.25 807V75Z"
         className="fill-[#1C1C1E] stroke-[#1C1C1E] stroke-[0.5]"
-        mask="url(#screenPunch)"
+        mask={`url(#${maskId})`}
       />
       <path
         d="M154 48.5C154 38.2827 162.283 30 172.5 30H259.5C269.717 30 278 38.2827 278 48.5C278 58.7173 269.717 67 259.5 67H172.5C162.283 67 154 58.7173 154 48.5Z"
@@ -59,11 +61,11 @@ export default function Phone(props: React.SVGProps<SVGSVGElement>) {
         className="fill-[#1C1C1E]"
       />
       <defs>
-        <mask id="screenPunch" maskUnits="userSpaceOnUse">
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="433" height="882">
           <rect x="0" y="0" width="433" height="882" fill="white" />
           <rect x="21.25" y="19.25" width="389.5" height="843.5" rx="55.75" ry="55.75" fill="black" />
         </mask>
-        <clipPath id="roundedCorners">
+        <clipPath id={clipId}>
           <rect x="21.25" y="19.25" width="389.5" height="843.5" rx="55.75" ry="55.75" />
         </clipPath>
       </defs>

@@ -9,6 +9,32 @@ type Params = {
   [key: string]: string | number | boolean;
 };
 
+export class ApiError extends Error {
+  status: number;
+  userMessage?: string;
+
+  constructor(message: string, status: number, userMessage?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.userMessage = userMessage;
+  }
+}
+
+const STATUS_FALLBACKS: Record<number, string> = {
+  401: "Unauthorized",
+  403: "Forbidden",
+  404: "Route not found",
+  405: "Method not allowed",
+  504: "Operation timed out. Please try again.",
+};
+
+function throwApiError(res: Response, json: Record<string, unknown>): never {
+  const raw = (json.error || json.message || "") as string;
+  const userMessage = typeof json.userMessage === "string" ? json.userMessage : undefined;
+  throw new ApiError(raw || STATUS_FALLBACKS[res.status] || "An error occurred", res.status, userMessage);
+}
+
 export const get = async (url: string, params: Params) => {
   const cleanParams = Object.keys(params).reduce((accumulator: Record<string, string>, key) => {
     if (params[key]) accumulator[key] = String(params[key]);
@@ -38,13 +64,7 @@ export const get = async (url: string, params: Params) => {
   }
 
   if (!res.ok) {
-    const errorMessage = (json.error || json.message || "") as string;
-    if (res.status === 401) throw new Error(errorMessage || "Unauthorized");
-    if (res.status === 403) throw new Error(errorMessage || "Forbidden");
-    if (res.status === 404) throw new Error(errorMessage || "Route not found");
-    if (res.status === 405) throw new Error(errorMessage || "Method not allowed");
-    if (res.status === 504) throw new Error(errorMessage || "Operation timed out. Please try again.");
-    throw new Error(errorMessage || "An error occurred");
+    throwApiError(res, json);
   }
   return json;
 };
@@ -67,13 +87,7 @@ export const mutate = async (method: "POST" | "PUT" | "DELETE" | "PATCH", url: s
   }
 
   if (!res.ok) {
-    const errorMessage = (json.error || json.message || "") as string;
-    if (res.status === 401) throw new Error(errorMessage || "Unauthorized");
-    if (res.status === 403) throw new Error(errorMessage || "Forbidden");
-    if (res.status === 404) throw new Error(errorMessage || "Route not found");
-    if (res.status === 405) throw new Error(errorMessage || "Method not allowed");
-    if (res.status === 504) throw new Error(errorMessage || "Operation timed out. Please try again.");
-    throw new Error(errorMessage || "An error occurred");
+    throwApiError(res, json);
   }
 
   return json;

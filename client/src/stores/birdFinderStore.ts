@@ -18,7 +18,6 @@ export type CustomAreaFilter = {
   bbox: BboxFilter;
 };
 
-// Selected month (1-12), null means all months
 export type MonthFilter = number;
 
 export type SpeciesSelection = {

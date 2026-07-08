@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { Kysely, SqliteDialect, CamelCasePlugin, sql } from "kysely";
-import type { Pack, Region, Cluster, PackDownload, AndroidNotifySignup } from "../lib/types.js";
+import type { Pack, Region, Cluster, PackDownload, AndroidNotifySignup, LifeList } from "../lib/types.js";
 
 export type DatabaseSchema = {
   packs: Pack;
@@ -8,6 +8,7 @@ export type DatabaseSchema = {
   regions: Region;
   packDownloads: PackDownload;
   android: AndroidNotifySignup;
+  lifeLists: LifeList;
 };
 
 const mainSqlite = new (Database as any)(`${process.env.SQLITE_DIR}${process.env.SQLITE_FILENAME}`);
@@ -87,7 +88,17 @@ export async function setupDatabase() {
     .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  // Setup FTS5 for regions search
+  await db.schema
+    .createTable("life_lists")
+    .ifNotExists()
+    .addColumn("token", "text", (c) => c.primaryKey())
+    .addColumn("file_name", "text")
+    .addColumn("species", "text", (c) => c.notNull())
+    .addColumn("species_count", "integer", (c) => c.notNull())
+    .addColumn("created_at", "text", (c) => c.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("updated_at", "text")
+    .execute();
+
   await setupRegionsFts();
 
   console.log("Main database setup complete");
@@ -106,7 +117,6 @@ export async function setupRegionsFts() {
     )
   `.execute(db);
 
-  // Rebuild FTS index to ensure it's in sync with content table, then optimize
   await sql`INSERT INTO regions_fts(regions_fts) VALUES('rebuild')`.execute(db);
   await sql`INSERT INTO regions_fts(regions_fts) VALUES('optimize')`.execute(db);
 }

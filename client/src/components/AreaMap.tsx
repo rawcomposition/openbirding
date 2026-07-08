@@ -275,7 +275,7 @@ export default function AreaMap({
     <div className="flex flex-col gap-3">
       <div
         ref={containerRef}
-        className="h-[320px] w-full overflow-hidden rounded-md border border-slate-200 sm:h-[420px]"
+        className="area-map h-[320px] w-full overflow-hidden rounded-md border border-slate-200 sm:h-[420px]"
       />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-5 text-slate-500">{instructionText}</p>

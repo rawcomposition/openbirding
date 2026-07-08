@@ -3,7 +3,7 @@ import { rename } from "node:fs/promises";
 import { join } from "node:path";
 import { CamelCasePlugin, Kysely, SqliteDialect } from "kysely";
 import { TARGETS_DB_FILENAME } from "../lib/config.js";
-import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies, TargetMetadata, TargetRegion, RegionMonthObs, RegionMonthSamples } from "../lib/types.js";
+import type { TargetHotspot, MonthTarget, YearTarget, TargetSpecies, TargetMetadata, TargetRegion, RegionMonthObs, RegionMonthSamples, H3Cell, H3CellObs, H3CellSamples } from "../lib/types.js";
 
 export type TargetsDatabaseSchema = {
   hotspots: TargetHotspot;
@@ -14,6 +14,9 @@ export type TargetsDatabaseSchema = {
   regions: TargetRegion;
   regionMonthObs: RegionMonthObs;
   regionMonthSamples: RegionMonthSamples;
+  h3Cells: H3Cell;
+  h3CellObs: H3CellObs;
+  h3CellSamples: H3CellSamples;
 };
 
 export type TargetsDb = Kysely<TargetsDatabaseSchema>;
@@ -21,6 +24,7 @@ export type TargetsDb = Kysely<TargetsDatabaseSchema>;
 const REQUIRED_TABLES = [
   "hotspots", "month_obs", "year_obs", "species",
   "metadata", "regions", "region_month_obs", "region_month_samples",
+  "h3_cells", "h3_cell_obs", "h3_cell_samples",
 ];
 
 type TargetsDbState = {
@@ -93,7 +97,6 @@ export async function getTargetsMetadata(targetsDb: TargetsDb): Promise<TargetMe
 function validateDb(path: string): { ok: true } | { ok: false; error: string } {
   const db = new (Database as any)(path, { readonly: true, fileMustExist: true });
   try {
-    // Check required tables and FTS index exist (sqlite_master is fast)
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[])
       .map((r) => r.name);
 
@@ -106,7 +109,6 @@ function validateDb(path: string): { ok: true } | { ok: false; error: string } {
       return { ok: false, error: "Missing FTS5 index: species_fts" };
     }
 
-    // Metadata row must be present and complete
     const meta = db.prepare("SELECT * FROM metadata").get() as Record<string, unknown> | undefined;
     if (!meta?.version || !meta?.version_year || !meta?.generated_at) {
       return { ok: false, error: `Metadata row missing or incomplete: ${JSON.stringify(meta)}` };

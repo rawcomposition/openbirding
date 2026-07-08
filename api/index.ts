@@ -2,11 +2,13 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { userMessageFor } from "./lib/user-error.js";
 import { setupDatabase } from "./db/index.js";
 import packs from "./routes/packs.js";
 import backups from "./routes/backups.js";
 import reports from "./routes/reports.js";
 import targets from "./routes/targets.js";
+import bestHotspots from "./routes/best-hotspots.js";
 import hotspots from "./routes/hotspots.js";
 import species from "./routes/species.js";
 import regions from "./routes/regions.js";
@@ -28,6 +30,7 @@ app.route("/api/v1/packs", packs);
 app.route("/api/v1/backups", backups);
 app.route("/api/v1/reports", reports);
 app.route("/api/v1/targets", targets);
+app.route("/api/v1/best-hotspots", bestHotspots);
 app.route("/api/v1/hotspots", hotspots);
 app.route("/api/v1/species", species);
 app.route("/api/v1/regions", regions);
@@ -41,11 +44,11 @@ app.notFound((c) => {
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
-    // If the exception has a custom response (e.g., basic auth), use it directly
     if (err.res) {
       return err.getResponse();
     }
-    return c.json({ message: err.message }, err.status);
+    const userMessage = userMessageFor(err);
+    return c.json(userMessage ? { message: err.message, userMessage } : { message: err.message }, err.status);
   }
   const message = err instanceof Error ? err.message : "Internal Server Error";
   return c.json({ message }, 500);

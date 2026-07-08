@@ -73,6 +73,15 @@ export type AndroidNotifySignup = {
   createdAt: Generated<string>;
 };
 
+export type LifeList = {
+  token: string;
+  fileName: string | null;
+  species: string;
+  speciesCount: number;
+  createdAt: Generated<string>;
+  updatedAt: string | null;
+};
+
 export type TargetMetadata = {
   version: string;
   versionMonth: string;
@@ -93,6 +102,27 @@ export type RegionMonthObs = {
 
 export type RegionMonthSamples = {
   regionId: number;
+  month: number;
+  samples: number;
+};
+
+export type H3Cell = {
+  cellRef: number;
+  h3: bigint;
+  regionCode: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+export type H3CellObs = {
+  cellRef: number;
+  month: number;
+  speciesId: number;
+  obs: number;
+};
+
+export type H3CellSamples = {
+  cellRef: number;
   month: number;
   samples: number;
 };
