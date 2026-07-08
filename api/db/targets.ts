@@ -20,6 +20,14 @@ export type TargetsDatabaseSchema = {
 };
 
 export type TargetsDb = Kysely<TargetsDatabaseSchema>;
+type SqliteDatabase = Database.Database;
+type SpeciesInfo = { code: string; name: string };
+
+export type RawTargetsAccess = {
+  db: TargetsDb;
+  sqlite: SqliteDatabase;
+  speciesById: Map<number, SpeciesInfo>;
+};
 
 const REQUIRED_TABLES = [
   "hotspots", "month_obs", "year_obs", "species",
@@ -29,30 +37,48 @@ const REQUIRED_TABLES = [
 
 type TargetsDbState = {
   db: TargetsDb;
+  sqlite: SqliteDatabase;
+  speciesById: Map<number, SpeciesInfo> | null;
   activeRequests: number;
   retired: boolean;
   closed: boolean;
 };
 
-function openTargetsKysely(path: string): TargetsDb {
+function openTargetsKysely(path: string): { db: TargetsDb; sqlite: SqliteDatabase } {
   const sqlite = new (Database as any)(path, {
     readonly: true,
     fileMustExist: true,
-  });
+  }) as SqliteDatabase;
   sqlite.pragma("foreign_keys = ON");
-  return new Kysely<TargetsDatabaseSchema>({
+  const db = new Kysely<TargetsDatabaseSchema>({
     dialect: new SqliteDialect({ database: sqlite }),
     plugins: [new CamelCasePlugin()],
   });
+  return { db, sqlite };
 }
 
 function createTargetsDbState(path: string): TargetsDbState {
+  const { db, sqlite } = openTargetsKysely(path);
   return {
-    db: openTargetsKysely(path),
+    db,
+    sqlite,
+    speciesById: null,
     activeRequests: 0,
     retired: false,
     closed: false,
   };
+}
+
+function getSpeciesById(state: TargetsDbState): Map<number, SpeciesInfo> {
+  if (!state.speciesById) {
+    const rows = state.sqlite.prepare("SELECT id, code, name FROM species").raw().all() as [number, string, string][];
+    const map = new Map<number, SpeciesInfo>();
+    for (const [id, code, name] of rows) {
+      map.set(id, { code, name });
+    }
+    state.speciesById = map;
+  }
+  return state.speciesById;
 }
 
 function getTargetsDbPath(filename: string): string {
@@ -81,6 +107,23 @@ export async function withTargetsDb<T>(fn: (db: TargetsDb) => Promise<T>): Promi
   state.activeRequests += 1;
   try {
     return await fn(state.db);
+  } finally {
+    state.activeRequests -= 1;
+    if (state.retired && state.activeRequests === 0) {
+      void closeTargetsDb(state);
+    }
+  }
+}
+
+export async function withRawTargetsDb<T>(fn: (access: RawTargetsAccess) => Promise<T> | T): Promise<T> {
+  const state = currentTargetsDb;
+  if (!state) {
+    throw new Error("Targets database not available");
+  }
+
+  state.activeRequests += 1;
+  try {
+    return await fn({ db: state.db, sqlite: state.sqlite, speciesById: getSpeciesById(state) });
   } finally {
     state.activeRequests -= 1;
     if (state.retired && state.activeRequests === 0) {
