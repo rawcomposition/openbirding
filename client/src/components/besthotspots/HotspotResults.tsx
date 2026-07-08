@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ApiError } from "@/lib/utils";
@@ -16,7 +15,7 @@ export function HotspotResults() {
   const selectedHotspot = useBestHotspotsSession((s) => s.selectedHotspot);
   const setSelectedHotspot = useBestHotspotsSession((s) => s.setSelectedHotspot);
 
-  const { hotspots, data, isFetching, isError, error, refetch, scopeKind } = useHotspots();
+  const { hotspots, data, isFetching, isError, error, refetch } = useHotspots();
   const hotspotsInScope = data?.meta.hotspotsInScope;
   const citation = data?.citation;
   const errorMessage = error instanceof ApiError ? error.userMessage : undefined;
@@ -27,15 +26,7 @@ export function HotspotResults() {
 
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-slate-100">
-      <div className="flex items-center gap-2 px-3 pt-2">
-        <h2 className="text-base font-semibold text-slate-700">
-          Best hotspots {scopeKind === "hex" ? "in selection" : "in view"}
-        </h2>
-        {isFetching && hotspots.length > 0 && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
-        )}
-      </div>
-      <div className="flex items-center gap-1.5 px-3 pb-2 pt-1.5">
+      <div className="flex items-center gap-1.5 px-3 pb-2 pt-3">
         <PillSelect
           value={frequency}
           onChange={(v) => setFrequency(Number(v))}
