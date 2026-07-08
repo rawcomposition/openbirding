@@ -69,7 +69,7 @@ const BestHotspots = () => {
   };
 
   useEffect(() => {
-    if (selectedHotspot) mapHandle.current?.flyTo(selectedHotspot.lng, selectedHotspot.lat);
+    if (selectedHotspot) mapHandle.current?.ensureVisible(selectedHotspot.lng, selectedHotspot.lat);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHotspot?.id]);
 

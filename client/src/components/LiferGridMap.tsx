@@ -26,7 +26,7 @@ type Props = {
 };
 
 export type GridMapHandle = {
-  flyTo: (lng: number, lat: number) => void;
+  ensureVisible: (lng: number, lat: number) => void;
 };
 
 const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
@@ -296,9 +296,10 @@ const LiferGridMap = forwardRef<GridMapHandle, Props>(function LiferGridMap(
   }, [markerAt]);
 
   useImperativeHandle(handleRef, () => ({
-    flyTo(lng: number, lat: number) {
+    ensureVisible(lng: number, lat: number) {
       const map = mapRef.current;
       if (!map) return;
+      if (map.getBounds().contains([lng, lat])) return;
       map.flyTo({ center: [lng, lat], duration: 800, essential: true });
     },
   }));
