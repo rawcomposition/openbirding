@@ -1,8 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MapPin } from "lucide-react";
+import { Search } from "lucide-react";
 import HotspotList from "@/components/HotspotList";
 import SpeciesSearch from "@/components/SpeciesSearch";
 import { RegionFilter } from "@/components/filters/RegionFilter";
@@ -53,11 +52,8 @@ const BirdFinder = () => {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-6 flex-wrap">
-          <MapPin className="h-6 w-6 text-emerald-600" />
+          <Search className="h-6 w-6 text-emerald-600" />
           <h1 className="text-3xl font-bold text-slate-900">Bird Finder</h1>
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
-            Experimental
-          </Badge>
         </div>
 
         <div className="max-w-xl mb-3 mt-12">
