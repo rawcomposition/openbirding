@@ -21,12 +21,10 @@ export type TargetsDatabaseSchema = {
 
 export type TargetsDb = Kysely<TargetsDatabaseSchema>;
 type SqliteDatabase = Database.Database;
-type SpeciesInfo = { code: string; name: string };
 
 export type RawTargetsAccess = {
   db: TargetsDb;
   sqlite: SqliteDatabase;
-  speciesById: Map<number, SpeciesInfo>;
 };
 
 const REQUIRED_TABLES = [
@@ -38,7 +36,6 @@ const REQUIRED_TABLES = [
 type TargetsDbState = {
   db: TargetsDb;
   sqlite: SqliteDatabase;
-  speciesById: Map<number, SpeciesInfo> | null;
   activeRequests: number;
   retired: boolean;
   closed: boolean;
@@ -62,23 +59,10 @@ function createTargetsDbState(path: string): TargetsDbState {
   return {
     db,
     sqlite,
-    speciesById: null,
     activeRequests: 0,
     retired: false,
     closed: false,
   };
-}
-
-function getSpeciesById(state: TargetsDbState): Map<number, SpeciesInfo> {
-  if (!state.speciesById) {
-    const rows = state.sqlite.prepare("SELECT id, code, name FROM species").raw().all() as [number, string, string][];
-    const map = new Map<number, SpeciesInfo>();
-    for (const [id, code, name] of rows) {
-      map.set(id, { code, name });
-    }
-    state.speciesById = map;
-  }
-  return state.speciesById;
 }
 
 function getTargetsDbPath(filename: string): string {
@@ -123,7 +107,7 @@ export async function withRawTargetsDb<T>(fn: (access: RawTargetsAccess) => Prom
 
   state.activeRequests += 1;
   try {
-    return await fn({ db: state.db, sqlite: state.sqlite, speciesById: getSpeciesById(state) });
+    return await fn({ db: state.db, sqlite: state.sqlite });
   } finally {
     state.activeRequests -= 1;
     if (state.retired && state.activeRequests === 0) {

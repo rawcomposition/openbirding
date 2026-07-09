@@ -544,7 +544,12 @@ export async function executeLocationTargetsQuery(targetsDb: TargetsDb, location
 
 export async function executeLocationsTargetsQuery(access: RawTargetsAccess, locationIds: string[], months: number[] | null) {
   const startTime = performance.now();
-  const { sqlite, speciesById } = access;
+  const { sqlite } = access;
+
+  const speciesById = new Map<number, { code: string; name: string }>();
+  for (const [id, code, name] of sqlite.prepare("SELECT id, code, name FROM species").raw().all() as [number, string, string][]) {
+    speciesById.set(id, { code, name });
+  }
 
   const idPlaceholders = locationIds.map(() => "?").join(", ");
   const monthClause = months ? ` AND month IN (${months.map(() => "?").join(", ")})` : "";
