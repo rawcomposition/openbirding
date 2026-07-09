@@ -554,45 +554,42 @@ export async function executeLocationsTargetsQuery(access: RawTargetsAccess, loc
   const idPlaceholders = locationIds.map(() => "?").join(", ");
   const monthClause = months ? ` AND month IN (${months.map(() => "?").join(", ")})` : "";
   const statement = sqlite.prepare(
-    `SELECT location_id, species_id, month, obs, samples FROM month_obs WHERE location_id IN (${idPlaceholders})${monthClause}`
+    `SELECT location_id, group_concat(species_id), group_concat(month), group_concat(obs), group_concat(samples)
+     FROM month_obs WHERE location_id IN (${idPlaceholders})${monthClause} GROUP BY location_id`
   );
-  const rows = statement.raw().all(...locationIds, ...(months ?? [])) as [string, number, number, number, number][];
-
-  type LocationEntry = { samples: (number | null)[]; speciesByCode: Map<string, { name: string; obs: number[] }> };
-  const byLocation = new Map<string, LocationEntry>();
-
-  for (const [locationId, speciesId, month, obs, samples] of rows) {
-    const species = speciesById.get(speciesId);
-    if (!species) {
-      continue;
-    }
-    let location = byLocation.get(locationId);
-    if (!location) {
-      location = { samples: Array(12).fill(null), speciesByCode: new Map() };
-      byLocation.set(locationId, location);
-    }
-    const monthIdx = month - 1;
-    if (location.samples[monthIdx] === null) {
-      location.samples[monthIdx] = samples;
-    }
-    let speciesEntry = location.speciesByCode.get(species.code);
-    if (!speciesEntry) {
-      speciesEntry = { name: species.name, obs: Array(12).fill(0) };
-      location.speciesByCode.set(species.code, speciesEntry);
-    }
-    speciesEntry.obs[monthIdx] = obs;
-  }
+  const packedRows = statement.raw().all(...locationIds, ...(months ?? [])) as [string, string, string, string, string][];
 
   const locations: Record<string, { items: Array<{ code: string; name: string; obs: number[] }>; samples: (number | null)[] }> = {};
-  for (const [locationId, location] of byLocation) {
-    locations[locationId] = {
-      items: [...location.speciesByCode.entries()].map(([code, speciesEntry]) => ({
-        code,
-        name: speciesEntry.name,
-        obs: speciesEntry.obs,
-      })),
-      samples: location.samples,
-    };
+  for (const [locationId, speciesIds, packedMonths, packedObs, packedSamples] of packedRows) {
+    const speciesCol = speciesIds.split(",");
+    const monthCol = packedMonths.split(",");
+    const obsCol = packedObs.split(",");
+    const samplesCol = packedSamples.split(",");
+
+    const samples: (number | null)[] = Array(12).fill(null);
+    const obsBySpeciesId = new Map<number, number[]>();
+    for (let i = 0; i < speciesCol.length; i++) {
+      const monthIdx = +monthCol[i] - 1;
+      if (samples[monthIdx] === null) {
+        samples[monthIdx] = +samplesCol[i];
+      }
+      const speciesId = +speciesCol[i];
+      let obs = obsBySpeciesId.get(speciesId);
+      if (!obs) {
+        obs = Array(12).fill(0);
+        obsBySpeciesId.set(speciesId, obs);
+      }
+      obs[monthIdx] = +obsCol[i];
+    }
+
+    const items: Array<{ code: string; name: string; obs: number[] }> = [];
+    for (const [speciesId, obs] of obsBySpeciesId) {
+      const species = speciesById.get(speciesId);
+      if (species) {
+        items.push({ code: species.code, name: species.name, obs });
+      }
+    }
+    locations[locationId] = { items, samples };
   }
 
   return {
