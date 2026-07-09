@@ -1,6 +1,6 @@
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
-import { db, type TargetsDb } from "../db/index.js";
+import { db, type RawTargetsAccess, type TargetsDb } from "../db/index.js";
 import { getTargetsMetadata } from "../db/targets.js";
 import { ebdCitation } from "../lib/utils.js";
 import { parseRegionCodes } from "./targets-validators.js";
@@ -538,6 +538,66 @@ export async function executeLocationTargetsQuery(targetsDb: TargetsDb, location
     items,
     samples,
     citation: await getEbdCitation(targetsDb),
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
+  };
+}
+
+export async function executeLocationsTargetsQuery(access: RawTargetsAccess, locationIds: string[], months: number[] | null) {
+  const startTime = performance.now();
+  const { sqlite } = access;
+
+  const speciesById = new Map<number, { code: string; name: string }>();
+  for (const [id, code, name] of sqlite.prepare("SELECT id, code, name FROM species").raw().all() as [number, string, string][]) {
+    speciesById.set(id, { code, name });
+  }
+
+  const idPlaceholders = locationIds.map(() => "?").join(", ");
+  const monthClause = months ? ` AND month IN (${months.map(() => "?").join(", ")})` : "";
+  const statement = sqlite.prepare(
+    `SELECT location_id, species_id, month, obs, samples FROM month_obs WHERE location_id IN (${idPlaceholders})${monthClause}`
+  );
+  const rows = statement.raw().all(...locationIds, ...(months ?? [])) as [string, number, number, number, number][];
+
+  type LocationEntry = { samples: (number | null)[]; speciesByCode: Map<string, { name: string; obs: number[] }> };
+  const byLocation = new Map<string, LocationEntry>();
+
+  for (const [locationId, speciesId, month, obs, samples] of rows) {
+    const species = speciesById.get(speciesId);
+    if (!species) {
+      continue;
+    }
+    let location = byLocation.get(locationId);
+    if (!location) {
+      location = { samples: Array(12).fill(null), speciesByCode: new Map() };
+      byLocation.set(locationId, location);
+    }
+    const monthIdx = month - 1;
+    if (location.samples[monthIdx] === null) {
+      location.samples[monthIdx] = samples;
+    }
+    let speciesEntry = location.speciesByCode.get(species.code);
+    if (!speciesEntry) {
+      speciesEntry = { name: species.name, obs: Array(12).fill(0) };
+      location.speciesByCode.set(species.code, speciesEntry);
+    }
+    speciesEntry.obs[monthIdx] = obs;
+  }
+
+  const locations: Record<string, { items: Array<{ code: string; name: string; obs: number[] }>; samples: (number | null)[] }> = {};
+  for (const [locationId, location] of byLocation) {
+    locations[locationId] = {
+      items: [...location.speciesByCode.entries()].map(([code, speciesEntry]) => ({
+        code,
+        name: speciesEntry.name,
+        obs: speciesEntry.obs,
+      })),
+      samples: location.samples,
+    };
+  }
+
+  return {
+    locations,
+    citation: await getEbdCitation(access.db),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
 }

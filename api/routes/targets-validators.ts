@@ -179,3 +179,11 @@ export function parseLocationIds(value: unknown): string[] | null {
 
   return [...new Set(locationIds)];
 }
+
+export function parseLocationIdsBody(value: unknown): string[] {
+  const locationIds = parseLocationIds(value);
+  if (locationIds === null) {
+    throw new HTTPException(400, { message: "locationIds must contain at least one hotspot ID" });
+  }
+  return locationIds;
+}
