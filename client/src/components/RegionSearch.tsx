@@ -118,7 +118,6 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
         placeholder: () => "text-slate-400 text-left",
         indicatorsContainer: () => "h-[34px]",
         menu: () => "mt-1 bg-white border border-slate-200 rounded-md shadow-lg",
-        menuPortal: () => "z-50",
         menuList: () => "p-1",
         option: (state) =>
           `text-left text-slate-900 px-3 py-2 rounded cursor-pointer ${
@@ -129,6 +128,7 @@ export default function RegionSearch({ value, onChange }: RegionSearchProps) {
       }}
       inputId="region-search"
       instanceId="region-search"
+      styles={{ menuPortal: (base) => ({ ...base, zIndex: 60 }) }}
       menuPortalTarget={document.body}
       menuPosition="fixed"
       value={selectValue}
