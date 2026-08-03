@@ -351,13 +351,16 @@ function buildMonthlySamples(samplesRows: Array<{ month: number; samples: number
 
 function buildTargetsItems(speciesRows: TargetsSpeciesRow[], samples: number[], months: number[] | null) {
   const monthFilter = months ? new Set(months) : null;
+  const filteredSamples = samples.reduce(
+    (total, count, idx) => (!monthFilter || monthFilter.has(idx + 1) ? total + count : total),
+    0
+  );
   type SpeciesEntry = {
     name: string;
     sciName: string;
     taxonOrder: number;
     obs: number[];
     filteredObs: number;
-    filteredSamples: number;
   };
   const speciesByCode = new Map<string, SpeciesEntry>();
 
@@ -370,7 +373,6 @@ function buildTargetsItems(speciesRows: TargetsSpeciesRow[], samples: number[], 
         taxonOrder: row.taxonOrder,
         obs: Array(12).fill(0),
         filteredObs: 0,
-        filteredSamples: 0,
       };
       speciesByCode.set(row.code, entry);
     }
@@ -378,17 +380,18 @@ function buildTargetsItems(speciesRows: TargetsSpeciesRow[], samples: number[], 
     entry.obs[monthIdx] = row.obs;
     if (!monthFilter || monthFilter.has(row.month)) {
       entry.filteredObs += row.obs;
-      entry.filteredSamples += samples[monthIdx];
     }
   }
 
+  if (filteredSamples === 0) return [];
+
   return [...speciesByCode.entries()]
-    .filter(([, entry]) => entry.filteredObs > 0 && entry.filteredSamples > 0)
+    .filter(([, entry]) => entry.filteredObs > 0)
     .map(([code, entry]) => ({
       code,
       name: entry.name,
       sciName: entry.sciName,
-      frequency: roundFrequency((entry.filteredObs / entry.filteredSamples) * 100),
+      frequency: roundFrequency((entry.filteredObs / filteredSamples) * 100),
       obs: entry.obs,
       _filteredObs: entry.filteredObs,
       _taxonOrder: entry.taxonOrder,
