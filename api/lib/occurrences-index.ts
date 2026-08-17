@@ -28,6 +28,14 @@ export type CellInfo = {
   /** Total checklists across those named hotspots. */
   hotspotChecklists: number;
 };
+/** Totals across a cell selection, with species counted once across all cells. */
+export type CellsSummary = {
+  samples: number;
+  totalSpecies: number;
+  lifers: number;
+  namedHotspots: number;
+  hotspotChecklists: number;
+};
 export type Bbox = { minLng: number; minLat: number; maxLng: number; maxLat: number };
 type ZoneDataset = {
   res: number;
@@ -518,7 +526,7 @@ class OccurrencesIndex {
    * two explains why a colourful, data-rich cell can still surface no hotspots:
    * the effort is dispersed across personal locations rather than named spots.
    */
-  cellsInfo(seenIds: Set<number>, res: number, h3s: string[]): CellInfo[] {
+  cellsInfo(seenIds: Set<number>, res: number, h3s: string[]): { cells: CellInfo[]; summary: CellsSummary } {
     if (!this.zonesByRes) throw new Error("Zones not loaded");
     const zs = this.zonesByRes.get(res);
     const cellRefOfLoc = this.locCellRef.get(res);
@@ -539,7 +547,7 @@ class OccurrencesIndex {
 
     const counter = zs ? this.walkSeen(zs, seenIds) : null;
     const q0 = zs?.qCount[0];
-    return h3s.map((h3) => {
+    const cells = h3s.map((h3) => {
       const ref = zs?.byH3.get(h3);
       const hot =
         ref != null
@@ -557,6 +565,48 @@ class OccurrencesIndex {
         ...hot,
       };
     });
+
+    const summary: CellsSummary = { samples: 0, totalSpecies: 0, lifers: 0, namedHotspots: 0, hotspotChecklists: 0 };
+    if (zs && wantRefs) {
+      for (const ref of wantRefs) {
+        summary.samples += zs.geo.samples[ref];
+        summary.namedHotspots += hotCount.get(ref) ?? 0;
+        summary.hotspotChecklists += hotLists.get(ref) ?? 0;
+      }
+      const union = this.unionSpecies(zs, seenIds, wantRefs);
+      summary.totalSpecies = union.totalSpecies;
+      summary.lifers = union.lifers;
+    }
+    return { cells, summary };
+  }
+
+  /**
+   * Distinct species (and of those, unseen ones) across a set of cells — the
+   * numbers shown for a multi-cell selection. Summing the per-cell counts would
+   * count a species once per cell it occurs in; this walks the species -> cell
+   * CSR and counts each species at most once.
+   */
+  private unionSpecies(
+    zs: ZoneDataset,
+    seenIds: Set<number>,
+    refs: Set<number>
+  ): { totalSpecies: number; lifers: number } {
+    const { spOff, csrRef } = zs.geo;
+    const selected = new Uint8Array(zs.numRefs);
+    for (const ref of refs) selected[ref] = 1;
+
+    let totalSpecies = 0;
+    let lifers = 0;
+    for (let sid = 0; sid + 1 < spOff.length; sid++) {
+      const end = spOff[sid + 1];
+      for (let i = spOff[sid]; i < end; i++) {
+        if (!selected[csrRef[i]]) continue;
+        totalSpecies++;
+        if (!seenIds.has(sid)) lifers++;
+        break;
+      }
+    }
+    return { totalSpecies, lifers };
   }
 
   getSpeciesMeta(id: number): SpeciesMeta | undefined {

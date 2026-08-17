@@ -51,3 +51,11 @@ export type CellInfo = {
   namedHotspots: number;
   hotspotChecklists: number;
 };
+
+export type CellsSummary = {
+  samples: number;
+  totalSpecies: number;
+  lifers: number;
+  namedHotspots: number;
+  hotspotChecklists: number;
+};

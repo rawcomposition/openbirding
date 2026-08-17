@@ -378,7 +378,7 @@ bestHotspotsRoute.post("/cells", async (c) => {
   await ensureZonesLoaded(index);
   const resolution = parseResolution(body.resolution, index.resolutions);
   const { ids: seenIds } = index.resolveSpecies(speciesInputs);
-  return c.json({ resolution, cells: index.cellsInfo(seenIds, resolution, cells) });
+  return c.json({ resolution, ...index.cellsInfo(seenIds, resolution, cells) });
 });
 
 export default bestHotspotsRoute;
