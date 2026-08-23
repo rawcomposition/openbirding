@@ -12,7 +12,6 @@ export type Hotspot = {
   subnational2: string | null;
   lat: number;
   lng: number;
-  latestObsAt: Date | null;
   numSpecies: number | null;
   numChecklists: number | null;
   firstSyncedAt: Generated<Date>;
