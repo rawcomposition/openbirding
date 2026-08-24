@@ -20,8 +20,24 @@ export type Hotspot = {
   updatedAt: Generated<Date>;
 };
 
+export const ACCESS_STATUSES = ["open", "not_open", "unknown"] as const;
+export type AccessStatus = (typeof ACCESS_STATUSES)[number];
+
+export type HotspotAccess = {
+  hotspotId: string;
+  status: AccessStatus;
+  feeRequired: Generated<boolean>;
+  timeRestricted: Generated<boolean>;
+  permitRequired: Generated<boolean>;
+  note: string | null;
+  verifiedOn: Generated<Date>;
+  createdAt: Generated<Date>;
+  updatedAt: Generated<Date>;
+};
+
 export type PostgresDatabaseSchema = {
   hotspots: Hotspot;
+  hotspotAccess: HotspotAccess;
 };
 
 export const pgDb = new Kysely<PostgresDatabaseSchema>({
