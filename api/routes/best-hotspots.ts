@@ -259,6 +259,7 @@ bestHotspotsRoute.post("/hotspots", async (c) => {
       version: `${index.versionMonth} ${index.versionYear}`,
     },
     citation: ebdCitation(index.versionMonth, index.versionYear),
+    taxonomyVersion: index.taxonomyVersion,
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   });
 });
@@ -318,6 +319,7 @@ bestHotspotsRoute.post("/hotspot/:locationId", async (c) => {
     liferCount: lifers.length,
     frequency: threshold,
     citation: ebdCitation(index.versionMonth, index.versionYear),
+    taxonomyVersion: index.taxonomyVersion,
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   });
 });

@@ -20,6 +20,7 @@ export type HotspotResponse = {
     minChecklists: number;
   };
   citation?: string;
+  taxonomyVersion?: string | null;
   queryTime: string;
 };
 

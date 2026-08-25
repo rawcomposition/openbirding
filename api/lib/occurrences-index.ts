@@ -107,6 +107,7 @@ class OccurrencesIndex {
   readonly minChecklistsFloor: number;
   readonly versionMonth: string;
   readonly versionYear: string;
+  readonly taxonomyVersion: string | null;
   readonly generatedAt: string;
   readonly numLocs: number;
 
@@ -158,6 +159,7 @@ class OccurrencesIndex {
     this.minChecklistsFloor = meta.min_checklists;
     this.versionMonth = meta.version_month;
     this.versionYear = meta.version_year;
+    this.taxonomyVersion = meta.taxonomy_version ?? null;
     this.generatedAt = meta.generated_at;
 
     this.numLocs = (db.prepare("SELECT COUNT(*) c FROM loc_meta").get() as any).c;

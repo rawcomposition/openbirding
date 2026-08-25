@@ -86,6 +86,7 @@ export type TargetMetadata = {
   version: string;
   versionMonth: string;
   versionYear: string;
+  taxonomyVersion?: string | null;
 };
 
 export type TargetRegion = {

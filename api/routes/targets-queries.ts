@@ -5,9 +5,9 @@ import { getTargetsMetadata } from "../db/targets.js";
 import { ebdCitation } from "../lib/utils.js";
 import { parseRegionCodes } from "./targets-validators.js";
 
-async function getEbdCitation(targetsDb: TargetsDb) {
-  const { versionMonth, versionYear } = await getTargetsMetadata(targetsDb);
-  return ebdCitation(versionMonth, versionYear);
+async function getEbdMeta(targetsDb: TargetsDb) {
+  const { versionMonth, versionYear, taxonomyVersion } = await getTargetsMetadata(targetsDb);
+  return { citation: ebdCitation(versionMonth, versionYear), taxonomyVersion: taxonomyVersion ?? null };
 }
 
 type HotspotsRequestOptions = {
@@ -318,7 +318,7 @@ export async function executeHotspotsQuery(targetsDb: TargetsDb, options: Hotspo
   const items = mapScoredHotspotItems(rows, regionMap, options.region ? parseRegionCodes(options.region) : null);
 
   const queryTime = Math.round(performance.now() - startTime);
-  return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
+  return { items, ...(await getEbdMeta(targetsDb)), queryTime: `${queryTime} ms` };
 }
 
 export async function executeHotspotsPostQuery(targetsDb: TargetsDb, options: HotspotsRequestOptions) {
@@ -329,7 +329,7 @@ export async function executeHotspotsPostQuery(targetsDb: TargetsDb, options: Ho
   const items = mapFrequencyHotspotItems(rows, regionMap, options.region ? parseRegionCodes(options.region) : null);
 
   const queryTime = Math.round(performance.now() - startTime);
-  return { items, citation: await getEbdCitation(targetsDb), queryTime: `${queryTime} ms` };
+  return { items, ...(await getEbdMeta(targetsDb)), queryTime: `${queryTime} ms` };
 }
 
 type TargetsSpeciesRow = {
@@ -439,7 +439,7 @@ export async function executeRegionTargetsQuery(targetsDb: TargetsDb, regionCode
   return {
     items,
     samples,
-    citation: await getEbdCitation(targetsDb),
+    ...(await getEbdMeta(targetsDb)),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
 }
@@ -456,7 +456,7 @@ export async function executeH3TargetsQuery(targetsDb: TargetsDb, cells: bigint[
       items: [],
       samples: Array(12).fill(0),
       cellCount: 0,
-      citation: await getEbdCitation(targetsDb),
+      ...(await getEbdMeta(targetsDb)),
       queryTime: `${Math.round(performance.now() - startTime)} ms`,
     };
   }
@@ -495,7 +495,7 @@ export async function executeH3TargetsQuery(targetsDb: TargetsDb, cells: bigint[
     items,
     samples,
     cellCount: cellRefsResult.rows.length,
-    citation: await getEbdCitation(targetsDb),
+    ...(await getEbdMeta(targetsDb)),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
 }
@@ -540,7 +540,7 @@ export async function executeLocationTargetsQuery(targetsDb: TargetsDb, location
   return {
     items,
     samples,
-    citation: await getEbdCitation(targetsDb),
+    ...(await getEbdMeta(targetsDb)),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
 }
@@ -597,7 +597,7 @@ export async function executeLocationsTargetsQuery(access: RawTargetsAccess, loc
 
   return {
     locations,
-    citation: await getEbdCitation(access.db),
+    ...(await getEbdMeta(access.db)),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
 }
