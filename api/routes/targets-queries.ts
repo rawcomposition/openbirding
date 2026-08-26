@@ -237,30 +237,34 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
 
   if (options.months) {
     const monthList = sql.join(options.months.map((month) => sql`${month}`), sql`, `);
-    const obsExpr = sql<number>`SUM(month_obs.obs)`;
-    const samplesExpr = sql<number>`SUM(month_obs.samples)`;
-    const frequencyExpr = sql<number>`(${obsExpr} * 1.0 / ${samplesExpr})`;
-    const scoreExpr = sql<number>`(SUM(month_obs.score * month_obs.samples) * 1.0 / NULLIF(${samplesExpr}, 0))`;
 
-    const baseSelect = [
-      "hotspots.id",
-      "hotspots.name",
-      "hotspots.countryCode",
-      "hotspots.subnational1Code",
-      "hotspots.subnational2Code",
-      "hotspots.lat",
-      "hotspots.lng",
-      obsExpr.as("obs"),
-      samplesExpr.as("samples"),
-    ] as const;
-
-    let query = targetsDb
+    const speciesObs = targetsDb
       .selectFrom("monthObs as month_obs")
-      .innerJoin("hotspots", "month_obs.locationId", "hotspots.id")
       .where("month_obs.speciesId", "=", speciesId)
       .where(sql<boolean>`month_obs.month IN (${monthList})`)
-      .select(useBest ? [...baseSelect, scoreExpr.as("score")] : [...baseSelect])
-      .groupBy([
+      .select([
+        "month_obs.locationId",
+        sql<number>`SUM(month_obs.obs)`.as("obs"),
+        sql<number>`SUM(month_obs.score * month_obs.samples)`.as("weightedScore"),
+      ])
+      .groupBy("month_obs.locationId");
+
+    // month_obs stores the location's full checklist count on every species row
+    // for that (location, month), so a single LIMIT 1 seek per month recovers the
+    // true denominator — including months where this species has no row at all.
+    const samplesExpr = sql<number>`(${sql.join(
+      options.months.map(
+        (month) =>
+          sql`COALESCE((SELECT samples FROM month_obs WHERE location_id = species_obs.location_id AND month = ${month} LIMIT 1), 0)`
+      ),
+      sql` + `
+    )})`;
+    const scoreExpr = sql<number>`(species_obs.weighted_score * 1.0 / NULLIF(${samplesExpr}, 0))`;
+
+    let query = targetsDb
+      .selectFrom(speciesObs.as("speciesObs"))
+      .innerJoin("hotspots", "speciesObs.locationId", "hotspots.id")
+      .select([
         "hotspots.id",
         "hotspots.name",
         "hotspots.countryCode",
@@ -268,13 +272,18 @@ async function fetchPostHotspotRows(targetsDb: TargetsDb, speciesId: number, opt
         "hotspots.subnational2Code",
         "hotspots.lat",
         "hotspots.lng",
+        "speciesObs.obs",
+        samplesExpr.as("samples"),
+        ...(useBest ? [scoreExpr.as("score")] : []),
       ])
-      .$if(useBest, (qb) => qb.orderBy(scoreExpr, "desc").orderBy(obsExpr, "desc"))
-      .$if(!useBest, (qb) => qb.orderBy(frequencyExpr, "desc").orderBy(obsExpr, "desc"))
+      .$if(useBest, (qb) => qb.orderBy(sql`score`, "desc").orderBy("speciesObs.obs", "desc"))
+      .$if(!useBest, (qb) =>
+        qb.orderBy(sql`(species_obs.obs * 1.0 / samples)`, "desc").orderBy("speciesObs.obs", "desc")
+      )
       .limit(options.limit);
 
     if (options.minObservations != null) {
-      query = query.having(obsExpr, ">=", options.minObservations);
+      query = query.where("speciesObs.obs", ">=", options.minObservations);
     }
 
     return applyHotspotWhereFilters(query, options).execute();
