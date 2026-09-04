@@ -1,5 +1,4 @@
 export { db, setupDatabase, setupRegionsFts, type DatabaseSchema } from "./main.js";
-export { pgDb, migratePostgres, type Hotspot, type PostgresDatabaseSchema } from "./postgres.js";
 export { default } from "./main.js";
 export {
   getTargetsMetadata,

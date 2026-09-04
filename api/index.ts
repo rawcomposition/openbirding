@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { userMessageFor } from "./lib/user-error.js";
-import { setupDatabase, migratePostgres } from "./db/index.js";
+import { setupDatabase } from "./db/index.js";
 import packs from "./routes/packs.js";
 import backups from "./routes/backups.js";
 import reports from "./routes/reports.js";
@@ -55,7 +55,6 @@ app.onError((err, c) => {
 });
 
 setupDatabase()
-  .then(() => migratePostgres())
   .then(() => {
     serve(
       {
