@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { withTargetsDb } from "../db/index.js";
 import { requireTargetsDb } from "./targets-middleware.js";
 import { executeHotspotsPostQuery, executeHotspotsQuery } from "./targets-queries.js";
-import { isLocationId, parseBBoxBody, parseBBoxParam, parseLimit, parseLocationIds, parseMinObservations, parseMonth } from "./targets-validators.js";
+import { isLocationId, parseBBoxBody, parseBBoxParam, parseLimit, parseLocationIds, parseMinCount, parseMinObservations, parseMonth } from "./targets-validators.js";
 
 const hotspotsRoute = new Hono();
 
@@ -17,6 +17,8 @@ hotspotsRoute.get("/", async (c) => {
   if (!bbox) {
     throw new HTTPException(400, { message: "bbox is required" });
   }
+  const minChecklists = parseMinCount(c.req.query("minChecklists"), "minChecklists");
+  const minSpecies = parseMinCount(c.req.query("minSpecies"), "minSpecies");
 
   const rows = await withTargetsDb((targetsDb) =>
     targetsDb
@@ -26,6 +28,8 @@ hotspotsRoute.get("/", async (c) => {
       .where("lat", "<=", bbox.maxLat)
       .where("lng", ">=", bbox.minLng)
       .where("lng", "<=", bbox.maxLng)
+      .$if(minChecklists != null, (qb) => qb.where("numChecklists", ">=", minChecklists!))
+      .$if(minSpecies != null, (qb) => qb.where("numSpecies", ">=", minSpecies!))
       .orderBy("numSpecies", "desc")
       .limit(BBOX_HOTSPOTS_MAX + 1)
       .execute()

@@ -118,6 +118,17 @@ export function parseMinObservations(value: string | number | undefined | null):
   return minObservations;
 }
 
+export function parseMinCount(value: string | undefined | null, name: string): number | null {
+  if (value == null) {
+    return null;
+  }
+  const minCount = Number(value);
+  if (!Number.isInteger(minCount) || minCount < 0) {
+    throw new HTTPException(400, { message: `${name} must be a non-negative integer` });
+  }
+  return minCount;
+}
+
 export function parseBBoxParam(value: string | undefined | null): BoundingBox | null {
   if (!value) {
     return null;
