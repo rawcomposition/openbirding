@@ -8,6 +8,8 @@ import { isLocationId, parseBBoxBody, parseBBoxParam, parseLimit, parseLocationI
 const hotspotsRoute = new Hono();
 
 const BBOX_HOTSPOTS_MAX = 50000;
+// SQLite builds before 3.32 cap bound parameters per statement at 999
+const LOOKUP_CHUNK_SIZE = 999;
 const HOTSPOT_CACHE_CONTROL = "public, max-age=86400";
 
 hotspotsRoute.use("*", requireTargetsDb);
@@ -128,6 +130,40 @@ hotspotsRoute.get("/location/:id", async (c) => {
 
   c.header("Cache-Control", HOTSPOT_CACHE_CONTROL);
   return c.json(hotspot);
+});
+
+hotspotsRoute.post("/lookup", async (c) => {
+  let body: { ids?: unknown };
+  try {
+    body = await c.req.json<{ ids?: unknown }>();
+  } catch {
+    throw new HTTPException(400, { message: "Request body must be valid JSON" });
+  }
+  if (!Array.isArray(body.ids) || !body.ids.every((id) => typeof id === "string")) {
+    throw new HTTPException(400, { message: "ids must be an array of strings" });
+  }
+  const ids = [...new Set((body.ids as string[]).map((id) => id.trim().toUpperCase()).filter(Boolean))];
+  if (ids.length === 0) {
+    return c.json({ items: [] });
+  }
+
+  const chunks = Array.from({ length: Math.ceil(ids.length / LOOKUP_CHUNK_SIZE) }, (_, i) =>
+    ids.slice(i * LOOKUP_CHUNK_SIZE, (i + 1) * LOOKUP_CHUNK_SIZE)
+  );
+  const items = await withTargetsDb(async (targetsDb) => {
+    const results = await Promise.all(
+      chunks.map((chunk) =>
+        targetsDb
+          .selectFrom("hotspots")
+          .select(["id", "name", "countryCode", "subnational1Code", "subnational2Code", "regionCode", "lat", "lng", "numSpecies", "numChecklists"])
+          .where("id", "in", chunk)
+          .execute()
+      )
+    );
+    return results.flat();
+  });
+
+  return c.json({ items });
 });
 
 export default hotspotsRoute;
