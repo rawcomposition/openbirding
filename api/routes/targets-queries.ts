@@ -54,6 +54,15 @@ export function roundFrequency(pct: number): number {
   return Math.round(pct * 100) / 100;
 }
 
+export function hotspotRegionMatches(eb: any, regionCodes: string[]) {
+  return eb.or(
+    regionCodes.flatMap((code) => [
+      eb("hotspots.regionCode", "=", code),
+      eb("hotspots.regionCode", "like", `${code}-%`),
+    ])
+  );
+}
+
 function buildRegionConditions(regionCodes: string[]) {
   return sql.join(
     regionCodes.map((code) => sql`(code = ${code} OR code LIKE ${code + "-%"})`),
@@ -92,9 +101,7 @@ function applyHotspotWhereFilters<T>(query: T, options: Pick<HotspotsRequestOpti
 
   if (options.region) {
     const codes = parseRegionCodes(options.region);
-    filteredQuery = filteredQuery.where((eb: any) =>
-      eb.or(codes.map((code) => eb("hotspots.regionCode", "like", `${code}%`)))
-    );
+    filteredQuery = filteredQuery.where((eb: any) => hotspotRegionMatches(eb, codes));
   }
 
   if (options.locationIds) {

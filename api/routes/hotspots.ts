@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { withTargetsDb } from "../db/index.js";
 import { requireTargetsDb } from "./targets-middleware.js";
-import { executeHotspotsPostQuery, executeHotspotsQuery } from "./targets-queries.js";
-import { isLocationId, parseBBoxBody, parseBBoxParam, parseLimit, parseLocationIds, parseMinCount, parseMinObservations, parseMonth } from "./targets-validators.js";
+import { executeHotspotsPostQuery, executeHotspotsQuery, hotspotRegionMatches } from "./targets-queries.js";
+import { isLocationId, parseBBoxBody, parseBBoxParam, parseLimit, parseLocationIds, parseMinCount, parseMinObservations, parseMonth, parseRegionCodes } from "./targets-validators.js";
 
 const hotspotsRoute = new Hono();
 
@@ -43,6 +43,31 @@ hotspotsRoute.get("/", async (c) => {
 
   c.header("Cache-Control", HOTSPOT_CACHE_CONTROL);
   return c.json({ items: rows.map((row) => [row.id, row.lat, row.lng, row.numSpecies] as const) });
+});
+
+hotspotsRoute.get("/region/:region", async (c) => {
+  const regionCodes = parseRegionCodes(c.req.param("region"));
+
+  const rows = await withTargetsDb((targetsDb) =>
+    targetsDb
+      .selectFrom("hotspots")
+      .select(["id", "name", "lat", "lng", "numSpecies", "numChecklists"])
+      .where((eb) => hotspotRegionMatches(eb, regionCodes))
+      .orderBy("numSpecies", "desc")
+      .execute()
+  );
+
+  c.header("Cache-Control", HOTSPOT_CACHE_CONTROL);
+  return c.json({
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      lat: row.lat,
+      lng: row.lng,
+      species: row.numSpecies ?? 0,
+      checklists: row.numChecklists ?? 0,
+    })),
+  });
 });
 
 hotspotsRoute.get("/species/:speciesCode", async (c) => {
