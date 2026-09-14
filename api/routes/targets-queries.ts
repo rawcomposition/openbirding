@@ -3,6 +3,7 @@ import { sql } from "kysely";
 import { db, type RawTargetsAccess, type TargetsDb } from "../db/index.js";
 import { getTargetsMetadata } from "../db/targets.js";
 import { ebdCitation } from "../lib/utils.js";
+import { summarizeLocationTargets, type LocationSummaryRow } from "../lib/location-summary.js";
 import { parseRegionCodes } from "./targets-validators.js";
 
 async function getEbdMeta(targetsDb: TargetsDb) {
@@ -613,6 +614,26 @@ export async function executeLocationsTargetsQuery(access: RawTargetsAccess, loc
 
   return {
     locations,
+    ...(await getEbdMeta(access.db)),
+    queryTime: `${Math.round(performance.now() - startTime)} ms`,
+  };
+}
+
+export async function executeLocationsSummaryQuery(access: RawTargetsAccess, locationIds: string[], months: number[] | null) {
+  const startTime = performance.now();
+  const idPlaceholders = locationIds.map(() => "?").join(", ");
+  const monthClause = months ? ` AND month_obs.month IN (${months.map(() => "?").join(", ")})` : "";
+  const rows = access.sqlite
+    .prepare(
+      `SELECT month_obs.location_id AS locationId, species.code, species.name, month_obs.month, month_obs.obs, month_obs.samples
+       FROM month_obs
+       INNER JOIN species ON species.id = month_obs.species_id
+       WHERE month_obs.location_id IN (${idPlaceholders})${monthClause}`
+    )
+    .all(...locationIds, ...(months ?? [])) as LocationSummaryRow[];
+
+  return {
+    locations: summarizeLocationTargets(locationIds, rows),
     ...(await getEbdMeta(access.db)),
     queryTime: `${Math.round(performance.now() - startTime)} ms`,
   };
