@@ -70,13 +70,12 @@ export function parseEbirdCsv(text: string): ParsedLifeList {
   const seen = new Set<string>();
   const entries: LifeListEntry[] = [];
   for (const r of rows.slice(1)) {
-    if (countableIdx !== -1) {
+    const category = categoryIdx !== -1 ? (r[categoryIdx]?.trim().toLowerCase() ?? "") : "";
+    if (nonSpeciesCategories.has(category)) continue;
+    // Forms are never countable, but undescribed forms are treated as species
+    if (countableIdx !== -1 && category !== "form") {
       const countable = r[countableIdx]?.trim().toLowerCase() ?? "";
       if (countable === "0" || countable === "no" || countable === "false") continue;
-    }
-    if (categoryIdx !== -1) {
-      const category = r[categoryIdx]?.trim().toLowerCase() ?? "";
-      if (nonSpeciesCategories.has(category)) continue;
     }
     const sciName = (sciIdx !== -1 ? r[sciIdx] : "")?.trim() ?? "";
     const commonName = (commonIdx !== -1 ? r[commonIdx] : "")?.trim() ?? "";

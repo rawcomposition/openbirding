@@ -59,6 +59,8 @@ type EBirdTaxon = {
   taxon_order?: number;
   comName?: string;
   sciName?: string;
+  category?: string;
+  reportAs?: string;
 };
 
 export type TaxonomyEntry = {
@@ -72,14 +74,17 @@ export const getTaxonomy = async (): Promise<TaxonomyEntry[]> => {
   if (!apiKey) {
     throw new Error("EBIRD_API_KEY environment variable is required");
   }
-  const response = await fetch(`https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json&cat=species&key=${apiKey}`);
+  const response = await fetch(`https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json&cat=species,form&key=${apiKey}`);
   if (!response.ok) {
     throw new Error(`eBird taxonomy request failed: ${response.statusText}`);
   }
   const taxa = (await response.json()) as EBirdTaxon[];
-  return taxa.map((t) => ({
-    name: t.comName!,
-    sciName: t.sciName!,
-    code: t.speciesCode!,
-  }));
+  // Forms that don't report as a species (e.g. undescribed forms) are treated as species
+  return taxa
+    .filter((t) => t.category === "species" || !t.reportAs)
+    .map((t) => ({
+      name: t.comName!,
+      sciName: t.sciName!,
+      code: t.speciesCode!,
+    }));
 };
