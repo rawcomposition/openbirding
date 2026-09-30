@@ -1,0 +1,6 @@
+*
+!api-rust/Cargo.toml
+!api-rust/Cargo.lock
+!api-rust/.cargo
+!api-rust/src
+!api/data/avicommons-lite.json
