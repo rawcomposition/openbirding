@@ -1,7 +1,0 @@
-*
-!api-rust
-api-rust/*
-!api-rust/Cargo.toml
-!api-rust/Cargo.lock
-!api-rust/.cargo
-!api-rust/src

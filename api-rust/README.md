@@ -39,7 +39,7 @@ Build from the `web/` directory; the image downloads the Avicommons photo index 
 docker build -f api-rust/Dockerfile -t openbirding-api-rust .
 ```
 
-`api-rust/Dockerfile.dockerignore` limits the build context to the crate (the multi-GB databases in `web/` are excluded). Mount the data volume at `/data`.
+Mount the data volume at `/data`. Deploys build from a git clone, so the build context has no databases; building from a local working copy also sends any `*.db` files in `web/` to Docker.
 
 ## Verification
 
