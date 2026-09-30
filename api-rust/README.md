@@ -33,13 +33,13 @@ Both servers can share `/data`. The first server whose swap endpoint is called r
 
 ## Deploy
 
-Build from the `web/` directory so the image can include `api/data/avicommons-lite.json`:
+Build from the `web/` directory; the image downloads the Avicommons photo index from `https://avicommons.org/latest-lite.json` at build time:
 
 ```sh
 docker build -f api-rust/Dockerfile -t openbirding-api-rust .
 ```
 
-`api-rust/Dockerfile.dockerignore` keeps the build context to the crate and the avicommons file (the multi-GB databases in `web/` are excluded). Mount the data volume at `/data`.
+`api-rust/Dockerfile.dockerignore` limits the build context to the crate (the multi-GB databases in `web/` are excluded). Mount the data volume at `/data`.
 
 ## Verification
 

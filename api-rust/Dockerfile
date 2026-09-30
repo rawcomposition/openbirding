@@ -11,7 +11,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/target/release/openbirding-api /usr/local/bin/openbirding-api
-COPY api/data/avicommons-lite.json /app/data/avicommons-lite.json
+ADD https://avicommons.org/latest-lite.json /app/data/avicommons-lite.json
 ENV PORT=3000 \
     SQLITE_DIR=/data \
     SQLITE_FILENAME=openbirding.db \
