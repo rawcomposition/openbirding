@@ -415,8 +415,12 @@ impl OccurrencesIndex {
                 {
                     continue;
                 }
+                let samples = f64::from(self.samples[r]);
+                if samples < self.min_checklists_floor {
+                    continue;
+                }
                 candidates += 1;
-                if f64::from(self.samples[r]) < min_checklists {
+                if samples < min_checklists {
                     continue;
                 }
                 let lifers = q_count.get(r).copied().unwrap_or(0) - counter[r];
@@ -587,6 +591,7 @@ impl OccurrencesIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::occurrences::MonthHotspotQuery;
     use crate::occurrences::load::load_index;
     use rusqlite::Connection;
 
@@ -596,8 +601,9 @@ mod tests {
         let conn = Connection::open(&path).unwrap();
         conn.execute_batch(
             "CREATE TABLE metadata (version TEXT, version_year TEXT, version_month TEXT, taxonomy_version TEXT,
-               generated_at TEXT, buckets TEXT, min_score REAL, min_checklists INTEGER);
-             INSERT INTO metadata VALUES ('jan-2026', '2026', 'Jan', '2025', 'g1', '[0.05, 0.1, 0.2]', 0.05, 2);
+               generated_at TEXT, buckets TEXT, min_score REAL, min_checklists INTEGER,
+               month_min_checklists INTEGER, month_score_scale INTEGER);
+             INSERT INTO metadata VALUES ('jan-2026', '2026', 'Jan', '2025', 'g1', '[0.05, 0.1, 0.2]', 0.05, 2, 1, 100);
              CREATE TABLE species (id INTEGER PRIMARY KEY, code TEXT, name TEXT, sci_name TEXT, sci_lower TEXT,
                name_lower TEXT, taxon_order INTEGER);
              INSERT INTO species VALUES
@@ -615,6 +621,18 @@ mod tests {
              INSERT INTO loc_species VALUES (0, 0, 2), (0, 1, 0), (1, 0, 1), (1, 3, 0), (2, 0, 0), (2, 1, 2), (2, 2, 2), (2, 3, 2);
              CREATE TABLE loc_qcount (bucket INTEGER, loc_ref INTEGER, q_count INTEGER);
              INSERT INTO loc_qcount VALUES (0, 0, 3), (0, 1, 2), (0, 2, 1), (0, 3, 2), (1, 0, 2), (1, 1, 1), (1, 2, 1), (1, 3, 1);
+             CREATE TABLE loc_month_samples (loc_ref INTEGER PRIMARY KEY, m1 INTEGER, m2 INTEGER, m3 INTEGER, m4 INTEGER, m5 INTEGER, m6 INTEGER, m7 INTEGER, m8 INTEGER, m9 INTEGER, m10 INTEGER, m11 INTEGER, m12 INTEGER);
+             INSERT INTO loc_month_samples VALUES
+               (0, 10, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+               (1, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+               (3, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+             CREATE TABLE loc_month_species (loc_ref INTEGER, species_id INTEGER, m1 INTEGER, m2 INTEGER, m3 INTEGER, m4 INTEGER, m5 INTEGER, m6 INTEGER, m7 INTEGER, m8 INTEGER, m9 INTEGER, m10 INTEGER, m11 INTEGER, m12 INTEGER);
+             INSERT INTO loc_month_species VALUES
+               (0, 0, 100, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+               (0, 1, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+               (0, 2, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+               (1, 1, 30, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+               (3, 2, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0);
              CREATE TABLE zone_meta (res INTEGER, cell_ref INTEGER, h3 INTEGER, lat REAL, lng REAL, samples INTEGER);
              INSERT INTO zone_meta VALUES (3, 0, 590000000000000000, 10.0, 170.0, 90), (3, 1, 590000000000000001, 12.0, 20.0, 1);
              CREATE TABLE zone_species (res INTEGER, species_id INTEGER, cell_ref INTEGER, bucket_level INTEGER);
@@ -693,7 +711,7 @@ mod tests {
             limit: 10,
         };
         let (items, candidates) = index.query_hotspots(&query);
-        assert_eq!(candidates, 4);
+        assert_eq!(candidates, 3);
         let summary: Vec<(&str, i32, i32)> = items
             .iter()
             .map(|i| (i.id, i.lifers, i.total_species))
@@ -734,6 +752,50 @@ mod tests {
         let (items, candidates) = index.query_hotspots(&query);
         assert_eq!(candidates, 2);
         assert_eq!(items.iter().map(|i| i.id).collect::<Vec<_>>(), vec!["L1"]);
+    }
+
+    #[test]
+    fn month_hotspots_average_weighted_by_checklists() {
+        let (_dir, path) = fixture();
+        let index = load_index(&path, 4.0).unwrap();
+        let settings = index.months.unwrap();
+        let seen = index.resolve_species(&[input("amerob")]);
+        let regions = vec!["US".to_string()];
+        let query =
+            |months: &'static [u8], frequency: f64, min_checklists: f64| MonthHotspotQuery {
+                seen: &seen,
+                months,
+                frequency,
+                min_checklists,
+                region_codes: &regions,
+                limit: 10,
+            };
+        let summarize = |query: MonthHotspotQuery<'_>| {
+            let (items, candidates) = index.query_month_hotspots(settings, &query).unwrap();
+            let summary: Vec<(String, i32, i32, i32)> = items
+                .iter()
+                .map(|i| (i.id.to_string(), i.lifers, i.total_species, i.checklists))
+                .collect();
+            (summary, candidates)
+        };
+
+        let (items, candidates) = summarize(query(&[1, 2], 0.2, 1.0));
+        assert_eq!(candidates, 2);
+        assert_eq!(
+            items,
+            vec![("L1".to_string(), 1, 2, 50), ("L2".to_string(), 1, 1, 40)]
+        );
+
+        let (items, _) = summarize(query(&[1, 2], 0.1, 1.0));
+        assert_eq!(items[0], ("L1".to_string(), 2, 3, 50));
+
+        let (items, candidates) = summarize(query(&[1], 0.2, 15.0));
+        assert_eq!(candidates, 2);
+        assert_eq!(items, vec![("L2".to_string(), 1, 1, 20)]);
+
+        let (items, candidates) = summarize(query(&[3], 0.05, 1.0));
+        assert_eq!(candidates, 1);
+        assert_eq!(items, vec![("L4".to_string(), 1, 1, 60)]);
     }
 
     #[test]

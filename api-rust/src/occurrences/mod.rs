@@ -1,4 +1,5 @@
 mod load;
+mod months;
 mod query;
 mod scratch;
 
@@ -15,6 +16,7 @@ use tokio::sync::watch;
 use crate::config::staged_path;
 use crate::error::{AppError, AppResult};
 
+pub use months::{MONTHS_IN_YEAR, MonthHotspotQuery, MonthSettings};
 pub use query::{HotspotQuery, ResolvedSpecies, SpeciesInput};
 use scratch::ScratchPool;
 
@@ -55,11 +57,13 @@ pub struct OccurrencesIndex {
     pub buckets_json: Value,
     pub min_checklists_floor_json: Value,
     pub min_checklists_floor: f64,
+    pub months: Option<MonthSettings>,
     pub version_month: String,
     pub version_year: String,
     pub taxonomy_version: Value,
     pub generated_at: String,
     pub num_locs: usize,
+    pub num_year_locs: usize,
     samples: Vec<i32>,
     lat: Vec<f32>,
     lng: Vec<f32>,
@@ -177,7 +181,7 @@ impl OccurrencesStore {
                 Ok(Ok(index)) => {
                     tracing::info!(
                         "Occurrences index loaded ({} locations) in {} ms",
-                        index.num_locs,
+                        index.num_year_locs,
                         start.elapsed().as_millis()
                     );
                     let index = Arc::new(index);
@@ -237,11 +241,11 @@ impl OccurrencesStore {
                 let version = index.version();
                 tracing::info!(
                     "Occurrences database swapped to version {version} ({} locations)",
-                    index.num_locs
+                    index.num_year_locs
                 );
                 (
                     true,
-                    json!({ "ok": true, "version": version, "locations": index.num_locs }),
+                    json!({ "ok": true, "version": version, "locations": index.num_year_locs }),
                 )
             }
             Ok(Err(error)) => (false, json!({ "ok": false, "error": error })),

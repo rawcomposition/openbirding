@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::js::{sql_to_f64, sql_to_json, sql_to_opt_string, sql_to_string};
 
+use super::months::MonthSettings;
 use super::scratch::ScratchPool;
 use super::{Csr, OccurrencesIndex, Species, ZoneDataset, Zones};
 
@@ -148,6 +149,7 @@ struct Metadata {
     version_year: String,
     taxonomy_version: Value,
     generated_at: String,
+    months: Option<MonthSettings>,
 }
 
 fn read_metadata(conn: &Connection) -> LoadResult<Metadata> {
@@ -169,6 +171,17 @@ fn read_metadata(conn: &Connection) -> LoadResult<Metadata> {
         .iter()
         .map(|b| crate::js::to_number(Some(b)))
         .collect();
+    let positive = |key: &str| {
+        meta.get(key)
+            .map(|value| crate::js::to_number(Some(value)))
+            .filter(|n| *n > 0.0)
+    };
+    let months = positive("month_min_checklists")
+        .zip(positive("month_score_scale"))
+        .map(|(min_checklists, score_scale)| MonthSettings {
+            min_checklists,
+            score_scale,
+        });
     Ok(Metadata {
         buckets,
         buckets_json,
@@ -177,6 +190,7 @@ fn read_metadata(conn: &Connection) -> LoadResult<Metadata> {
         version_year: text("version_year"),
         taxonomy_version: meta.get("taxonomy_version").cloned().unwrap_or(Value::Null),
         generated_at: text("generated_at"),
+        months,
     })
 }
 
@@ -349,17 +363,25 @@ pub fn load_index(path: &Path, max_zone_res: f64) -> LoadResult<OccurrencesIndex
         );
     }
 
+    let min_checklists_floor = crate::js::to_number(Some(&meta.min_checklists_floor));
+    let num_year_locs = samples
+        .iter()
+        .filter(|&&s| f64::from(s) >= min_checklists_floor)
+        .count();
+
     Ok(OccurrencesIndex {
         generation: NEXT_GENERATION.fetch_add(1, Ordering::Relaxed),
         buckets: meta.buckets,
         buckets_json: meta.buckets_json,
         min_checklists_floor_json: meta.min_checklists_floor.clone(),
-        min_checklists_floor: crate::js::to_number(Some(&meta.min_checklists_floor)),
+        min_checklists_floor,
+        months: meta.months,
         version_month: meta.version_month,
         version_year: meta.version_year,
         taxonomy_version: meta.taxonomy_version,
         generated_at: meta.generated_at,
         num_locs,
+        num_year_locs,
         samples,
         lat,
         lng,

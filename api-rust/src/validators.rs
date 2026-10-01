@@ -91,6 +91,18 @@ pub fn parse_months_body(value: Option<&Value>) -> AppResult<Option<Vec<f64>>> {
     }
 }
 
+pub fn parse_month_selection(value: Option<&Value>) -> AppResult<Option<Vec<u8>>> {
+    let Some(months) = parse_months_body(value)? else {
+        return Ok(None);
+    };
+    if months.iter().any(|m| !is_integer(*m)) {
+        return Err(AppError::bad_request(
+            "months must be whole numbers between 1 and 12",
+        ));
+    }
+    Ok(Some(months.into_iter().map(|m| m as u8).collect()))
+}
+
 pub fn parse_h3_cells(value: Option<&Value>) -> AppResult<Vec<i64>> {
     let items = match value {
         Some(Value::Array(items)) if !items.is_empty() => items,
@@ -386,6 +398,17 @@ mod tests {
         assert!(parse_months_param(Some("0")).is_err());
         assert!(parse_months_param(Some("1,,2")).is_err());
         assert!(parse_months_param(Some("x")).is_err());
+    }
+
+    #[test]
+    fn month_selection_requires_whole_months() {
+        assert_eq!(
+            parse_month_selection(Some(&json!([6, "5", 6]))).unwrap(),
+            Some(vec![5, 6])
+        );
+        assert_eq!(parse_month_selection(None).unwrap(), None);
+        assert!(parse_month_selection(Some(&json!([1.5]))).is_err());
+        assert!(parse_month_selection(Some(&json!([13]))).is_err());
     }
 
     #[test]

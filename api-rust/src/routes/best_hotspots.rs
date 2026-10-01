@@ -14,14 +14,19 @@ use crate::ebird::ebd_citation;
 use crate::error::{AppError, AppResult};
 use crate::http::{field, parse_json_body};
 use crate::js::{
-    f64_to_json, is_truthy, iso_timestamp, js_round, js_trim, query_time, round_tenth_percent,
-    sql_to_f64, sql_to_json, sql_to_opt_string, sql_to_string, to_js_string, utf16_prefix,
+    f64_to_json, is_nullish, is_truthy, iso_timestamp, js_round, js_trim, query_time,
+    round_tenth_percent, sql_to_f64, sql_to_json, sql_to_opt_string, sql_to_string, to_js_string,
+    utf16_prefix,
 };
-use crate::occurrences::{HotspotQuery, OccurrencesIndex, ResolvedSpecies, SpeciesInput};
+use crate::occurrences::{
+    HotspotQuery, MONTHS_IN_YEAR, MonthHotspotQuery, OccurrencesIndex, ResolvedSpecies,
+    SpeciesInput,
+};
 use crate::state::{LifeListVersion, SharedState};
 use crate::validators::{
     is_h3_index, is_location_id, is_token, parse_bbox_body, parse_best_hotspots_limit,
-    parse_frequency, parse_min_checklists, parse_region_codes, parse_resolution, parse_token,
+    parse_frequency, parse_min_checklists, parse_month_selection, parse_region_codes,
+    parse_resolution, parse_token,
 };
 
 const UNMATCHED_SAMPLE_SIZE: usize = 25;
@@ -219,8 +224,9 @@ async fn status(State(state): State<SharedState>) -> Json<Value> {
             "available": true,
             "buckets": index.buckets_json,
             "minChecklistsFloor": index.min_checklists_floor_json,
+            "monthMinChecklistsFloor": index.months.map(|months| f64_to_json(months.min_checklists)),
             "version": index.version(),
-            "locations": index.num_locs,
+            "locations": index.num_year_locs,
             "zonesLoaded": index.zones_loaded(),
             "resolutions": index.resolutions(),
         })),
@@ -333,8 +339,11 @@ async fn hotspots(State(state): State<SharedState>, body: Bytes) -> AppResult<Js
     let body = parse_json_body(&body, JSON_BODY_MESSAGE)?;
     let source = SpeciesSource::from_body(&state, &body).await?;
     let frequency = parse_frequency(field(&body, "frequency"))?;
-    let min_checklists = parse_min_checklists(field(&body, "minChecklists"))?;
+    let requested_min_checklists = field(&body, "minChecklists");
+    let year_min_checklists = parse_min_checklists(requested_min_checklists)?;
     let limit = parse_best_hotspots_limit(field(&body, "limit"))?;
+    let months = parse_month_selection(field(&body, "months"))?
+        .filter(|months| months.len() < MONTHS_IN_YEAR);
     let region = field(&body, "region");
     let region_codes = if is_truthy(region) {
         Some(parse_region_codes(&to_js_string(
@@ -344,23 +353,61 @@ async fn hotspots(State(state): State<SharedState>, body: Bytes) -> AppResult<Js
         None
     };
     let bbox = parse_bbox_body(field(&body, "bbox"))?;
+    if months.is_some() && region_codes.is_none() {
+        return Err(AppError::bad_request(
+            "region is required when months are selected",
+        ));
+    }
+    if months.is_some() && bbox.is_some() {
+        return Err(AppError::bad_request("bbox cannot be combined with months"));
+    }
 
     let index = state.occurrences.get().await?;
+    let month_settings = match &months {
+        Some(_) => Some(index.months.ok_or_else(|| {
+            AppError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Month filtering is not available for this dataset",
+            )
+        })?),
+        None => None,
+    };
+    let min_checklists = match month_settings {
+        Some(settings) if is_nullish(requested_min_checklists) => settings.min_checklists,
+        Some(settings) => year_min_checklists.max(settings.min_checklists),
+        None => year_min_checklists.max(index.min_checklists_floor),
+    };
     let seen = source.resolve(&state, &index).await?;
     let bucket = index.bucket_for_frequency(frequency);
+    let bucket_frequency = index.bucket_value(bucket);
 
     let query_index = Arc::clone(&index);
     let query_seen = Arc::clone(&seen);
+    let query_months = months.clone();
     let (items, candidates) = tokio::task::spawn_blocking(move || {
-        let query = HotspotQuery {
-            seen: &query_seen,
-            bucket,
-            min_checklists,
-            region_codes: region_codes.as_deref(),
-            bbox,
-            limit,
+        let (items, candidates) = match (&query_months, month_settings, &region_codes) {
+            (Some(months), Some(settings), Some(region_codes)) => query_index
+                .query_month_hotspots(
+                    settings,
+                    &MonthHotspotQuery {
+                        seen: &query_seen,
+                        months,
+                        frequency: bucket_frequency,
+                        min_checklists,
+                        region_codes,
+                        limit,
+                    },
+                )
+                .map_err(AppError::internal)?,
+            _ => query_index.query_hotspots(&HotspotQuery {
+                seen: &query_seen,
+                bucket,
+                min_checklists,
+                region_codes: region_codes.as_deref(),
+                bbox,
+                limit,
+            }),
         };
-        let (items, candidates) = query_index.query_hotspots(&query);
         let items: Vec<(Value, String)> = items
             .iter()
             .map(|item| {
@@ -370,9 +417,9 @@ async fn hotspots(State(state): State<SharedState>, body: Bytes) -> AppResult<Js
                 )
             })
             .collect();
-        (items, candidates)
+        Ok::<_, AppError>((items, candidates))
     })
-    .await?;
+    .await??;
 
     let names = region_names(&state).await;
     let items: Vec<Value> = items
@@ -385,7 +432,6 @@ async fn hotspots(State(state): State<SharedState>, body: Bytes) -> AppResult<Js
         })
         .collect();
 
-    let bucket_frequency = index.bucket_value(bucket);
     let unmatched_sample: Vec<&String> =
         seen.unmatched.iter().take(UNMATCHED_SAMPLE_SIZE).collect();
     let mut response = Map::new();
@@ -399,7 +445,8 @@ async fn hotspots(State(state): State<SharedState>, body: Bytes) -> AppResult<Js
             "unmatchedSample": unmatched_sample,
             "frequency": f64_to_json(bucket_frequency),
             "frequencyPct": f64_to_json(js_round(bucket_frequency * 100.0 * 10.0) / 10.0),
-            "minChecklists": f64_to_json(min_checklists.max(index.min_checklists_floor)),
+            "minChecklists": f64_to_json(min_checklists),
+            "months": months,
             "version": index.version(),
         }),
     );
