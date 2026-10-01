@@ -68,27 +68,32 @@ pub fn parse_months_param(raw: Option<&str>) -> AppResult<Option<Vec<f64>>> {
     let Some(raw) = raw.filter(|r| !r.is_empty()) else {
         return Ok(None);
     };
+    months_in_range(raw).map(Some).ok_or_else(|| {
+        AppError::bad_request("months must be comma-separated values between 1 and 12")
+    })
+}
+
+fn months_in_range(raw: &str) -> Option<Vec<f64>> {
     let months = dedupe_sorted_numbers(raw.split(',').map(str_to_number));
-    if months.iter().any(|m| m.is_nan() || *m < 1.0 || *m > 12.0) {
-        return Err(AppError::bad_request(
-            "months must be comma-separated values between 1 and 12",
-        ));
-    }
-    Ok(Some(months))
+    months
+        .iter()
+        .all(|m| (1.0..=12.0).contains(m))
+        .then_some(months)
 }
 
 pub fn parse_months_body(value: Option<&Value>) -> AppResult<Option<Vec<f64>>> {
     if is_nullish(value) {
         return Ok(None);
     }
-    match value {
+    let months = match value {
         Some(array @ Value::Array(items)) if !items.is_empty() => {
-            parse_months_param(Some(&to_js_string(array)))
+            months_in_range(&to_js_string(array))
         }
-        _ => Err(AppError::bad_request(
-            "months must be a non-empty array of values between 1 and 12",
-        )),
-    }
+        _ => None,
+    };
+    months.map(Some).ok_or_else(|| {
+        AppError::bad_request("months must be a non-empty array of values between 1 and 12")
+    })
 }
 
 pub fn parse_month_selection(value: Option<&Value>) -> AppResult<Option<Vec<u8>>> {
@@ -427,6 +432,18 @@ mod tests {
             "months must be a non-empty array of values between 1 and 12"
         );
         assert!(parse_months_body(Some(&json!("3"))).is_err());
+        for invalid in [
+            json!([null]),
+            json!([""]),
+            json!([[]]),
+            json!([0]),
+            json!(["may"]),
+        ] {
+            assert_eq!(
+                message(parse_months_body(Some(&invalid)).unwrap_err()),
+                "months must be a non-empty array of values between 1 and 12"
+            );
+        }
     }
 
     #[test]
