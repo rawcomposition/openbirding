@@ -55,10 +55,10 @@ pub fn routes() -> Router<SharedState> {
 
 fn parse_species_input(value: Option<&Value>) -> AppResult<Vec<SpeciesInput>> {
     let items = match value {
-        Some(Value::Array(items)) if !items.is_empty() => items,
+        Some(Value::Array(items)) => items,
         _ => {
             return Err(AppError::bad_request(
-                "species must be a non-empty array of { sciName, commonName, code }",
+                "species must be an array of { sciName, commonName, code }",
             ));
         }
     };
@@ -644,7 +644,8 @@ mod tests {
             parsed[1].to_json(),
             json!({ "sciName": null, "commonName": null, "code": "blujay" })
         );
-        assert!(parse_species_input(Some(&json!([]))).is_err());
+        assert!(parse_species_input(Some(&json!([]))).unwrap().is_empty());
+        assert!(parse_species_input(None).is_err());
         assert!(parse_species_input(Some(&json!([null]))).is_err());
         assert!(parse_species_input(Some(&json!([3]))).is_err());
     }
