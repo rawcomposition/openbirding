@@ -61,8 +61,9 @@ const RangeSize = () => {
         <h1 className="text-3xl font-bold text-slate-900">Range Size</h1>
       </div>
       <p className="mb-8 max-w-2xl text-lg text-slate-600">
-        Find the birds with the smallest ranges. We split the world into hexagons of about 1,770 km² and count how
-        many of them each species has been reported in on eBird. The fewer hexagons, the more localized the bird.
+        Find the birds with the smallest ranges. We cover the globe in a grid of hexagons, each about 48 km across,
+        and count how many of them each species has been reported in on eBird. The fewer hexagons, the more localized
+        the bird.
       </p>
 
       <div className="mb-8 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
