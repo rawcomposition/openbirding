@@ -60,11 +60,20 @@ const RangeSize = () => {
         <Globe className="h-6 w-6 text-emerald-600" />
         <h1 className="text-3xl font-bold text-slate-900">Range Size</h1>
       </div>
-      <p className="mb-8 max-w-2xl text-lg text-slate-600">
-        Find the birds with the smallest ranges. We cover the globe in a grid of hexagons, each about 48 km across,
-        and count how many of them each species has been reported in on eBird. The fewer hexagons, the more localized
-        the bird.
+      <p className="mb-3 max-w-2xl text-lg text-slate-600">
+        Find the birds with the smallest ranges.
       </p>
+      <details className="mb-8 max-w-2xl text-sm text-slate-500">
+        <summary className="cursor-pointer select-none font-medium text-slate-600 hover:text-slate-900">
+          How it works
+        </summary>
+        <p className="mt-2">
+          We cover the globe in a grid of hexagons, each about 48 km across, and count how many of them each species
+          has been reported in. The fewer hexagons, the more localized the bird. We ignore hexagons with fewer than{" "}
+          {minChecklists} complete checklists. A hexagon counts toward a species' range if the species appears on at
+          least {minObs} checklists there. Extinct species are excluded.
+        </p>
+      </details>
 
       <div className="mb-8 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 px-3 py-3">
@@ -112,16 +121,7 @@ const RangeSize = () => {
         </>
       )}
 
-      {meta && (
-        <div className="mt-6 max-w-2xl space-y-2 text-xs text-slate-500">
-          <p>
-            Hexagons are H3 resolution {meta.resolution}. We ignore hexagons with fewer than {minChecklists} complete
-            checklists. A hexagon counts toward a species' range if the species appears on at least {minObs} checklists
-            there.
-          </p>
-          {firstPage?.citation && <p>{firstPage.citation}</p>}
-        </div>
-      )}
+      {firstPage?.citation && <p className="mt-6 max-w-2xl text-xs text-slate-500">{firstPage.citation}</p>}
     </div>
   );
 };
