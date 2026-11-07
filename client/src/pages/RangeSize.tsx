@@ -80,7 +80,7 @@ const RangeSize = () => {
       {meta && (
         <p className="mb-3 text-sm text-slate-600">
           <span className="font-semibold text-slate-900">{meta.total.toLocaleString()}</span>{" "}
-          {onlySeen && hasList ? "species you've seen" : "species"} in {scopeLabel}
+          species
         </p>
       )}
 
