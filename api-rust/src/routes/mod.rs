@@ -4,6 +4,7 @@ mod backups;
 mod best_hotspots;
 mod hotspots;
 mod packs;
+mod range_restricted;
 mod regions;
 mod reports;
 mod species;
@@ -26,6 +27,7 @@ pub fn router(state: SharedState) -> Router {
         .merge(reports::routes(state.clone()))
         .merge(targets::routes(state.clone()))
         .merge(best_hotspots::routes())
+        .merge(range_restricted::routes(state.clone()))
         .merge(hotspots::routes(state.clone()))
         .merge(species::routes(state.clone()))
         .merge(regions::routes())

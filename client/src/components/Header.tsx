@@ -22,6 +22,11 @@ const sections: NavSection[] = [
     items: [
       { label: "Best Hotspots", to: "/best-hotspots", description: "Find top birding spots near you" },
       { label: "Bird Finder", to: "/bird-finder", description: "Track down a specific species" },
+      {
+        label: "Range-Restricted Species",
+        to: "/range-restricted",
+        description: "Find the most localized birds by country",
+      },
     ],
   },
   {

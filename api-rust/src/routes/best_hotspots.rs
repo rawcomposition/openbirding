@@ -72,7 +72,7 @@ fn parse_species_input(value: Option<&Value>) -> AppResult<Vec<SpeciesInput>> {
         .collect()
 }
 
-enum SpeciesSource {
+pub(super) enum SpeciesSource {
     Inline(Vec<SpeciesInput>),
     LifeList {
         token: String,
@@ -81,7 +81,7 @@ enum SpeciesSource {
 }
 
 impl SpeciesSource {
-    async fn from_body(state: &SharedState, body: &Value) -> AppResult<Self> {
+    pub(super) async fn from_body(state: &SharedState, body: &Value) -> AppResult<Self> {
         let Some(token) = field(body, "listToken").filter(|v| !v.is_null()) else {
             return Ok(Self::Inline(parse_species_input(field(body, "species"))?));
         };
@@ -111,7 +111,7 @@ impl SpeciesSource {
         Ok(Self::LifeList { token, version })
     }
 
-    async fn resolve(
+    pub(super) async fn resolve(
         self,
         state: &SharedState,
         index: &Arc<OccurrencesIndex>,
@@ -161,7 +161,7 @@ fn life_list_missing() -> AppError {
     )
 }
 
-async fn region_names(state: &SharedState) -> Arc<HashMap<String, String>> {
+pub(super) async fn region_names(state: &SharedState) -> Arc<HashMap<String, String>> {
     let loaded = state
         .region_names
         .get_or_try_init(|| async {
@@ -191,7 +191,7 @@ async fn region_names(state: &SharedState) -> Arc<HashMap<String, String>> {
     }
 }
 
-fn region_name_for(code: &str, names: &HashMap<String, String>) -> Value {
+pub(super) fn region_name_for(code: &str, names: &HashMap<String, String>) -> Value {
     let mut current = code;
     while !current.is_empty() {
         if let Some(name) = names.get(current).filter(|n| !n.is_empty()) {
