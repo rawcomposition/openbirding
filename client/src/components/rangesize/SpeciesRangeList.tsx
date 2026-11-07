@@ -59,13 +59,12 @@ export function SpeciesRangeList({ items, regionLabel, sortColumn, sortDirection
         <div className="flex flex-1">
           <SortHeader column="name" label="Species" {...headerProps} />
         </div>
-        {regionLabel && (
-          <div className={cn(RANGE_COLUMN_CLASS, "flex justify-end")}>
-            <SortHeader column="region" label={regionLabel} {...headerProps} className="max-w-full" />
-          </div>
-        )}
         <div className={cn(RANGE_COLUMN_CLASS, "flex justify-end")}>
-          <SortHeader column="world" label="World" {...headerProps} />
+          {regionLabel ? (
+            <SortHeader column="region" label={regionLabel} {...headerProps} className="max-w-full" />
+          ) : (
+            <SortHeader column="world" label="World" {...headerProps} />
+          )}
         </div>
       </div>
       {items.map((s) => (
@@ -96,25 +95,14 @@ export function SpeciesRangeList({ items, regionLabel, sortColumn, sortDirection
             </span>
             <span className="block truncate text-xs italic text-slate-500">{s.sciName}</span>
           </span>
-          {regionLabel && (
-            <span
-              className={cn(
-                RANGE_COLUMN_CLASS,
-                "text-sm tabular-nums",
-                sortColumn === "region" ? "font-semibold text-emerald-700" : "text-slate-600"
-              )}
-            >
-              {formatRangePct(s.regionPct)}
-            </span>
-          )}
           <span
             className={cn(
               RANGE_COLUMN_CLASS,
               "text-sm tabular-nums",
-              sortColumn === "world" ? "font-semibold text-emerald-700" : "text-slate-600"
+              sortColumn === "name" ? "text-slate-600" : "font-semibold text-emerald-700"
             )}
           >
-            {formatRangePct(s.worldPct)}
+            {formatRangePct(regionLabel ? s.regionPct : s.worldPct)}
           </span>
         </a>
       ))}

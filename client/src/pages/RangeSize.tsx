@@ -116,9 +116,7 @@ const RangeSize = () => {
         <div className="mt-6 max-w-2xl space-y-2 text-xs text-slate-500">
           <p>
             Hexagons are H3 resolution {meta.resolution}. Only hexagons with at least {minChecklists} complete
-            checklists count, and a species counts as present with at least {minObs} checklists there. All months and
-            years are combined. A country's percentage is relative to that country's hexagons, so it isn't comparable
-            across countries.
+            checklists count, and a species counts as present with at least {minObs} checklists there.
           </p>
           {firstPage?.citation && <p>{firstPage.citation}</p>}
         </div>
