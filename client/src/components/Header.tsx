@@ -22,7 +22,7 @@ const sections: NavSection[] = [
     items: [
       { label: "Best Hotspots", to: "/best-hotspots", description: "Find top birding spots near you" },
       { label: "Bird Finder", to: "/bird-finder", description: "Track down a specific species" },
-      { label: "Range Size", to: "/range-size", description: "Rank species by how small their range is" },
+      { label: "Range Size", to: "/range-size", description: "Rank species by their range size" },
     ],
   },
   {
