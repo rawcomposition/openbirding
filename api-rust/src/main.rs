@@ -57,10 +57,11 @@ async fn serve(config: Config) -> Result<(), String> {
     );
     occurrences.start_loading();
 
+    let http = reqwest::Client::new();
     let state = Arc::new(AppState {
         targets: Arc::new(TargetsStore::open(config.targets_db_path())),
-        avicommons: Avicommons::load(&config.avicommons_json_path),
-        http: reqwest::Client::new(),
+        avicommons: Avicommons::load(&config.avicommons_json_path, &http).await,
+        http,
         taxonomy: TtlCache::taxonomy(),
         region_names: tokio::sync::OnceCell::new(),
         life_lists: LifeListCache::default(),

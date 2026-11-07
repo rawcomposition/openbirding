@@ -11,7 +11,7 @@
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:api\"",
     "fetch-avicommons": "node scripts/fetch-avicommons.mjs",
     "dev:client": "cd client && npm run dev",
-    "dev:api": "cd api && npm run dev",
+    "dev:api": "cd api-rust && SQLITE_DIR=.. CORS_ORIGINS=http://localhost:5173 PATH=\"$(dirname $(rustup which cargo)):$PATH\" cargo run -- serve",
     "build": "npm run build:client && npm run build:api",
     "build:client": "cd client && npm run build",
     "build:api": "cd api && npm run build",

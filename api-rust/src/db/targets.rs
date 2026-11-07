@@ -27,6 +27,11 @@ const REQUIRED_TABLES: [&str; 11] = [
     "h3_cell_obs",
     "h3_cell_samples",
 ];
+const SPECIES_RANGES_TABLES: [&str; 3] = [
+    "species_ranges",
+    "region_surveyed_cells",
+    "species_ranges_metadata",
+];
 const MMAP_SIZE: i64 = 1 << 40;
 const CACHE_SIZE_KIB: i64 = 8_192;
 
@@ -76,6 +81,7 @@ pub struct SpeciesName {
 pub struct TargetsDb {
     pool: SqlitePool,
     pub metadata: TargetsMetadata,
+    pub has_species_ranges: bool,
     species_names: OnceLock<Arc<HashMap<i64, SpeciesName>>>,
 }
 
@@ -86,6 +92,16 @@ fn open_read_only(path: &Path) -> rusqlite::Result<Connection> {
             | OpenFlags::SQLITE_OPEN_NO_MUTEX
             | OpenFlags::SQLITE_OPEN_URI,
     )
+}
+
+fn has_tables(conn: &Connection, names: &[&str]) -> rusqlite::Result<bool> {
+    let mut stmt = conn.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")?;
+    for name in names {
+        if !stmt.exists([name])? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn pool_size() -> u32 {
@@ -113,13 +129,17 @@ impl TargetsDb {
             .test_on_check_out(false)
             .build(manager)
             .map_err(|err| err.to_string())?;
-        let metadata = {
+        let (metadata, has_species_ranges) = {
             let conn = pool.get().map_err(|err| err.to_string())?;
-            TargetsMetadata::read(&conn).map_err(|err| err.to_string())?
+            let metadata = TargetsMetadata::read(&conn).map_err(|err| err.to_string())?;
+            let has_species_ranges =
+                has_tables(&conn, &SPECIES_RANGES_TABLES).map_err(|err| err.to_string())?;
+            (metadata, has_species_ranges)
         };
         Ok(Self {
             pool,
             metadata,
+            has_species_ranges,
             species_names: OnceLock::new(),
         })
     }
