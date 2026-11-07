@@ -70,11 +70,11 @@ const RangeSize = () => {
       <div className="mb-8 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 px-3 py-3">
           <label htmlFor="range-region" className="w-16 shrink-0 text-sm font-medium text-slate-700">
-            Country
+            Region
           </label>
           <RegionSelect value={region} onChange={setRegion} />
         </div>
-        <LifeListPanel matched={meta?.seenMatched} />
+        <LifeListPanel matched={meta?.seenMatched} regionName={regionName ?? "World"} />
       </div>
 
       {meta && (

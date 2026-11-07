@@ -32,7 +32,7 @@ export function RegionSelect({ value, onChange }: RegionSelectProps) {
       unstyled
       inputId="range-region"
       instanceId="range-region"
-      aria-label="Country"
+      aria-label="Region"
       options={options}
       value={selected}
       isLoading={isLoading}

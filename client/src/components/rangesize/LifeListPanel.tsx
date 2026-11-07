@@ -6,7 +6,9 @@ import { useBestHotspotsStore } from "@/stores/bestHotspotsStore";
 import { useRangeSizeStore } from "@/stores/rangeSizeStore";
 import { useUploadLifeList } from "@/hooks/best-hotspots/useUploadLifeList";
 
-const EBIRD_LIFE_LIST_CSV = "https://ebird.org/lifelist?r=world&time=life&fmt=csv";
+function eBirdLifeListCsvUrl(region: string) {
+  return `https://ebird.org/lifelist?r=${region}&time=life&fmt=csv`;
+}
 
 function useLifeListFileInput() {
   const upload = useUploadLifeList();
@@ -32,7 +34,8 @@ function useLifeListFileInput() {
   return { input, open: () => inputRef.current?.click(), handleFile };
 }
 
-function UploadPrompt() {
+function UploadPrompt({ regionName }: { regionName: string }) {
+  const region = useRangeSizeStore((s) => s.region);
   const { input, open, handleFile } = useLifeListFileInput();
   const [dragging, setDragging] = useState(false);
   return (
@@ -56,15 +59,15 @@ function UploadPrompt() {
       <p className="flex-1 text-slate-600">
         <span className="block font-medium text-slate-900">Only want the birds you've seen?</span>
         <a
-          href={EBIRD_LIFE_LIST_CSV}
+          href={eBirdLifeListCsvUrl(region)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 font-medium text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-800"
         >
-          Download your eBird life list
+          Download your {regionName} life list
           <ExternalLink className="h-3 w-3" />
         </a>{" "}
-        and upload the CSV here. It stays private.
+        and upload the CSV here.
       </p>
       <Button variant="outline" size="sm" onClick={open} className="shrink-0">
         <Upload /> Upload CSV
@@ -103,7 +106,12 @@ function SeenToggle() {
 function LoadedList({ matched }: { matched: number | null | undefined }) {
   const fileName = useBestHotspotsStore((s) => s.fileName);
   const speciesCount = useBestHotspotsStore((s) => s.speciesCount);
-  const { input, open } = useLifeListFileInput();
+  const clearLifeList = useBestHotspotsStore((s) => s.clearLifeList);
+  const setOnlySeen = useRangeSizeStore((s) => s.setOnlySeen);
+  const remove = () => {
+    clearLifeList();
+    setOnlySeen(false);
+  };
   const count = matched ?? speciesCount ?? 0;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 text-sm">
@@ -113,15 +121,19 @@ function LoadedList({ matched }: { matched: number | null | undefined }) {
         {fileName ? <span className="text-slate-400"> · {fileName}</span> : null}
       </span>
       <SeenToggle />
-      <Button variant="link" size="xs" className="shrink-0 px-0" onClick={open}>
-        Replace
+      <Button variant="link" size="xs" className="shrink-0 px-0" onClick={remove}>
+        Remove
       </Button>
-      {input}
     </div>
   );
 }
 
-export function LifeListPanel({ matched }: { matched: number | null | undefined }) {
+type LifeListPanelProps = {
+  matched: number | null | undefined;
+  regionName: string;
+};
+
+export function LifeListPanel({ matched, regionName }: LifeListPanelProps) {
   const hasList = useBestHotspotsStore((s) => !!s.listToken);
-  return hasList ? <LoadedList matched={matched} /> : <UploadPrompt />;
+  return hasList ? <LoadedList matched={matched} /> : <UploadPrompt regionName={regionName} />;
 }
