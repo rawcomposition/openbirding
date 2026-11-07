@@ -18,16 +18,17 @@ use crate::js::{
     f64_to_json, is_integer, is_nullish, js_trim, sql_to_f64, sql_to_json, sql_to_string, to_number,
 };
 use crate::state::SharedState;
-use crate::validators::parse_best_hotspots_limit;
 
 const WORLD: &str = "world";
 const WORLD_NAME: &str = "World";
 const JSON_BODY_MESSAGE: &str = "Request body must be JSON";
+const LIMIT_DEFAULT: usize = 100;
+const LIMIT_MAX: usize = 1000;
 
 pub fn routes(state: SharedState) -> Router<SharedState> {
     Router::new()
-        .route("/api/v1/range-restricted/regions", get(regions))
-        .route("/api/v1/range-restricted/species", post(species))
+        .route("/api/v1/range-size/regions", get(regions))
+        .route("/api/v1/range-size/species", post(species))
         .layer(middleware::from_fn_with_state(state, require_targets_db))
 }
 
@@ -35,6 +36,7 @@ pub fn routes(state: SharedState) -> Router<SharedState> {
 enum RangeSort {
     Region,
     World,
+    Name,
 }
 
 impl RangeSort {
@@ -43,8 +45,9 @@ impl RangeSort {
             None if is_nullish(value) => Ok(Self::Region),
             Some("region") => Ok(Self::Region),
             Some("world") => Ok(Self::World),
+            Some("name") => Ok(Self::Name),
             _ => Err(AppError::bad_request(
-                "sort must be \"region\" or \"world\"",
+                "sort must be \"region\", \"world\" or \"name\"",
             )),
         }
     }
@@ -53,6 +56,33 @@ impl RangeSort {
         match self {
             Self::Region => "region",
             Self::World => "world",
+            Self::Name => "name",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum SortDirection {
+    Asc,
+    Desc,
+}
+
+impl SortDirection {
+    fn parse(value: Option<&Value>) -> AppResult<Self> {
+        match value.and_then(Value::as_str) {
+            None if is_nullish(value) => Ok(Self::Asc),
+            Some("asc") => Ok(Self::Asc),
+            Some("desc") => Ok(Self::Desc),
+            _ => Err(AppError::bad_request(
+                "direction must be \"asc\" or \"desc\"",
+            )),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Asc => "asc",
+            Self::Desc => "desc",
         }
     }
 }
@@ -86,6 +116,19 @@ fn parse_offset(value: Option<&Value>) -> AppResult<usize> {
     Ok(n as usize)
 }
 
+fn parse_limit(value: Option<&Value>) -> AppResult<usize> {
+    if is_nullish(value) {
+        return Ok(LIMIT_DEFAULT);
+    }
+    let n = to_number(value);
+    if !is_integer(n) || n < 1.0 || n > LIMIT_MAX as f64 {
+        return Err(AppError::bad_request(format!(
+            "limit must be an integer between 1 and {LIMIT_MAX}"
+        )));
+    }
+    Ok(n as usize)
+}
+
 struct RangeSettings {
     res: i64,
     min_obs: i64,
@@ -115,20 +158,44 @@ struct RangeRow {
     sci_name: Value,
     taxon_order: f64,
     region_cells: i64,
+    region_obs: i64,
     world_cells: i64,
+    world_obs: i64,
 }
 
-fn rank_rows(rows: &mut [RangeRow], sort: RangeSort) {
-    let key = |row: &RangeRow| match sort {
-        RangeSort::Region => (row.region_cells, row.world_cells),
-        RangeSort::World => (row.world_cells, row.region_cells),
+impl RangeRow {
+    fn region_key(&self) -> (i64, i64) {
+        (self.region_cells, self.region_obs)
+    }
+
+    fn world_key(&self) -> (i64, i64) {
+        (self.world_cells, self.world_obs)
+    }
+}
+
+fn compare_taxon_order(a: &RangeRow, b: &RangeRow) -> Ordering {
+    a.taxon_order
+        .partial_cmp(&b.taxon_order)
+        .unwrap_or(Ordering::Equal)
+}
+
+fn compare_rows(a: &RangeRow, b: &RangeRow, sort: RangeSort) -> Ordering {
+    let by_cells = match sort {
+        RangeSort::Region => (a.region_key(), a.world_key()).cmp(&(b.region_key(), b.world_key())),
+        RangeSort::World => (a.world_key(), a.region_key()).cmp(&(b.world_key(), b.region_key())),
+        RangeSort::Name => a
+            .name
+            .as_str()
+            .unwrap_or_default()
+            .cmp(b.name.as_str().unwrap_or_default()),
     };
-    rows.sort_by(|a, b| {
-        key(a).cmp(&key(b)).then_with(|| {
-            a.taxon_order
-                .partial_cmp(&b.taxon_order)
-                .unwrap_or(Ordering::Equal)
-        })
+    by_cells.then_with(|| compare_taxon_order(a, b))
+}
+
+fn rank_rows(rows: &mut [RangeRow], sort: RangeSort, direction: SortDirection) {
+    rows.sort_by(|a, b| match direction {
+        SortDirection::Asc => compare_rows(a, b, sort),
+        SortDirection::Desc => compare_rows(b, a, sort),
     });
 }
 
@@ -143,7 +210,8 @@ fn surveyed_cells(conn: &Connection, region_code: &str) -> rusqlite::Result<Opti
 
 fn region_rows(conn: &Connection, region_code: &str) -> rusqlite::Result<Vec<RangeRow>> {
     let mut stmt = conn.prepare(
-        "SELECT s.id, s.code, s.name, s.sci_name, s.taxon_order, r.occupied_cells, w.occupied_cells
+        "SELECT s.id, s.code, s.name, s.sci_name, s.taxon_order,
+                r.occupied_cells, r.obs, w.occupied_cells, w.obs
          FROM species_ranges r
          JOIN species s ON s.id = r.species_id
          LEFT JOIN species_ranges w ON w.region_code = ? AND w.species_id = r.species_id
@@ -151,6 +219,7 @@ fn region_rows(conn: &Connection, region_code: &str) -> rusqlite::Result<Vec<Ran
     )?;
     stmt.query_map([WORLD, region_code], |row| {
         let region_cells: i64 = row.get(5)?;
+        let region_obs: i64 = row.get(6)?;
         Ok(RangeRow {
             species_id: row.get(0)?,
             code: sql_to_string(row.get_ref(1)?),
@@ -158,7 +227,9 @@ fn region_rows(conn: &Connection, region_code: &str) -> rusqlite::Result<Vec<Ran
             sci_name: sql_to_json(row.get_ref(3)?),
             taxon_order: sql_to_f64(row.get_ref(4)?),
             region_cells,
-            world_cells: row.get::<_, Option<i64>>(6)?.unwrap_or(region_cells),
+            region_obs,
+            world_cells: row.get::<_, Option<i64>>(7)?.unwrap_or(region_cells),
+            world_obs: row.get::<_, Option<i64>>(8)?.unwrap_or(region_obs),
         })
     })?
     .collect()
@@ -229,8 +300,9 @@ async fn species(State(state): State<SharedState>, body: Bytes) -> AppResult<Jso
     let body = parse_json_body(&body, JSON_BODY_MESSAGE)?;
     let region = parse_range_region(field(&body, "region"))?;
     let sort = RangeSort::parse(field(&body, "sort"))?;
+    let direction = SortDirection::parse(field(&body, "direction"))?;
     let offset = parse_offset(field(&body, "offset"))?;
-    let limit = parse_best_hotspots_limit(field(&body, "limit"))?;
+    let limit = parse_limit(field(&body, "limit"))?;
 
     let seen = if is_nullish(field(&body, "listToken")) {
         None
@@ -258,7 +330,7 @@ async fn species(State(state): State<SharedState>, body: Bytes) -> AppResult<Jso
             if let Some(seen_ids) = &seen_ids {
                 rows.retain(|row| seen_ids.contains(&row.species_id));
             }
-            rank_rows(&mut rows, sort);
+            rank_rows(&mut rows, sort, direction);
             let total = rows.len();
             let page: Vec<RangeRow> = rows.into_iter().skip(offset).take(limit).collect();
             Ok((settings, region_surveyed, world_surveyed, total, page))
@@ -274,10 +346,10 @@ async fn species(State(state): State<SharedState>, body: Bytes) -> AppResult<Jso
                 "code": row.code,
                 "name": row.name,
                 "sciName": row.sci_name,
-                "regionCells": row.region_cells,
                 "regionPct": pct(row.region_cells, region_surveyed),
-                "worldCells": row.world_cells,
                 "worldPct": pct(row.world_cells, world_surveyed),
+                "regionObs": row.region_obs,
+                "worldObs": row.world_obs,
                 "photo": state.avicommons.photo(&row.code),
             })
         })
@@ -292,11 +364,10 @@ async fn species(State(state): State<SharedState>, body: Bytes) -> AppResult<Jso
             "region": region,
             "regionName": display_name(&region, &names),
             "sort": sort.as_str(),
+            "direction": direction.as_str(),
             "total": total,
             "offset": offset,
             "limit": limit,
-            "regionSurveyedCells": region_surveyed,
-            "worldSurveyedCells": world_surveyed,
             "seenMatched": seen.as_ref().map(|seen| seen.matched()),
             "resolution": settings.res,
             "minObs": settings.min_obs,
@@ -318,7 +389,9 @@ mod tests {
             sci_name: Value::Null,
             taxon_order,
             region_cells,
+            region_obs: 1,
             world_cells,
+            world_obs: 1,
         }
     }
 
@@ -334,10 +407,32 @@ mod tests {
             row(3, 1.0, 1, 10),
             row(4, 0.5, 1, 10),
         ];
-        rank_rows(&mut rows, RangeSort::Region);
+        rank_rows(&mut rows, RangeSort::Region, SortDirection::Asc);
         assert_eq!(ids(&rows), vec![4, 3, 2, 1]);
-        rank_rows(&mut rows, RangeSort::World);
+        rank_rows(&mut rows, RangeSort::World, SortDirection::Asc);
         assert_eq!(ids(&rows), vec![4, 3, 1, 2]);
+        rank_rows(&mut rows, RangeSort::World, SortDirection::Desc);
+        assert_eq!(ids(&rows), vec![2, 1, 3, 4]);
+    }
+
+    #[test]
+    fn breaks_cell_ties_by_obs() {
+        let mut rows = vec![row(1, 1.0, 1, 1), row(2, 2.0, 1, 1), row(3, 3.0, 1, 1)];
+        rows[0].region_obs = 200;
+        rows[1].region_obs = 3;
+        rows[2].region_obs = 3;
+        rows[2].world_obs = 50;
+        rank_rows(&mut rows, RangeSort::Region, SortDirection::Asc);
+        assert_eq!(ids(&rows), vec![2, 3, 1]);
+    }
+
+    #[test]
+    fn ranks_by_name_with_null_names_first() {
+        let mut rows = vec![row(1, 1.0, 1, 1), row(2, 2.0, 1, 1)];
+        rows[0].name = json!("Wren");
+        rows[1].name = json!("Finch");
+        rank_rows(&mut rows, RangeSort::Name, SortDirection::Asc);
+        assert_eq!(ids(&rows), vec![2, 1]);
     }
 
     #[test]
@@ -360,10 +455,20 @@ mod tests {
             RangeSort::World
         );
         assert!(RangeSort::parse(Some(&json!("area"))).is_err());
+        assert_eq!(SortDirection::parse(None).unwrap(), SortDirection::Asc);
+        assert_eq!(
+            SortDirection::parse(Some(&json!("desc"))).unwrap(),
+            SortDirection::Desc
+        );
+        assert!(SortDirection::parse(Some(&json!("up"))).is_err());
         assert_eq!(parse_offset(None).unwrap(), 0);
         assert_eq!(parse_offset(Some(&json!(200))).unwrap(), 200);
         assert!(parse_offset(Some(&json!(-1))).is_err());
         assert!(parse_offset(Some(&json!(1.5))).is_err());
+        assert_eq!(parse_limit(None).unwrap(), 100);
+        assert_eq!(parse_limit(Some(&json!(1000))).unwrap(), 1000);
+        assert!(parse_limit(Some(&json!(1001))).is_err());
+        assert!(parse_limit(Some(&json!(0))).is_err());
     }
 
     #[test]

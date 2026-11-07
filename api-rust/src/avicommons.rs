@@ -4,6 +4,7 @@ use std::path::Path;
 use serde_json::{Value, json};
 
 const CDN: &str = "https://static.avicommons.org";
+const INDEX_URL: &str = "https://avicommons.org/latest-lite.json";
 const PHOTO_SIZE: u32 = 160;
 
 #[derive(Default)]
@@ -12,19 +13,22 @@ pub struct Avicommons {
 }
 
 impl Avicommons {
-    pub fn load(path: &Path) -> Self {
-        if !path.exists() {
-            tracing::warn!(
-                "[avicommons] {} not found — species photos will be omitted",
-                path.display()
-            );
-            return Self::default();
-        }
-        let parsed = std::fs::read_to_string(path)
-            .map_err(|err| err.to_string())
-            .and_then(|raw| {
-                serde_json::from_str::<HashMap<String, Value>>(&raw).map_err(|err| err.to_string())
-            });
+    pub async fn load(path: &Path, http: &reqwest::Client) -> Self {
+        let raw = match std::fs::read_to_string(path) {
+            Ok(raw) => raw,
+            Err(_) => match download(http, path).await {
+                Ok(raw) => raw,
+                Err(err) => {
+                    tracing::warn!(
+                        "[avicommons] {} missing and download failed ({err}) — species photos will be omitted",
+                        path.display()
+                    );
+                    return Self::default();
+                }
+            },
+        };
+        let parsed =
+            serde_json::from_str::<HashMap<String, Value>>(&raw).map_err(|err| err.to_string());
         match parsed {
             Ok(entries) => Self {
                 photos: entries
@@ -55,4 +59,22 @@ impl Avicommons {
             None => Value::Null,
         }
     }
+}
+
+async fn download(http: &reqwest::Client, path: &Path) -> Result<String, String> {
+    tracing::info!("[avicommons] downloading {INDEX_URL} to {}", path.display());
+    let raw = http
+        .get(INDEX_URL)
+        .send()
+        .await
+        .and_then(|response| response.error_for_status())
+        .map_err(|err| err.to_string())?
+        .text()
+        .await
+        .map_err(|err| err.to_string())?;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|err| err.to_string())?;
+    }
+    std::fs::write(path, &raw).map_err(|err| err.to_string())?;
+    Ok(raw)
 }

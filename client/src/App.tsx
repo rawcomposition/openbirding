@@ -11,7 +11,7 @@ import { get } from "./lib/utils";
 import BirdFinder from "@/pages/BirdFinder";
 import BestHotspots from "@/pages/BestHotspots";
 import Android from "@/pages/Android";
-import RangeRestricted from "@/pages/RangeRestricted";
+import RangeSize from "@/pages/RangeSize";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,7 +39,7 @@ function AppContent() {
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/bird-finder" element={<BirdFinder />} />
             <Route path="/best-hotspots" element={<BestHotspots />} />
-            <Route path="/range-restricted" element={<RangeRestricted />} />
+            <Route path="/range-size" element={<RangeSize />} />
             <Route path="/android" element={<Android />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

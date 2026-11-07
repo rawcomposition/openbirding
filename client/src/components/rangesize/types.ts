@@ -1,4 +1,4 @@
-import type { RangeSort } from "@/stores/rangeRestrictedStore";
+import type { RangeSortColumn, RangeSortDirection } from "@/stores/rangeSizeStore";
 
 export type RangeRegion = {
   code: string;
@@ -15,24 +15,21 @@ export type RangeSpecies = {
   code: string;
   name: string;
   sciName: string;
-  regionCells: number;
   regionPct: number;
-  worldCells: number;
   worldPct: number;
   photo: { url: string; by: string } | null;
 };
 
-export type RangeSpeciesResponse = {
+export type RangeSizesResponse = {
   items: RangeSpecies[];
   meta: {
     region: string;
     regionName: string;
-    sort: RangeSort;
+    sort: RangeSortColumn;
+    direction: RangeSortDirection;
     total: number;
     offset: number;
     limit: number;
-    regionSurveyedCells: number;
-    worldSurveyedCells: number;
     seenMatched: number | null;
     resolution: number;
     minObs: number;
