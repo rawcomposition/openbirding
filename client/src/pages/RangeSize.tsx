@@ -25,8 +25,6 @@ const RangeSize = () => {
   const sortColumn = useRangeSizeStore((s) => s.sortColumn);
   const sortDirection = useRangeSizeStore((s) => s.sortDirection);
   const toggleSort = useRangeSizeStore((s) => s.toggleSort);
-  const onlySeen = useRangeSizeStore((s) => s.onlySeen);
-  const hasList = useBestHotspotsStore((s) => !!s.listToken);
   const clearLifeList = useBestHotspotsStore((s) => s.clearLifeList);
 
   const { data: regions } = useQuery<RangeRegionsResponse>({
