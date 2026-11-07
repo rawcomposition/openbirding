@@ -115,8 +115,9 @@ const RangeSize = () => {
       {meta && (
         <div className="mt-6 max-w-2xl space-y-2 text-xs text-slate-500">
           <p>
-            Hexagons are H3 resolution {meta.resolution}. Only hexagons with at least {minChecklists} complete
-            checklists count, and a species counts as present with at least {minObs} checklists there.
+            Hexagons are H3 resolution {meta.resolution}. We ignore hexagons with fewer than {minChecklists} complete
+            checklists. A hexagon counts toward a species' range if the species appears on at least {minObs} checklists
+            there.
           </p>
           {firstPage?.citation && <p>{firstPage.citation}</p>}
         </div>
